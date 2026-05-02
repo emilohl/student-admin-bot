@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>student-bot</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>student-bot</h1>
+  <p class="tagline">Administrative Q&amp;A for KTH CTFYS · grounded in the official corpus</p>
+</header>
+
+<main>
+  <section id="onboarding" class="card">
+    <h2>Hej!</h2>
+    <p>
+      Den här boten svarar på administrativa frågor om civilingenjörsprogrammet
+      i Teknisk fysik, baserat på KTH:s officiella regler och utbildningsplaner.
+      Den använder ett lokalt språkmodell + retrieval — alla källor kan klickas
+      på under varje svar.
+    </p>
+    <p class="caveat">
+      LLM:er kan ha fel även när de låter säkra. Klicka alltid på källorna
+      och dubbelkolla viktiga detaljer.
+    </p>
+    <label>Ditt namn (visas inte för andra; används för loggar):
+      <input id="name" type="text" placeholder="Anonym" autocomplete="off">
+    </label>
+    <label class="opt-out">
+      <input id="opt-out" type="checkbox">
+      Logga inte mina frågor (du kan ändra detta när som helst)
+    </label>
+    <button id="start">Starta</button>
+  </section>
+
+  <section id="chat" class="card hidden">
+    <div id="messages" aria-live="polite"></div>
+    <form id="composer">
+      <textarea id="question" rows="3"
+        placeholder="Skriv din fråga på svenska eller engelska…" required></textarea>
+      <div class="row">
+        <span id="status" class="status"></span>
+        <button type="button" id="reset" class="ghost">Ny tråd</button>
+        <button type="submit" id="send">Fråga</button>
+      </div>
+    </form>
+  </section>
+</main>
+
+<footer>
+  <a href="/about">Om boten</a> ·
+  <a href="/stats">Statistik</a> ·
+  <span id="conn"></span>
+</footer>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

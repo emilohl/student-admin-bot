@@ -1,0 +1,66 @@
+# Topic taxonomy for question classification.
+#
+# Edit freely — changes apply to NEW classifications only. Past rows in
+# qa_log keep their old topic strings, which means analytics will show
+# both old and new labels until you either reclassify or rename.
+#
+# Each entry has:
+#   id:    machine identifier (kept stable; used in qa_log.topic)
+#   sv:    Swedish label (shown to humans / classifier)
+#   en:    English label
+#   hint:  one-line description; helps the LLM choose between similar topics
+
+- id: examination_grading
+  sv: "Tentamen, omtenta och betyg"
+  en: "Examination, re-examination, and grading"
+  hint: "Exam registration, re-exams, sick leave during exams, grading scale, grade appeals."
+
+- id: plagiarism_misconduct
+  sv: "Plagiering och fusk"
+  en: "Plagiarism and academic misconduct"
+  hint: "Citation rules, plagiarism handling, suspected cheating, disciplinary process."
+
+- id: curriculum_courses
+  sv: "Utbildning, kurser och program"
+  en: "Curriculum, courses, and program"
+  hint: "Program structure, curriculum (utbildningsplan), course selection, specializations."
+
+- id: registration_admission
+  sv: "Anmälan och antagning"
+  en: "Registration and admission"
+  hint: "Course registration, program admission, late registration, antagningsordning."
+
+- id: credit_transfer
+  sv: "Tillgodoräknande av kurser"
+  en: "Credit transfer (validation)"
+  hint: "Validating credits from other universities or exchange programs."
+
+- id: thesis
+  sv: "Examensarbete"
+  en: "Thesis"
+  hint: "Bachelor thesis, Master thesis, supervision, deadlines, examination of thesis."
+
+- id: disability_support
+  sv: "Stöd vid funktionsnedsättning"
+  en: "Disability support"
+  hint: "Examination accommodations, learning support for students with disabilities."
+
+- id: scholarships
+  sv: "Stipendier"
+  en: "Scholarships"
+  hint: "Scholarships at undergraduate and graduate level."
+
+- id: disciplinary
+  sv: "Disciplinärenden och avstängning"
+  en: "Disciplinary cases and suspension"
+  hint: "Disciplinary procedures, suspension from KTH, conduct violations."
+
+- id: degree_certificate
+  sv: "Examen och examensbevis"
+  en: "Degree and degree certificate"
+  hint: "Applying for a degree, the local degree regulation (examensordning)."
+
+- id: other
+  sv: "Annat"
+  en: "Other"
+  hint: "Anything not covered by the topics above, including off-topic questions."

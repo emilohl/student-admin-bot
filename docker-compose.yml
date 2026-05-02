@@ -1,0 +1,18 @@
+services:
+  bot:
+    build: .
+    image: student-bot:latest
+    container_name: student-bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      OLLAMA_URL: http://host.docker.internal:11434
+    extra_hosts:
+      # On macOS, host.docker.internal already resolves; keep this for Linux parity.
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./data:/app/data
+      - ./docs:/app/docs:ro
+    # Override the default to (re)index instead of running the bot:
+    #   docker compose run --rm bot python -m scripts.reindex

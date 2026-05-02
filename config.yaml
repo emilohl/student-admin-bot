@@ -1,0 +1,99 @@
+# Central configuration. Secrets live in .env (see .env.example).
+
+paths:
+  docs_dir: docs/corpus           # symlink to whereever your knowledge base files are
+  chroma_dir: data/chroma
+  logs_db: data/logs.sqlite
+
+ingest:
+  # PDFs that pymupdf4llm parses badly (tables) — falls back to docling.
+  # Add filenames here after running scripts/inspect_pdf.py.
+  docling_files: []
+  chunk:
+    # bge-m3 supports up to 8192 tokens; we don't need to be that aggressive.
+    # ~600 tokens gives larger semantic units for retrieval while staying
+    # cheap to embed and well below the LLM context budget.
+    target_tokens: 600
+    overlap_tokens: 80
+  dedup_cosine_threshold: 0.97   # near-duplicate filter for SV/EN curriculum chunk pairs
+
+embedding:
+  # bge-m3 has substantially stronger cross-lingual retrieval than e5-base,
+  # which matters here because English queries must hit Swedish policy docs.
+  # ~2.3 GB resident — keeps the bot under ~4 GB total even with the reranker.
+  # bge-m3 does NOT use the e5 query/passage prefixes, so leave those empty.
+  model: BAAI/bge-m3
+  device: cpu
+  query_prefix: ""
+  passage_prefix: ""
+
+reranker:
+  model: cross-encoder/mmarco-mMiniLMv2-L12-H384-v1
+  device: cpu
+  candidates: 20                 # top-N from Chroma to feed reranker
+  keep: 5                        # top-K after rerank
+
+gate:
+  # Tuned via `python -m eval.run_eval` against eval/eval_set.yml. The
+  # multilingual cross-encoder produces unbounded logits — these are scaled
+  # to the actual score distribution, not 0–1. Re-tune whenever you change
+  # the embedding or reranker model.
+  rerank_top1_min: -0.5
+  rerank_meanK_min: -1.0
+  meanK: 3
+  # The curriculum series (Utbildningsplan CTFYS HT2020…HT2026, sv+en) easily
+  # spans 5 distinct rel_sources for the same topic — relax accordingly.
+  max_distinct_sources_in_topk: 5
+
+llm:
+  # Q4_K_XL fits ~5–6 GB on Metal; the default `gemma4:e4b` tag is Q4_K_M (~9.6 GB).
+  # Override with OLLAMA_URL or by editing this line.
+  model: gemma-4-E4B-it-GGUF:UD-Q4_K_XL
+  ollama_url: http://127.0.0.1:11434
+  num_ctx: 16384
+  temperature: 0.1
+  max_tokens: 1024
+
+memory:
+  max_turns: 4                   # last N user/assistant pairs per (user, thread)
+  ttl_minutes: 30
+
+mattermost:
+  trigger_mention: "@studyadminbot"   # used in channel posts; DM always triggers
+  reply_in_thread: true
+  reconnect_max_seconds: 60
+
+logging:
+  retain_days: 90
+
+# How the bot refers students to a human when it can't (or shouldn't) answer.
+fallback:
+  counselor_label_sv: "studievägledaren"
+  counselor_label_en: "the study counselor"
+  # Optional: a URL or Mattermost handle. Leave blank to omit.
+  counselor_link: ""
+
+# Guardrails against prompt injection, spam, and fluency-as-confidence misreads.
+guardrails:
+  input_max_chars: 1000        # prompt-injection vectors are usually long
+  rate_limit_per_minute: 5     # per-user; applies to MM and web
+  show_confidence_badge: true  # pedagogical: makes "fluency ≠ correctness" visible
+
+# Web testing UI. Bound to localhost by default; set WEB_BIND_HOST=0.0.0.0
+# (and WEB_AUTH_ENABLED=true) to expose externally.
+web:
+  bind_host: 127.0.0.1
+  port: 8000
+  # Where the corpus is served from. Citations link to <doc_base_url>/<rel_source>.
+  # Empty string = no clickable links.
+  doc_base_url: /docs
+  require_name: true
+  auth_enabled: false
+  users_file: data/web_users   # passwd-like: "user:scrypt:<salt_b64>:<hash_b64>"
+  session_idle_minutes: 60
+
+# Topic classification (analytics only — runs after the answer is sent).
+topics:
+  enabled: true
+  file: topics.yaml
+  classifier_temperature: 0.0

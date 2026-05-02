@@ -1,0 +1,20 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+data/chroma/
+data/logs.sqlite
+data/logs.sqlite-*
+
+# uv
+uv.lock
+.python-version
+
+# IDE
+.vscode/
+.idea/
+
+# Outputs from inspect_pdf.py
+scripts/_inspect_out/

@@ -1,0 +1,356 @@
+"""Mattermost websocket bot.
+
+Behaviour:
+- Triggers on every DM post AND any channel post containing the configured mention.
+- Filters out the bot's own posts and other bots.
+- Replies in-thread (uses post.root_id when set, else post.id).
+- On a user's first DM ever, posts a one-line GDPR notice before answering.
+- Listens for 👍 / 👎 reactions on bot posts and records sentiment.
+- Wraps the websocket loop in a reconnect-with-backoff retry loop.
+- LLM calls run on a worker thread so websocket events keep flowing.
+"""
+from __future__ import annotations
+
+import json
+import logging
+import queue
+import signal
+import sys
+import threading
+import time
+from dataclasses import dataclass
+
+from mattermostdriver import Driver
+from rich.logging import RichHandler
+
+from student_bot.bot.pipeline import answer
+from student_bot.config import Config, get_config
+from student_bot.logging_db import LogDB
+
+
+log = logging.getLogger("student_bot")
+
+
+GDPR_NOTICE_SV = (
+    "Hej! Jag är en automatisk assistent för administrativa frågor om CTFYS. "
+    "Frågor och feedback (👍 / 👎) loggas anonymt för att förbättra boten. "
+    "Skriv `!privacy off` om du vill stänga av loggning av dina frågor "
+    "(`!privacy on` slår på igen, `!privacy status` visar nuläget). "
+    "Reagera gärna med 👍 eller 👎 på mina svar."
+)
+GDPR_NOTICE_EN = (
+    "Hi! I'm an automated assistant for administrative questions about CTFYS. "
+    "Questions and feedback (👍 / 👎) are logged anonymously to help improve the bot. "
+    "Send `!privacy off` to stop logging your questions "
+    "(`!privacy on` re-enables it, `!privacy status` shows current state). "
+    "Please react with 👍 or 👎 on my replies."
+)
+
+PRIVACY_OFF_SV = "Loggning är nu avstängd. Innehållet i dina frågor lagras inte längre."
+PRIVACY_OFF_EN = "Logging disabled. Your question content is no longer stored."
+PRIVACY_ON_SV = "Loggning är på. Frågor och svar lagras anonymt."
+PRIVACY_ON_EN = "Logging enabled. Questions and answers are stored anonymously."
+PRIVACY_STATUS_SV = "Loggning för dig är just nu: {state}."
+PRIVACY_STATUS_EN = "Logging for you is currently: {state}."
+
+POSITIVE_EMOJI = {"+1", "thumbsup", "white_check_mark"}
+NEGATIVE_EMOJI = {"-1", "thumbsdown", "x", "no_entry_sign"}
+
+
+@dataclass
+class _Job:
+    user_id: str
+    channel_id: str
+    channel_type: str
+    root_id: str
+    question: str
+
+
+class StudentBot:
+    def __init__(self, cfg: Config):
+        if not cfg.mattermost_secrets:
+            raise RuntimeError("Mattermost credentials not set (see .env.example)")
+        if not cfg.user_id_hash_salt:
+            raise RuntimeError("USER_ID_HASH_SALT not set (see .env.example)")
+        self.cfg = cfg
+        self.db = LogDB(cfg)
+        self.queue: queue.Queue[_Job] = queue.Queue()
+        self.shutdown = threading.Event()
+        self._driver_lock = threading.Lock()
+        self.bot_user_id: str | None = None
+        self.driver: Driver | None = None
+
+    # --- driver lifecycle ---
+
+    def _make_driver(self) -> Driver:
+        s = self.cfg.mattermost_secrets
+        assert s is not None
+        # `keepalive=True` makes the websocket loop auto-reconnect with
+        # `keepalive_delay` seconds between attempts; we cap with our own
+        # outer loop in case the whole thing crashes.
+        return Driver({
+            "url": s.url,
+            "token": s.token,
+            "scheme": s.scheme,
+            "port": s.port,
+            "basepath": "/api/v4",
+            "verify": True,
+            "timeout": 30,
+            "keepalive": True,
+            "keepalive_delay": 5,
+            "debug": False,
+        })
+
+    def login(self) -> None:
+        with self._driver_lock:
+            self.driver = self._make_driver()
+            self.driver.login()
+            me = self.driver.users.get_user(user_id="me")
+            self.bot_user_id = me["id"]
+            log.info("logged in as %s (%s)", me.get("username"), self.bot_user_id)
+
+    # --- worker thread: runs RAG, posts reply ---
+
+    def worker_loop(self):
+        while not self.shutdown.is_set():
+            try:
+                job = self.queue.get(timeout=0.5)
+            except queue.Empty:
+                continue
+            try:
+                self._handle_job(job)
+            except Exception:
+                log.exception("worker failed on job")
+            finally:
+                self.queue.task_done()
+
+    def _post(self, channel_id: str, message: str, root_id: str | None) -> str | None:
+        assert self.driver is not None
+        try:
+            with self._driver_lock:
+                resp = self.driver.posts.create_post({
+                    "channel_id": channel_id,
+                    "message": message,
+                    "root_id": root_id or "",
+                })
+            return resp.get("id")
+        except Exception:
+            log.exception("post failed")
+            return None
+
+    def _handle_privacy_command(self, job: _Job, body: str) -> bool:
+        """Returns True if the message was handled as a !privacy command."""
+        from student_bot.lang import detect
+        parts = body.lower().split()
+        if not parts or parts[0] != "!privacy":
+            return False
+        lang = detect(body) if body else "sv"
+        sub = parts[1] if len(parts) > 1 else "status"
+        if sub == "off":
+            self.db.set_opt_out(job.user_id, True)
+            self._post(job.channel_id, PRIVACY_OFF_EN if lang == "en" else PRIVACY_OFF_SV, job.root_id)
+        elif sub == "on":
+            self.db.set_opt_out(job.user_id, False)
+            self._post(job.channel_id, PRIVACY_ON_EN if lang == "en" else PRIVACY_ON_SV, job.root_id)
+        else:
+            opted = self.db.is_opted_out(job.user_id)
+            if lang == "en":
+                state = "off (not stored)" if opted else "on (stored anonymously)"
+                msg = PRIVACY_STATUS_EN.format(state=state)
+            else:
+                state = "av (lagras inte)" if opted else "på (lagras anonymt)"
+                msg = PRIVACY_STATUS_SV.format(state=state)
+            self._post(job.channel_id, msg, job.root_id)
+        return True
+
+    def _handle_job(self, job: _Job):
+        # First-DM GDPR notice (only in DMs, only once per user).
+        if job.channel_type == "D" and not self.db.has_disclosed(job.user_id):
+            from student_bot.lang import detect
+            lang = detect(job.question)
+            notice = GDPR_NOTICE_EN if lang == "en" else GDPR_NOTICE_SV
+            self._post(job.channel_id, notice, job.root_id)
+            self.db.mark_disclosed(job.user_id)
+
+        # !privacy commands short-circuit the RAG pipeline.
+        if self._handle_privacy_command(job, job.question.strip()):
+            return
+
+        result = answer(job.question, cfg=self.cfg, rate_limit_key=job.user_id)
+
+        bot_post_id = self._post(job.channel_id, result.rendered, job.root_id)
+
+        chunk_ids = [c.chunk_id for c in result.retrieval.reranked]
+        qa_id = self.db.record_qa(
+            user_id=job.user_id,
+            channel_type=job.channel_type,
+            channel_id=job.channel_id,
+            bot_post_id=bot_post_id,
+            root_id=job.root_id,
+            question=job.question,
+            lang=result.lang,
+            retrieved_chunk_ids=chunk_ids,
+            rerank_top1=result.gate.top1,
+            rerank_meanK=result.gate.meanK,
+            distinct_sources=result.gate.distinct_sources,
+            gate_pass=result.gate.passed,
+            gate_reason=result.gate.reason,
+            answer=result.answer,
+            latency_ms=result.latency_ms,
+        )
+
+        # Topic classification runs AFTER the user has their answer so it
+        # never adds visible latency. Skip for opted-out users (qa_id is None).
+        if qa_id is not None and self.cfg.topics.enabled:
+            try:
+                from student_bot.bot.topics import classify
+                topic, confidence = classify(self.cfg, job.question, result.lang)
+                self.db.update_topic(qa_id, topic, confidence)
+            except Exception:
+                log.exception("topic classification failed")
+
+    # --- websocket event handling ---
+
+    def _should_handle_post(self, post: dict, channel_type: str) -> bool:
+        # Filter out our own posts and bot posts.
+        if post.get("user_id") == self.bot_user_id:
+            return False
+        props = post.get("props") or {}
+        if props.get("from_bot") in ("true", True):
+            return False
+        # System messages.
+        if (post.get("type") or "").startswith("system_"):
+            return False
+
+        if channel_type == "D":
+            return True
+
+        # Channel: must mention us.
+        msg = post.get("message", "")
+        return self.cfg.mattermost.trigger_mention in msg
+
+    def _strip_mention(self, message: str) -> str:
+        m = self.cfg.mattermost.trigger_mention
+        return message.replace(m, "").strip() if m in message else message.strip()
+
+    def _root_id_for_reply(self, post: dict) -> str:
+        return post.get("root_id") or post.get("id") or ""
+
+    async def on_event(self, raw: str) -> None:
+        try:
+            event = json.loads(raw)
+        except Exception:
+            return
+
+        etype = event.get("event")
+        data = event.get("data") or {}
+
+        if etype == "posted":
+            channel_type = data.get("channel_type", "")
+            try:
+                post = json.loads(data.get("post", "{}"))
+            except Exception:
+                return
+            if not self._should_handle_post(post, channel_type):
+                return
+            question = self._strip_mention(post.get("message", ""))
+            if not question:
+                return
+            self.queue.put(_Job(
+                user_id=post.get("user_id", ""),
+                channel_id=post.get("channel_id", ""),
+                channel_type=channel_type or "O",
+                root_id=self._root_id_for_reply(post),
+                question=question,
+            ))
+
+        elif etype == "reaction_added":
+            try:
+                reaction = json.loads(data.get("reaction", "{}"))
+            except Exception:
+                return
+            if reaction.get("user_id") == self.bot_user_id:
+                return
+            emoji = reaction.get("emoji_name", "")
+            sentiment = (
+                "positive" if emoji in POSITIVE_EMOJI
+                else "negative" if emoji in NEGATIVE_EMOJI
+                else None
+            )
+            if not sentiment:
+                return
+            bot_post_id = reaction.get("post_id", "")
+            if not bot_post_id:
+                return
+            if self.db.lookup_qa_by_bot_post(bot_post_id) is None:
+                return  # reaction on a non-bot post; ignore
+            self.db.record_feedback(
+                bot_post_id=bot_post_id,
+                user_id=reaction.get("user_id", ""),
+                sentiment=sentiment,
+                emoji=emoji,
+            )
+
+    # --- websocket reconnect loop ---
+
+    def serve(self):
+        worker = threading.Thread(target=self.worker_loop, daemon=True, name="bot-worker")
+        worker.start()
+
+        backoff = 1
+        cap = max(1, self.cfg.mattermost.reconnect_max_seconds)
+        while not self.shutdown.is_set():
+            try:
+                self.login()
+                backoff = 1
+                log.info("connecting websocket…")
+                assert self.driver is not None
+                self.driver.init_websocket(self.on_event)
+            except Exception:
+                log.exception("websocket loop crashed; will reconnect")
+            if self.shutdown.is_set():
+                break
+            log.info("sleeping %ds before reconnect", backoff)
+            self.shutdown.wait(backoff)
+            backoff = min(cap, backoff * 2)
+
+        log.info("shutting down; draining queue")
+        self.queue.join()
+
+
+def _setup_logging():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(rich_tracebacks=True)],
+    )
+
+
+def main():
+    _setup_logging()
+    cfg = get_config()
+    bot = StudentBot(cfg)
+
+    def handle_sig(signum, frame):
+        log.info("signal %s; shutting down", signum)
+        bot.shutdown.set()
+        # Try to nudge the websocket.
+        if bot.driver is not None:
+            try:
+                bot.driver.disconnect()
+            except Exception:
+                pass
+
+    signal.signal(signal.SIGINT, handle_sig)
+    signal.signal(signal.SIGTERM, handle_sig)
+
+    bot.serve()
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
+
+
+__all__ = ["StudentBot", "main"]
