@@ -91,6 +91,12 @@ CREATE TABLE IF NOT EXISTS anon_counter (
 MIGRATIONS: list[tuple[str, str]] = [
     ("qa_log.topic", "ALTER TABLE qa_log ADD COLUMN topic TEXT"),
     ("qa_log.topic_confidence", "ALTER TABLE qa_log ADD COLUMN topic_confidence REAL"),
+    # Original `question` stays the user's typed text (for analytics).
+    # `question_expanded` captures the post-jargon-expansion query that was
+    # actually fed to retrieval. Useful for debugging "why did this query miss?"
+    ("qa_log.question_expanded", "ALTER TABLE qa_log ADD COLUMN question_expanded TEXT"),
+    # Comma-separated list of jargon term keys hit by this query.
+    ("qa_log.jargon_hits", "ALTER TABLE qa_log ADD COLUMN jargon_hits TEXT"),
 ]
 
 
@@ -205,6 +211,8 @@ class LogDB:
         gate_reason: str,
         answer: str,
         latency_ms: int,
+        question_expanded: str | None = None,
+        jargon_hits: list[str] | None = None,
     ) -> int | None:
         """Record a Q&A row, or skip (returning None) when the user opted out.
 
@@ -222,14 +230,16 @@ class LogDB:
                     ts, user_id_hash, channel_type, channel_id, bot_post_id, root_id,
                     question, lang, retrieved_chunk_ids,
                     rerank_top1, rerank_meanK, distinct_sources,
-                    gate_pass, gate_reason, answer, latency_ms
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    gate_pass, gate_reason, answer, latency_ms,
+                    question_expanded, jargon_hits
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     int(time.time()), uid, channel_type, channel_id, bot_post_id, root_id,
                     question, lang, json.dumps(retrieved_chunk_ids),
                     rerank_top1, rerank_meanK, distinct_sources,
                     1 if gate_pass else 0, gate_reason, answer, latency_ms,
+                    question_expanded, ",".join(jargon_hits or []) if jargon_hits else None,
                 ),
             )
             conn.commit()

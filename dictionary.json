@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "_comment": "Student-jargon dictionary. Add terms via PR or via `student-bot-jargon add`.",
+  "entries": {
+    "kex-jobb": {
+      "term": "KEX-jobb",
+      "expansion": "kandidatexamensarbete",
+      "lang": "sv",
+      "definition": "Examensarbete på kandidatnivå, oftast 15 hp, sista terminen på grundnivån.",
+      "added_by": "admin",
+      "added_ts": "2026-05-01"
+    },
+    "exjobb": {
+      "term": "exjobb",
+      "expansion": "examensarbete",
+      "lang": "sv",
+      "definition": "Examensarbete (kandidat- eller masternivå).",
+      "added_by": "admin",
+      "added_ts": "2026-05-01"
+    },
+    "tenta": {
+      "term": "tenta",
+      "expansion": "tentamen",
+      "lang": "sv",
+      "definition": "Skriftlig examination i en kurs.",
+      "added_by": "admin",
+      "added_ts": "2026-05-01"
+    },
+    "omtenta": {
+      "term": "omtenta",
+      "expansion": "omtentamen",
+      "lang": "sv",
+      "definition": "Förnyad examination för den som inte godkänts vid den första.",
+      "added_by": "admin",
+      "added_ts": "2026-05-01"
+    },
+    "ks": {
+      "term": "KS",
+      "expansion": "kontrollskrivning",
+      "lang": "sv",
+      "definition": "Mindre delprov i en kurs, oftast bedömt med godkänt/icke godkänt.",
+      "added_by": "admin",
+      "added_ts": "2026-05-01"
+    },
+    "lp": {
+      "term": "LP",
+      "expansion": "läsperiod",
+      "lang": "sv",
+      "definition": "Läsperiod — KTH:s läsår är delat i fyra läsperioder (LP1–LP4).",
+      "added_by": "admin",
+      "added_ts": "2026-05-01"
+    },
+    "hp": {
+      "term": "hp",
+      "expansion": "högskolepoäng",
+      "lang": "any",
+      "definition": "Högskolepoäng. 1 hp ≈ 1 ECTS-poäng. Heltidsstudier under en läsperiod motsvarar typiskt 7,5–15 hp.",
+      "added_by": "admin",
+      "added_ts": "2026-05-01"
+    },
+    "pa": {
+      "term": "PA",
+      "expansion": "programansvarig",
+      "lang": "sv",
+      "definition": "Programansvarig — den lärare som leder ett utbildningsprogram.",
+      "added_by": "admin",
+      "added_ts": "2026-05-01"
+    },
+    "kå": {
+      "term": "KÅ",
+      "expansion": "kåren",
+      "lang": "sv",
+      "definition": "Studentkåren (THS, Tekniska Högskolans Studentkår).",
+      "added_by": "admin",
+      "added_ts": "2026-05-01"
+    },
+    "kth-konto": {
+      "term": "KTH-konto",
+      "expansion": "KTH:s användarkonto",
+      "lang": "sv",
+      "definition": "Användarkontot för KTH:s system (e-post, Canvas, Ladok, m.m.).",
+      "added_by": "admin",
+      "added_ts": "2026-05-01"
+    }
+  }
+}

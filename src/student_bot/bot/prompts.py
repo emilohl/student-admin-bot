@@ -99,18 +99,27 @@ def compose_messages(
     history: list[dict],
     chunks: list[RetrievedChunk],
     question: str,
+    glossary_md: str = "",
 ) -> list[dict]:
     """Build the OpenAI/Ollama-style message list.
 
     history: prior turns as [{"role": "user"|"assistant", "content": "..."}, ...].
+    glossary_md: optional pre-rendered "Ordlista / Glossary" block to inject
+    above the retrieved context. See `Jargon.glossary_block`.
     """
     messages: list[dict] = [{"role": "system", "content": system_prompt(cfg, lang)}]
     messages.extend(history)
 
     context = format_context(chunks)
-    label = "Kontext" if lang == "sv" else "Context"
-    user_block = f"{label}:\n{context}\n\n---\n\n{question}"
-    messages.append({"role": "user", "content": user_block})
+    ctx_label = "Kontext" if lang == "sv" else "Context"
+    parts: list[str] = []
+    if glossary_md:
+        parts.append(glossary_md)
+        parts.append("")
+    parts.append(f"{ctx_label}:\n{context}")
+    parts.append("---")
+    parts.append(question)
+    messages.append({"role": "user", "content": "\n\n".join(parts)})
     return messages
 
 

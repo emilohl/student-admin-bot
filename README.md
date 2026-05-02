@@ -205,6 +205,82 @@ their previous label until you reclassify them.
 
 ---
 
+## Jargon dictionary
+
+Students don't say *kandidatexamensarbete* — they say *KEX-jobb*. The
+embedding model has no signal connecting the two, so retrieval misses
+unless we bridge them. `dictionary.json` (in the repo root) is a small,
+hand-curated map of student slang to the formal corpus terms; it's applied
+at query time, never re-embedded.
+
+**What happens at query time**:
+1. The bot detects jargon terms (whole-word, NFC-normalised, case-insensitive).
+2. The query sent to retrieval gets the formal phrase appended inline:
+   *"Hur fungerar KEX-jobb?"* → *"Hur fungerar KEX-jobb (kandidatexamensarbete)?"*.
+3. A small *Ordlista* block is added to the LLM prompt so the model knows
+   what the slang means.
+4. A one-line transparency note is shown above the answer:
+   `_Tolkar "KEX-jobb" som "kandidatexamensarbete"._` — students see what
+   was substituted and can correct it if the bot guessed wrong.
+
+The dictionary file is reloaded automatically when its mtime changes — no
+restart needed after edits or after `student-bot-jargon accept`.
+
+**File format** (`dictionary.json`):
+
+```json
+{
+  "version": 1,
+  "entries": {
+    "kex-jobb": {
+      "term": "KEX-jobb",
+      "expansion": "kandidatexamensarbete",
+      "lang": "sv",
+      "definition": "Examensarbete på kandidatnivå (15 hp).",
+      "added_by": "admin",
+      "added_ts": "2026-05-01"
+    }
+  }
+}
+```
+
+- `lang` is `"sv"`, `"en"`, or `"any"` — entries are filtered by the query's
+  detected language so an English query doesn't get Swedish-only glossary.
+- The map key is the lowercase NFC-normalised term; `term` keeps display
+  capitalisation.
+
+**Discovery**:
+- Mattermost: `!jargon list` posts the current dictionary in the thread.
+- Web: `/glossary` shows the same table plus a small *Suggest entry* form.
+
+**How students contribute**:
+- **In Mattermost**: `!jargon suggest KEX-jobb = kandidatexamensarbete`.
+  Stored to `dictionary_proposals.json` for admin review.
+- **In the web UI**: form on `/glossary` posts to `/api/jargon/suggest`.
+- **Via PR**: the repo is open. Edit `dictionary.json` and open a PR;
+  reviews are normal prose review.
+
+**Admin review**:
+
+```bash
+uv run student-bot-jargon list             # canonical entries
+uv run student-bot-jargon proposals        # pending suggestions
+uv run student-bot-jargon accept 2 --def "Optional override"
+uv run student-bot-jargon reject 3 --reason "duplicate"
+uv run student-bot-jargon add tenta tentamen --lang sv --def "Skriftlig examination."
+uv run student-bot-jargon remove foobar
+```
+
+`dictionary_proposals.json` is **gitignored** so in-flight student
+suggestions never enter the public repo. Only `dictionary.json` is shared.
+
+**Open-repo security**: PR review is the gate. The bot doesn't load code
+from JSON, only string substitutions, so a poisoned entry can mislead
+retrieval but cannot escalate. `.env`, `data/`, `dictionary_proposals.json`,
+and `data/web_users` are all in `.gitignore`; secrets stay out.
+
+---
+
 ## Web app
 
 Localhost-only by default. Two-factor authentication when exposed to a network.

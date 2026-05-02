@@ -97,3 +97,14 @@ topics:
   enabled: true
   file: topics.yaml
   classifier_temperature: 0.0
+
+# Student-jargon dictionary. Expansions happen at query time so retrieval
+# matches the formal term in the corpus. Edit `dictionary.json` (or accept
+# proposals via `student-bot-jargon accept N`) — changes are picked up on the
+# next query without a restart.
+jargon:
+  enabled: true
+  file: dictionary.json
+  proposals_file: dictionary_proposals.json
+  show_transparency_note: true   # adds "_Tolkar X som Y._" above the answer
+  max_glossary_entries: 6

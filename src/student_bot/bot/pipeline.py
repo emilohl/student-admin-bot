@@ -15,6 +15,7 @@ from collections import deque
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from threading import Lock
+from typing import Any
 
 import click
 from rich.console import Console
@@ -30,21 +31,37 @@ from student_bot.bot.memory import ConversationMemory
 from student_bot.bot.prompts import compose_messages, refusal_message
 from student_bot.bot.retrieval import RetrievalResult, RetrievedChunk, retrieve
 from student_bot.config import Config, get_config
+from student_bot.jargon import Jargon, JargonEntry
 from student_bot.lang import detect
+
+
+_jargon_cache: dict[int, Jargon] = {}
+
+
+def _jargon(cfg: Config) -> Jargon | None:
+    if not cfg.jargon.enabled:
+        return None
+    j = _jargon_cache.get(id(cfg))
+    if j is None:
+        j = Jargon.from_config(cfg)
+        _jargon_cache[id(cfg)] = j
+    return j
 
 
 @dataclass
 class AnswerResult:
-    question: str
+    question: str                # original user text (pre-expansion)
     lang: str
     answered: bool
     answer: str                  # the model's text only (no sources/footer)
-    rendered: str                # answer + sources block + footer (what to display)
+    rendered: str                # answer + sources block + footer + jargon note
     gate: GateDecision
     retrieval: RetrievalResult
     latency_ms: int
     rate_limited: bool = False
     too_long: bool = False
+    expanded_question: str = ""  # post-jargon-expansion query used for retrieval
+    jargon_hits: list = field(default_factory=list)
 
 
 # --- Per-key rate limiter (simple sliding window over the last 60 s) ---
@@ -113,8 +130,11 @@ def _render(
     gate: GateDecision,
     *,
     include_sources: bool,
+    jargon_note: str = "",
 ) -> str:
     parts: list[str] = []
+    if jargon_note and cfg.jargon.show_transparency_note:
+        parts.append(jargon_note + "\n\n")
     if cfg.guardrails.show_confidence_badge and include_sources:
         label = "Tillförlitlighet" if lang == "sv" else "Confidence"
         parts.append(f"_{label}: {confidence_badge(lang, gate.top1)}_\n")
@@ -165,12 +185,27 @@ def answer(
             rate_limited=True,
         )
 
-    retrieval = retrieve(cfg, question)
+    # --- jargon: expand query for retrieval, build glossary for prompt ---
+    jargon = _jargon(cfg)
+    expanded_q = question
+    jargon_hits: list[JargonEntry] = []
+    glossary_md = ""
+    jargon_note = ""
+    if jargon is not None:
+        expanded_q, jargon_hits = jargon.expand_query(question, lang=lang)
+        if jargon_hits:
+            glossary_md = jargon.glossary_block(
+                jargon_hits, lang, max_entries=cfg.jargon.max_glossary_entries,
+            )
+            jargon_note = jargon.transparency_note(jargon_hits, lang)
+
+    retrieval = retrieve(cfg, expanded_q)
     gate = evaluate_gate(cfg, retrieval)
 
     if not gate.passed:
         body = refusal_message(cfg, lang)
-        rendered = _render(cfg, lang, body, [], gate, include_sources=False)
+        rendered = _render(cfg, lang, body, [], gate,
+                           include_sources=False, jargon_note=jargon_note)
         if on_token:
             on_token(rendered)
         return AnswerResult(
@@ -178,20 +213,29 @@ def answer(
             answer=body, rendered=rendered,
             gate=gate, retrieval=retrieval,
             latency_ms=int((time.monotonic() - t0) * 1000),
+            expanded_question=expanded_q, jargon_hits=jargon_hits,
         )
 
-    messages = compose_messages(cfg, lang, history, retrieval.reranked, question)
+    messages = compose_messages(cfg, lang, history, retrieval.reranked,
+                                 expanded_q, glossary_md=glossary_md)
+
+    # Emit the jargon note up-front so the user sees it before tokens stream.
+    if on_token and jargon_note and cfg.jargon.show_transparency_note:
+        on_token(jargon_note + "\n\n")
+
     parts: list[str] = []
     for delta in _stream_answer(cfg, messages):
         parts.append(delta)
         if on_token:
             on_token(delta)
     body = "".join(parts).strip()
-    rendered = _render(cfg, lang, body, retrieval.reranked, gate, include_sources=True)
-    # Sources & footer are appended AFTER streaming completes; emit them as
-    # a final delta so streaming UIs see the same text the API returns.
+    rendered = _render(cfg, lang, body, retrieval.reranked, gate,
+                       include_sources=True, jargon_note=jargon_note)
     if on_token:
-        tail = rendered[len(body):]
+        # Compute the tail from the rendered version *minus* what we've
+        # already streamed (jargon note + body).
+        already = (jargon_note + "\n\n" if jargon_note and cfg.jargon.show_transparency_note else "") + body
+        tail = rendered[len(already):]
         if tail:
             on_token(tail)
 
@@ -200,6 +244,7 @@ def answer(
         answer=body, rendered=rendered,
         gate=gate, retrieval=retrieval,
         latency_ms=int((time.monotonic() - t0) * 1000),
+        expanded_question=expanded_q, jargon_hits=jargon_hits,
     )
 
 
