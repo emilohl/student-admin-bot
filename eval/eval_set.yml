@@ -166,6 +166,19 @@
   kind: in_domain
   expected_any: ["Utbildningsplan CTFYS HT2024 eng", "Utbildningsplan CTFYS HT2024 sve"]
 
+# ---------------- in-domain, jargon-laden ----------------
+# These exercise dictionary.json query expansion. If recall on these drops
+# without other in-domain queries dropping, suspect a jargon regression.
+- question: "Hur fungerar KEX-jobb?"
+  lang: sv
+  kind: in_domain
+  expected_doc_substring: "examensarbetskurser"
+
+- question: "Vad är skillnaden mellan KS och tenta i en CTFYS-kurs?"
+  lang: sv
+  kind: in_domain
+  expected_any: ["skriftlig-examination-i-sal", "kursplan-betygssystem-och-examination"]
+
 # ---------------- out-of-domain ----------------
 - question: "Vilket är väder i Stockholm imorgon?"
   lang: sv

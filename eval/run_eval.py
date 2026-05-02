@@ -23,6 +23,7 @@ from rich.table import Table
 from student_bot.bot.gate import evaluate as evaluate_gate
 from student_bot.bot.retrieval import retrieve
 from student_bot.config import PROJECT_ROOT, get_config
+from student_bot.jargon import Jargon
 
 
 EVAL_FILE = PROJECT_ROOT / "eval" / "eval_set.yml"
@@ -62,6 +63,9 @@ def main(eval_file: Path, show_failures: bool):
     cfg = get_config()
     console = Console()
     entries: list[dict] = yaml.safe_load(eval_file.read_text(encoding="utf-8"))
+    # Run queries through the same jargon expansion the bot uses, so the
+    # eval reflects production behaviour rather than bare retrieval.
+    jargon = Jargon.from_config(cfg) if cfg.jargon.enabled else None
 
     in_top1: list[float] = []
     in_meanK: list[float] = []
@@ -76,7 +80,11 @@ def main(eval_file: Path, show_failures: bool):
     for entry in entries:
         q = entry["question"]
         kind = entry["kind"]
-        result = retrieve(cfg, q)
+        if jargon is not None:
+            q_used, _ = jargon.expand_query(q, lang=entry.get("lang"))
+        else:
+            q_used = q
+        result = retrieve(cfg, q_used)
         gate = evaluate_gate(cfg, result)
 
         if kind == "in_domain":

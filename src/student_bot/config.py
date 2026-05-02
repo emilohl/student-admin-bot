@@ -107,6 +107,14 @@ class TopicsConfig(BaseModel):
     classifier_temperature: float = 0.0
 
 
+class JargonConfig(BaseModel):
+    enabled: bool = True
+    file: str = "dictionary.json"
+    proposals_file: str = "dictionary_proposals.json"
+    show_transparency_note: bool = True
+    max_glossary_entries: int = 6
+
+
 class MattermostSecrets(BaseModel):
     url: str
     port: int = 443
@@ -129,6 +137,7 @@ class Config(BaseModel):
     guardrails: GuardrailsConfig = Field(default_factory=GuardrailsConfig)
     web: WebConfig = Field(default_factory=WebConfig)
     topics: TopicsConfig = Field(default_factory=TopicsConfig)
+    jargon: JargonConfig = Field(default_factory=JargonConfig)
 
     # Secrets injected from env (only required when actually used).
     user_id_hash_salt: str | None = None

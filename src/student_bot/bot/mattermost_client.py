@@ -19,6 +19,7 @@ import sys
 import threading
 import time
 from dataclasses import dataclass
+from pathlib import Path
 
 from mattermostdriver import Driver
 from rich.logging import RichHandler
@@ -138,6 +139,81 @@ class StudentBot:
             log.exception("post failed")
             return None
 
+    def _handle_jargon_command(self, job: _Job, body: str) -> bool:
+        """Returns True if the message was handled as a !jargon command."""
+        from student_bot.jargon import Jargon, JargonEntry, _nfc_lower
+        from student_bot.lang import detect
+        text = body.strip()
+        if not text.lower().startswith("!jargon"):
+            return False
+        rest = text[len("!jargon"):].strip()
+        sub, _, tail = rest.partition(" ")
+        sub = sub.lower()
+        lang = detect(text) if text else "sv"
+
+        jargon = Jargon.from_config(self.cfg)
+
+        if sub in ("", "list"):
+            entries = jargon.all_entries()
+            if not entries:
+                msg = "Ordlistan är tom." if lang == "sv" else "The dictionary is empty."
+            else:
+                head = "| Term | Betydelse | Förklaring |\n|---|---|---|" if lang == "sv" \
+                    else "| Term | Means | Definition |\n|---|---|---|"
+                rows = [
+                    f"| {e.term} | {e.expansion} | {e.definition or '—'} |"
+                    for e in entries
+                ]
+                msg = "\n".join([head, *rows])
+            self._post(job.channel_id, msg, job.root_id)
+            return True
+
+        if sub == "suggest":
+            term, sep, expansion = tail.partition("=")
+            term = term.strip()
+            expansion = expansion.strip()
+            if not (term and sep and expansion):
+                example = "`!jargon suggest KEX-jobb = kandidatexamensarbete`"
+                err = (f"Format: {example}" if lang == "sv"
+                       else f"Format: {example}")
+                self._post(job.channel_id, err, job.root_id)
+                return True
+            self._record_proposal(job.user_id, term, expansion, lang)
+            ack = ("Tack! Förslaget hamnar i kö för admin att granska."
+                   if lang == "sv"
+                   else "Thanks! Your suggestion is queued for admin review.")
+            self._post(job.channel_id, ack, job.root_id)
+            return True
+
+        # Unknown subcommand — show help.
+        help_sv = ("Användning: `!jargon list` eller "
+                   "`!jargon suggest TERM = BETYDELSE`")
+        help_en = "Usage: `!jargon list` or `!jargon suggest TERM = MEANING`"
+        self._post(job.channel_id, help_en if lang == "en" else help_sv, job.root_id)
+        return True
+
+    def _record_proposal(self, user_id: str, term: str, expansion: str, lang: str) -> None:
+        """Append a proposal to dictionary_proposals.json."""
+        from student_bot.jargon import _nfc_lower, _read_json, _write_json
+        path = self.cfg.absolute(Path(self.cfg.jargon.proposals_file))
+        data = _read_json(path) if path.exists() else {"version": 1, "entries": {}}
+        entries = data.setdefault("entries", {})
+        key = _nfc_lower(term)
+        # If a duplicate is suggested, just update the timestamp; don't dedupe
+        # the suggester because we want to know how many people asked.
+        entries[key] = {
+            "term": term,
+            "expansion": expansion,
+            "lang": lang,
+            "definition": "",
+            "added_by": "student",
+            "added_ts": time.strftime("%Y-%m-%d", time.gmtime()),
+            "suggested_by_hash": self.db.hash_user(user_id),
+            "suggested_ts": int(time.time()),
+            "status": "pending",
+        }
+        _write_json(path, data)
+
     def _handle_privacy_command(self, job: _Job, body: str) -> bool:
         """Returns True if the message was handled as a !privacy command."""
         from student_bot.lang import detect
@@ -172,8 +248,10 @@ class StudentBot:
             self._post(job.channel_id, notice, job.root_id)
             self.db.mark_disclosed(job.user_id)
 
-        # !privacy commands short-circuit the RAG pipeline.
+        # !privacy and !jargon commands short-circuit the RAG pipeline.
         if self._handle_privacy_command(job, job.question.strip()):
+            return
+        if self._handle_jargon_command(job, job.question.strip()):
             return
 
         result = answer(job.question, cfg=self.cfg, rate_limit_key=job.user_id)
@@ -197,6 +275,8 @@ class StudentBot:
             gate_reason=result.gate.reason,
             answer=result.answer,
             latency_ms=result.latency_ms,
+            question_expanded=result.expanded_question or None,
+            jargon_hits=[e.key for e in result.jargon_hits] or None,
         )
 
         # Topic classification runs AFTER the user has their answer so it

@@ -39,6 +39,7 @@ from student_bot.bot.memory import ConversationMemory
 from student_bot.bot.pipeline import answer
 from student_bot.bot.topics import classify
 from student_bot.config import PROJECT_ROOT, Config, get_config
+from student_bot.jargon import Jargon, _nfc_lower, _read_json, _write_json
 from student_bot.logging_db import LogDB
 from student_bot.web.auth import require_access
 
@@ -72,6 +73,13 @@ class FeedbackRequest(BaseModel):
 
 class ResetRequest(BaseModel):
     session_id: str
+
+
+class JargonSuggestRequest(BaseModel):
+    term: str
+    expansion: str
+    definition: str = ""
+    lang: str = "sv"
 
 
 # --- app factory ---
@@ -119,6 +127,37 @@ def create_app(cfg: Config | None = None) -> FastAPI:
     def stats(request: Request):
         require_access(request, cfg)
         return _stats_page(cfg, db)
+
+    @app.get("/glossary", response_class=HTMLResponse)
+    def glossary(request: Request):
+        require_access(request, cfg)
+        return _glossary_page(cfg)
+
+    @app.post("/api/jargon/suggest")
+    def jargon_suggest(request: Request, payload: JargonSuggestRequest):
+        ctx = require_access(request, cfg)
+        term = payload.term.strip()
+        expansion = payload.expansion.strip()
+        if not term or not expansion:
+            raise HTTPException(400, "term and expansion are required")
+        if len(term) > 64 or len(expansion) > 200 or len(payload.definition) > 500:
+            raise HTTPException(400, "field too long")
+        path = cfg.absolute(Path(cfg.jargon.proposals_file))
+        data = _read_json(path) if path.exists() else {"version": 1, "entries": {}}
+        entries = data.setdefault("entries", {})
+        entries[_nfc_lower(term)] = {
+            "term": term,
+            "expansion": expansion,
+            "lang": payload.lang or "sv",
+            "definition": payload.definition.strip(),
+            "added_by": "web",
+            "added_ts": __import__("time").strftime("%Y-%m-%d"),
+            "suggested_by_hash": db.hash_user(ctx.user or "anonymous-web"),
+            "suggested_ts": int(__import__("time").time()),
+            "status": "pending",
+        }
+        _write_json(path, data)
+        return {"ok": True}
 
     # --- API ---
 
@@ -273,6 +312,8 @@ def _stream_answer(cfg: Config, db: LogDB, memory: ConversationMemory,
             gate_reason=result.gate.reason,
             answer=result.answer,
             latency_ms=result.latency_ms,
+            question_expanded=result.expanded_question or None,
+            jargon_hits=[e.key for e in result.jargon_hits] or None,
         )
 
         if qa_id is not None and cfg.topics.enabled:
@@ -351,6 +392,67 @@ människa.</li>
 </main></body></html>
 """
     return HTMLResponse(body)
+
+
+def _glossary_page(cfg: Config) -> HTMLResponse:
+    j = Jargon.from_config(cfg)
+    rows = "".join(
+        f"<tr><td><code>{_h(e.term)}</code></td><td>{_h(e.expansion)}</td>"
+        f"<td>{_h(e.definition) or '—'}</td><td>{_h(e.lang)}</td></tr>"
+        for e in j.all_entries()
+    ) or '<tr><td colspan="4">no entries yet</td></tr>'
+    body = f"""
+<!doctype html><html><head><meta charset="utf-8"><title>Ordlista</title>
+<link rel="stylesheet" href="/static/style.css"></head>
+<body><header><h1>Ordlista</h1>
+<p class="tagline">Slang och förkortningar boten förstår. Saknar du något? Föreslå nedan, eller öppna en PR mot <code>dictionary.json</code>.</p>
+</header>
+<main class="card">
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%; border-collapse: collapse;">
+<thead><tr><th>Term</th><th>Betydelse</th><th>Förklaring</th><th>Språk</th></tr></thead>
+<tbody>{rows}</tbody></table>
+
+<h2 style="margin-top: 24px">Föreslå en ny term</h2>
+<form id="jargon-form" onsubmit="return submitJargon(event);">
+  <label>Term: <input name="term" required maxlength="64" placeholder="t.ex. KS"></label>
+  <label>Betydelse: <input name="expansion" required maxlength="200" placeholder="kontrollskrivning"></label>
+  <label>Förklaring (valfritt): <input name="definition" maxlength="500"></label>
+  <label>Språk:
+    <select name="lang"><option value="sv">sv</option><option value="en">en</option><option value="any">any</option></select>
+  </label>
+  <button type="submit">Skicka förslag</button>
+  <span id="jargon-status" class="status"></span>
+</form>
+<p style="margin-top: 16px"><a href="/">← Tillbaka</a></p>
+</main>
+<script>
+async function submitJargon(e) {{
+  e.preventDefault();
+  const f = e.target;
+  const status = document.getElementById('jargon-status');
+  status.textContent = 'skickar…';
+  const r = await fetch('/api/jargon/suggest', {{
+    method: 'POST',
+    headers: {{ 'Content-Type': 'application/json' }},
+    body: JSON.stringify({{
+      term: f.term.value,
+      expansion: f.expansion.value,
+      definition: f.definition.value,
+      lang: f.lang.value,
+    }}),
+  }});
+  if (r.ok) {{ status.textContent = 'tack — förslaget köades för granskning'; f.reset(); }}
+  else {{ status.textContent = 'fel: ' + r.status; }}
+  return false;
+}}
+</script>
+</body></html>
+"""
+    return HTMLResponse(body)
+
+
+def _h(s: str) -> str:
+    return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def _stats_page(cfg: Config, db: LogDB) -> HTMLResponse:
