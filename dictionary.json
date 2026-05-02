@@ -67,7 +67,7 @@
       "added_ts": "2026-05-01"
     },
     "kå": {
-      "term": "KÅ",
+      "term": "THS",
       "expansion": "kåren",
       "lang": "sv",
       "definition": "Studentkåren (THS, Tekniska Högskolans Studentkår).",
@@ -81,6 +81,22 @@
       "definition": "Användarkontot för KTH:s system (e-post, Canvas, Ladok, m.m.).",
       "added_by": "admin",
       "added_ts": "2026-05-01"
+    },
+    "envarren": {
+      "term": "envarren",
+      "expansion": "envariabelanalyskursen",
+      "lang": "sv",
+      "definition": "SF1673 Analys i en variabel 7,5 hp - en matematikkurs",
+      "added_by": "admin (accepted from student suggestion)",
+      "added_ts": "2026-05-02"
+    },
+    "flervarren": {
+      "term": "flervarren",
+      "expansion": "flervariabelanalyskursen",
+      "lang": "sv",
+      "definition": "SF1674 Flervariabelanalys 7,5 hp - en mattekurs",
+      "added_by": "admin (accepted from student suggestion)",
+      "added_ts": "2026-05-02"
     }
   }
 }
