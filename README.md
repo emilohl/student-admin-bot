@@ -70,7 +70,7 @@ Concrete components, file by file:
 cp .env.example .env             # fill MATTERMOST_*, USER_ID_HASH_SALT
 uv sync
 
-# 2. Pull the LLM (already on this Mac mini; this is just for fresh boxes)
+# 2. Pull the LLM, see [this HF link](https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF) (download Ollama first if not done already)
 ollama pull gemma-4-E4B-it-GGUF:UD-Q4_K_XL
 
 # 3. Index the corpus (~1 min after first run; bge-m3 + reranker are cached)
