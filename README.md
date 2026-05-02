@@ -1,11 +1,18 @@
 # student-bot
 
-A small RAG chatbot for KTH Engineering Physics (CTFYS) administrative
-questions. Runs locally on a Mac mini, surfaces answers in **Mattermost**
-and a **web UI**, and is built around the principle that students should
-*learn how to think about LLMs* while they use it.
+A small RAG chatbot for answering student questions of administrative nature, to allow immediate answers 
+and offload study counselors. Designed and tested for the CTFYS/CTMAT programs at KTH (around 1300 students 
+enrolled), but only the knowledge-base input docs are specific to the university and/or program. Handles
+English and Swedish, including cross-language replies for where corpus docs only exist in one language. 
 
-> Plan & history: `/Users/vector/.claude/plans/i-want-to-build-elegant-cake.md`.
+Answers questions in **Mattermost** and a **web UI**, and is built around the principle that students should
+*learn how to think about LLMs* while they use it. Rejects off-topic questions, does not send any student data
+or info to any cloud service, regardless of what they provide, contains GDPR info and logging opt-out options
+(though we would appreciate allowing logging to improve the service). Intended to keep things private and have
+very low (near-zero?) running costs.
+
+Runs locally on any small machine that can host a decently competent edge-type LLM (Gemma 4 E4B used as example)
+with some margins for the rest of the tooling, e.g. an entry-level Mac mini (16 gb unified memory).
 
 ---
 
