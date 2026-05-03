@@ -14,7 +14,9 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
-body { display: flex; flex-direction: column; min-height: 100vh; }
+/* `dvh` (dynamic viewport height) accounts for Safari's collapsing URL bar
+   and bottom toolbar; `vh` would push the footer past the visible area. */
+body { display: flex; flex-direction: column; min-height: 100dvh; }
 header { padding: 24px 32px 0; }
 header h1 { margin: 0; font-size: 22px; }
 .tagline { color: var(--muted); margin: 4px 0 0; }
@@ -30,10 +32,11 @@ input[type=text], textarea { width: 100%; padding: 8px 10px; border: 1px solid v
 button { padding: 8px 16px; border: 0; border-radius: 6px; background: var(--accent); color: var(--accent-fg); font-size: 15px; cursor: pointer; }
 button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
 button:disabled { opacity: 0.5; cursor: progress; }
-.hidden { display: none; }
+.hidden { display: none !important; }
 .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .status { color: var(--muted); flex: 1; font-size: 13px; }
-#messages { display: flex; flex-direction: column; gap: 12px; max-height: 60vh; overflow-y: auto; padding-right: 4px; }
+#chat { display: flex; flex-direction: column; gap: 16px; }
+#messages { display: flex; flex-direction: column; gap: 12px; max-height: 60dvh; overflow-y: auto; padding-right: 4px; }
 .msg { padding: 12px 14px; border-radius: 8px; max-width: 88%; }
 .msg.user { background: var(--user); align-self: flex-end; }
 .msg.bot { background: var(--bot); align-self: flex-start; white-space: pre-wrap; }

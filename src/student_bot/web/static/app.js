@@ -45,6 +45,16 @@ el("#reset").addEventListener("click", async () => {
   statusEl.textContent = "ny tråd";
 });
 
+// Enter submits, Shift+Enter (and Cmd/Ctrl+Enter) inserts a newline.
+// `isComposing` skips IME composition where Enter is used to commit a
+// candidate word and shouldn't fire the form.
+el("#question").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  if (e.shiftKey || e.ctrlKey || e.metaKey || e.isComposing) return;
+  e.preventDefault();
+  composer.requestSubmit();
+});
+
 composer.addEventListener("submit", async (e) => {
   e.preventDefault();
   const q = el("#question").value.trim();
