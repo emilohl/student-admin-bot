@@ -291,7 +291,7 @@ def _stream_answer(cfg: Config, db: LogDB, memory: ConversationMemory,
             return
 
         # Persist to memory and DB after the stream finishes.
-        if result.answered:
+        if result.answered or result.meta_fallback:
             memory.append(web_user_id, "default", "user", payload.question)
             memory.append(web_user_id, "default", "assistant", result.answer)
 

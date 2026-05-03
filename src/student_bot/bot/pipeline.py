@@ -28,7 +28,11 @@ from student_bot.bot.citations import (
 from student_bot.bot.gate import GateDecision, evaluate as evaluate_gate
 from student_bot.bot.llm import stream_chat
 from student_bot.bot.memory import ConversationMemory
-from student_bot.bot.prompts import compose_messages, refusal_message
+from student_bot.bot.prompts import (
+    compose_messages,
+    compose_meta_fallback_messages,
+    refusal_message,
+)
 from student_bot.bot.retrieval import RetrievalResult, RetrievedChunk, retrieve
 from student_bot.config import Config, get_config
 from student_bot.jargon import Jargon, JargonEntry
@@ -60,6 +64,10 @@ class AnswerResult:
     latency_ms: int
     rate_limited: bool = False
     too_long: bool = False
+    # True when the gate refused but the LLM produced a self-aware fallback
+    # (scope reflection / soft refusal). Worth keeping in conversation
+    # memory for follow-ups, even though answered=False.
+    meta_fallback: bool = False
     expanded_question: str = ""  # post-jargon-expansion query used for retrieval
     jargon_hits: list = field(default_factory=list)
 
@@ -203,16 +211,45 @@ def answer(
     gate = evaluate_gate(cfg, retrieval)
 
     if not gate.passed:
-        body = refusal_message(cfg, lang)
+        # Run a single LLM call with a self-aware system prompt and no
+        # retrieved context, so the bot can either reflect on its scope
+        # (when the user asks about it) or politely decline (when the
+        # question is genuinely off-topic). Falls back to the static
+        # refusal if the LLM call fails.
+        meta_messages = compose_meta_fallback_messages(cfg, lang, history, question)
+        if on_token and jargon_note and cfg.jargon.show_transparency_note:
+            on_token(jargon_note + "\n\n")
+        body = ""
+        try:
+            parts: list[str] = []
+            for delta in _stream_answer(cfg, meta_messages):
+                parts.append(delta)
+                if on_token:
+                    on_token(delta)
+            body = "".join(parts).strip()
+        except Exception:
+            body = ""
+        meta_fallback = bool(body)
+        if not body:
+            body = refusal_message(cfg, lang)
+            if on_token:
+                on_token(body)
         rendered = _render(cfg, lang, body, [], gate,
                            include_sources=False, jargon_note=jargon_note)
         if on_token:
-            on_token(rendered)
+            already = (
+                (jargon_note + "\n\n" if jargon_note and cfg.jargon.show_transparency_note else "")
+                + body
+            )
+            tail = rendered[len(already):]
+            if tail:
+                on_token(tail)
         return AnswerResult(
             question=question, lang=lang, answered=False,
             answer=body, rendered=rendered,
             gate=gate, retrieval=retrieval,
             latency_ms=int((time.monotonic() - t0) * 1000),
+            meta_fallback=meta_fallback,
             expanded_question=expanded_q, jargon_hits=jargon_hits,
         )
 
@@ -347,7 +384,7 @@ def _repl(cfg: Config, console: Console, *, show_context: bool):
         if printed_any:
             sys.stdout.write("\n")
 
-        if result.answered:
+        if result.answered or result.meta_fallback:
             memory.append(user_id, thread_id, "user", q)
             memory.append(user_id, thread_id, "assistant", result.answer)
 
