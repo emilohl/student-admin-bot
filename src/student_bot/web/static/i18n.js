@@ -29,6 +29,7 @@
       "chat.send": "Fråga",
       "chat.thinking": "tänker…",
       "chat.newthread": "ny tråd",
+      "answer.sources": "Källor",
 
       "footer.about": "Om boten",
       "footer.glossary": "Ordlista",
@@ -93,6 +94,7 @@
       "chat.send": "Ask",
       "chat.thinking": "thinking…",
       "chat.newthread": "new thread",
+      "answer.sources": "Sources",
 
       "footer.about": "About",
       "footer.glossary": "Glossary",

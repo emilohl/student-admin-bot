@@ -391,8 +391,8 @@ _HEADER_HTML = """\
 # Loaded into <head> on every server-rendered page, before notice.js, so
 # data-i18n attributes are translated before any other scripts run.
 _NOTICE_SCRIPT = (
-    '<script src="/static/i18n.js?v=8"></script>'
-    '<script src="/static/notice.js?v=8" defer></script>'
+    '<script src="/static/i18n.js?v=11"></script>'
+    '<script src="/static/notice.js?v=11" defer></script>'
 )
 
 
@@ -403,7 +403,7 @@ def _about_page(cfg: Config) -> HTMLResponse:
     cl_html = f' (<a href="{link}">{link}</a>)' if link else ""
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="/static/style.css?v=8">{_NOTICE_SCRIPT}</head>
+<link rel="stylesheet" href="/static/style.css?v=11">{_NOTICE_SCRIPT}</head>
 <body>{_HEADER_HTML.format(tagline_html="")}<main>{_NOTICE_HTML}<div class="card">
 <h2 data-i18n="about.h2.what"></h2>
 <p data-i18n="about.what.body"></p>
@@ -431,7 +431,7 @@ def _glossary_page(cfg: Config) -> HTMLResponse:
     ) or '<tr><td colspan="4" data-i18n="glossary.empty"></td></tr>'
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="/static/style.css?v=8">{_NOTICE_SCRIPT}</head>
+<link rel="stylesheet" href="/static/style.css?v=11">{_NOTICE_SCRIPT}</head>
 <body>{_HEADER_HTML.format(tagline_html='<p class="tagline" data-i18n="glossary.tagline"></p>')}
 <main>{_NOTICE_HTML}<div class="card">
 <table border="1" cellpadding="6" cellspacing="0" style="width:100%; border-collapse: collapse;">
@@ -492,7 +492,7 @@ def _stats_page(cfg: Config, db: LogDB) -> HTMLResponse:
     ) or '<tr><td colspan="6" data-i18n="stats.empty"></td></tr>'
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="/static/style.css?v=8">{_NOTICE_SCRIPT}</head>
+<link rel="stylesheet" href="/static/style.css?v=11">{_NOTICE_SCRIPT}</head>
 <body>{_HEADER_HTML.format(tagline_html="")}<main>{_NOTICE_HTML}<div class="card">
 <p data-i18n="stats.summary"
    data-logged="{overall['logged']}"

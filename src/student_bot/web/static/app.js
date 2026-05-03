@@ -64,7 +64,7 @@ composer.addEventListener("submit", async (e) => {
   appendUser(q);
 
   const botMsg = appendBot();
-  statusEl.textContent = window.t ? window.t("chat.thinking") : "tänker…";
+  let firstToken = true;
 
   let buf = "";
   let finalMeta = null;
@@ -95,6 +95,11 @@ composer.addEventListener("submit", async (e) => {
         if (!part.trim()) continue;
         const { event, data } = parseSSE(part);
         if (event === "token") {
+          if (firstToken) {
+            // Replace the animated thinking dots with real content.
+            botMsg.body.textContent = "";
+            firstToken = false;
+          }
           botMsg.body.textContent += data;
           messages.scrollTop = messages.scrollHeight;
         } else if (event === "meta") {
@@ -103,10 +108,10 @@ composer.addEventListener("submit", async (e) => {
       }
     }
   } catch (err) {
+    if (firstToken) botMsg.body.textContent = "";
     botMsg.body.textContent += `\n[stream error: ${err.message}]`;
   } finally {
     el("#send").disabled = false;
-    statusEl.textContent = "";
   }
 
   if (finalMeta) {
@@ -139,23 +144,48 @@ function appendBot() {
   meta.textContent = "studybot";
   const body = document.createElement("div");
   body.className = "body";
+  // Animated three-dot indicator while we wait for the first token.
+  // Cleared as soon as a token arrives.
+  body.innerHTML =
+    '<span class="thinking-dots" aria-label="thinking">' +
+      '<span></span><span></span><span></span>' +
+    '</span>';
   wrap.appendChild(meta);
   wrap.appendChild(body);
   messages.appendChild(wrap);
+  messages.scrollTop = messages.scrollHeight;
   return { wrap, meta, body };
 }
 
 function decorateBot(botMsg, meta) {
-  // Confidence badge.
+  // Confidence badge in the meta line above the bubble.
   if (meta.confidence) {
     const badge = document.createElement("span");
     badge.className = `conf ${meta.confidence_level}`;
     badge.textContent = meta.confidence;
     botMsg.meta.appendChild(badge);
   }
-  // Linkify the markdown in the body. We rendered plain text during stream;
-  // now replace the body with HTML that handles markdown links + bold.
-  botMsg.body.innerHTML = renderMarkdown(botMsg.body.textContent);
+
+  // Split the streamed text into [body, sources, tip] and render each
+  // with its own styling. Numbered citations replace the inline
+  // [doc · section] markers the LLM emitted; only sources that were
+  // actually cited inline appear in the references list, renumbered
+  // in order of first appearance.
+  const raw = botMsg.body.textContent;
+  const { body, sources: allSources, tip } = splitMessage(raw);
+
+  const { html: bodyHtml, citedSources } = renderBodyWithCitations(body, allSources);
+  let html = bodyHtml;
+  // If the LLM cited some sources, show only those (renumbered in
+  // citation order). If it cited none — common when the answer is
+  // truncated, or the model is sloppy — fall back to the full set of
+  // retrieved sources so the user still has something to verify with.
+  const refsToShow = citedSources.length ? citedSources : allSources;
+  if (refsToShow.length) {
+    html += renderSources(refsToShow, meta.lang || "sv");
+  }
+  if (tip) html += renderTip(tip);
+  botMsg.body.innerHTML = html;
 
   // Feedback buttons (only if we have a qa id).
   if (meta.qa_id) {
@@ -181,6 +211,150 @@ function decorateBot(botMsg, meta) {
     actions.appendChild(down);
     botMsg.wrap.appendChild(actions);
   }
+}
+
+// Split the streamed answer (body + optional confidence badge + optional
+// sources block + literacy tip) into structured pieces. Order in stream:
+//   [jargon note]  body  [\n\n_Conf_]  [**Sources:**\n1. ...]  \n\n_Tip: ..._
+// Each detector tolerates being the very first thing in the string so an
+// empty body (rare LLM hiccup) doesn't leave any of these fragments
+// rendered as part of the answer.
+function splitMessage(text) {
+  text = text.trim();
+
+  // Trailing literacy footer (italic line starting with _Tip / _Tips).
+  let tip = "";
+  const tipRe = /(?:^|\n+)_(Tip|Tips):[^_]*_\s*$/;
+  const tipMatch = text.match(tipRe);
+  if (tipMatch) {
+    tip = tipMatch[0].trim();
+    text = text.slice(0, tipMatch.index).trimEnd();
+  }
+
+  // Sources block: "**Källor:**" or "**Sources:**" followed by 1./2./... items.
+  let sources = [];
+  const srcRe = /(?:^|\n+)\*\*(Källor|Sources):\*\*\n([\s\S]+)$/;
+  const srcMatch = text.match(srcRe);
+  if (srcMatch) {
+    const lines = srcMatch[2].split("\n").map(s => s.trim()).filter(Boolean);
+    for (const line of lines) {
+      // "1. [label](url)" or "1. label"
+      const m = line.match(/^(\d+)\.\s+(?:\[(.+?)\]\((\S+?)\)|(.+))$/);
+      if (m) {
+        sources.push({
+          n: parseInt(m[1], 10),
+          label: (m[2] || m[4] || "").trim(),
+          url: m[3] || "",
+        });
+      }
+    }
+    text = text.slice(0, srcMatch.index).trimEnd();
+  }
+
+  // Confidence badge can sit at the start (older _render order) or end
+  // (current order) — strip it wherever, including when it's the sole
+  // remaining content after tip + sources have been peeled off.
+  text = text
+    .replace(/(^|\n+)_(Tillförlitlighet|Confidence):[^_]*_(\n+|$)/g, "$1")
+    .trim();
+
+  return { body: text, sources, tip };
+}
+
+// Map "Title — Section, s. N" (sources block format) → "Title · Section"
+// (LLM's inline citation format) so we can replace inline markers with [N].
+function buildCitationLookup(sources) {
+  const lookup = {};
+  for (const s of sources) {
+    let key = s.label.replace(/,\s*s\.\s*\d+\s*$/, "").trim();
+    lookup[key] = s;
+    lookup[key.replace(/\s+—\s+/, " · ")] = s;
+    lookup[key.replace(/\s+·\s+/, " — ")] = s;
+  }
+  return lookup;
+}
+
+// Walk the body's inline citations in order:
+//   1. assign new sequential numbers to each unique matched source
+//      ([1] = first cited, [2] = next new one, ...),
+//   2. replace the inline [Title · Section] markers with anchor links
+//      that scroll to the corresponding entry in the references list,
+//   3. return only the cited sources (not the full top-K from retrieval).
+// Citations the LLM emitted that don't match any retrieved source are
+// left in the body text as-is so un-grounded claims stay visible.
+function renderBodyWithCitations(body, allSources) {
+  const lookup = buildCitationLookup(allSources);
+  const cited = [];                  // sources in citation order, renumbered
+  const numberFor = new Map();       // serverN -> newNumber
+
+  // Sentinel `CIT<n>MARK` survives the markdown pass below intact, and
+  // we swap it for the final anchor link in a second pass.
+  const numbered = body.replace(/\[([^\[\]]+?)\]/g, (full, content) => {
+    const trimmed = content.trim();
+    const src = lookup[trimmed]
+      || lookup[trimmed.replace(/\s+·\s+/, " — ")]
+      || lookup[trimmed.replace(/\s+—\s+/, " · ")];
+    if (!src) return full;
+    let n = numberFor.get(src.n);
+    if (!n) {
+      n = cited.length + 1;
+      numberFor.set(src.n, n);
+      cited.push({ ...src, n });
+    }
+    return `CIT${n}MARK`;
+  });
+
+  let html = renderMarkdown(numbered);
+  html = html.replace(/CIT(\d+)MARK/g, (_, n) =>
+    `<a class="citation" href="#cite-${n}">[${n}]</a>`
+  );
+  return { html, citedSources: cited };
+}
+
+// Strip the " — Section" suffix and trailing ", s. N" page from a
+// server-formatted label so we can render compact "Title" + page.
+function parseSourceLabel(label) {
+  let title = label;
+  let page = null;
+  const pageMatch = title.match(/,\s*(?:s|p)\.\s*(\d+)\s*$/);
+  if (pageMatch) {
+    page = pageMatch[1];
+    title = title.slice(0, pageMatch.index).trim();
+  }
+  const sectionIdx = title.indexOf(" — ");
+  if (sectionIdx > -1) {
+    title = title.slice(0, sectionIdx).trim();
+  }
+  return { title, page };
+}
+
+function renderSources(sources, lang) {
+  const pageLabel = lang === "en" ? "p." : "s.";
+  let out = '<div class="sources">';
+  for (const s of sources) {
+    const { title, page } = parseSourceLabel(s.label);
+    const titleHtml = escapeHtml(title);
+    const link = s.url
+      ? `<a href="${escapeAttr(s.url)}" target="_blank" rel="noopener">${titleHtml}</a>`
+      : titleHtml;
+    const pageHtml = page ? `, ${pageLabel} ${escapeHtml(page)}` : "";
+    out += `<div class="source-item" id="cite-${s.n}"><span class="source-num">[${s.n}]</span> ${link}${pageHtml}</div>`;
+  }
+  out += "</div>";
+  return out;
+}
+
+function renderTip(tip) {
+  // Strip the surrounding markdown italic underscores.
+  const inner = tip.replace(/^_+|_+$/g, "").trim();
+  return `<div class="tip">${escapeHtml(inner)}</div>`;
+}
+
+function escapeHtml(s) {
+  return (s || "").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+}
+function escapeAttr(s) {
+  return (s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 }
 
 function renderMarkdown(text) {
