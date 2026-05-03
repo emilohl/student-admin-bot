@@ -105,6 +105,20 @@ LLM_UNAVAILABLE_EN = (
 )
 
 
+# Used when the LLM completes a stream but produces no text at all.
+# Distinct from LLM_UNAVAILABLE — this is a "model said nothing" case
+# (sampler hit stop immediately, context full, etc.), not a service outage.
+EMPTY_ANSWER_SV = (
+    "Modellen producerade inget svar den här gången. Försök gärna ställa frågan på nytt, "
+    "eller formulera den lite annorlunda."
+)
+
+EMPTY_ANSWER_EN = (
+    "The model didn't produce an answer this time. Please try again, or "
+    "rephrase the question slightly."
+)
+
+
 # Used when the retrieval gate refused (no strong corpus match). Lets the
 # model reflect on its scope or politely decline, *without* retrieved
 # context to ground specific facts in.
@@ -175,6 +189,10 @@ def system_prompt(cfg: Config, lang: str) -> str:
 
 def llm_unavailable_message(lang: str) -> str:
     return LLM_UNAVAILABLE_EN if lang == "en" else LLM_UNAVAILABLE_SV
+
+
+def empty_answer_message(lang: str) -> str:
+    return EMPTY_ANSWER_EN if lang == "en" else EMPTY_ANSWER_SV
 
 
 def refusal_message(cfg: Config, lang: str) -> str:
@@ -264,6 +282,7 @@ __all__ = [
     "system_prompt",
     "refusal_message",
     "llm_unavailable_message",
+    "empty_answer_message",
     "meta_fallback_system_prompt",
     "compose_meta_fallback_messages",
     "format_context",

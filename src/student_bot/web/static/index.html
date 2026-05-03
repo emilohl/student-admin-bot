@@ -1,61 +1,70 @@
 <!doctype html>
-<html lang="en">
+<html lang="sv">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>student-bot</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/style.css?v=11">
 </head>
 <body>
 <header>
-  <h1>student-bot</h1>
-  <p class="tagline">Administrative Q&amp;A for KTH CTFYS · grounded in the official corpus</p>
+  <div class="brand">
+    <img src="/static/KTH_logo_RGB_bla.svg" alt="KTH" class="logo logo-kth">
+    <div class="brand-text">
+      <h1 data-i18n="brand.name"></h1>
+      <p class="tagline" data-i18n="header.tagline"></p>
+    </div>
+    <img src="/static/FrakturF2020.svg" alt="Fysiksektionen" class="logo logo-fyssek">
+  </div>
+  <div class="lang-switch" role="group" aria-label="Language">
+    <button type="button" data-lang="sv">SV</button>
+    <button type="button" data-lang="en">EN</button>
+  </div>
 </header>
 
 <main>
+  <div class="notice" role="note">
+    <div class="notice-body">
+      <p><strong data-i18n="notice.title"></strong><span data-i18n="notice.body"></span></p>
+    </div>
+    <button class="notice-close" type="button" data-i18n-aria="notice.close.aria">×</button>
+  </div>
+
   <section id="onboarding" class="card">
-    <h2>Hej!</h2>
-    <p>
-      Den här boten svarar på administrativa frågor om civilingenjörsprogrammet
-      i Teknisk fysik, baserat på KTH:s officiella regler och utbildningsplaner.
-      Den använder ett lokalt språkmodell + retrieval — alla källor kan klickas
-      på under varje svar.
-    </p>
-    <p class="caveat">
-      LLM:er kan ha fel även när de låter säkra. Klicka alltid på källorna
-      och dubbelkolla viktiga detaljer.
-    </p>
-    <label>Ditt namn (visas inte för andra; används för loggar):
-      <input id="name" type="text" placeholder="Anonym" autocomplete="off">
-    </label>
+    <h2 data-i18n="onboarding.title"></h2>
+    <p data-i18n="onboarding.intro"></p>
+    <p class="caveat" data-i18n="onboarding.caveat"></p>
+    <label data-i18n="onboarding.name.label"></label>
+    <input id="name" type="text" data-i18n-placeholder="onboarding.name.placeholder" autocomplete="off">
     <label class="opt-out">
       <input id="opt-out" type="checkbox">
-      Logga inte mina frågor (du kan ändra detta när som helst)
+      <span data-i18n="onboarding.optout"></span>
     </label>
-    <button id="start">Starta</button>
+    <button id="start" data-i18n="onboarding.start"></button>
   </section>
 
   <section id="chat" class="card hidden">
     <div id="messages" aria-live="polite"></div>
     <form id="composer">
-      <textarea id="question" rows="3"
-        placeholder="Skriv din fråga på svenska eller engelska…" required></textarea>
+      <textarea id="question" rows="3" data-i18n-placeholder="chat.placeholder" required></textarea>
       <div class="row">
         <span id="status" class="status"></span>
-        <button type="button" id="reset" class="ghost">Ny tråd</button>
-        <button type="submit" id="send">Fråga</button>
+        <button type="button" id="reset" class="ghost" data-i18n="chat.reset"></button>
+        <button type="submit" id="send" data-i18n="chat.send"></button>
       </div>
     </form>
   </section>
 </main>
 
 <footer>
-  <a href="/about">Om boten</a> ·
-  <a href="/glossary">Ordlista</a> ·
-  <a href="/stats">Statistik</a> ·
+  <a href="/about" data-i18n="footer.about"></a> ·
+  <a href="/glossary" data-i18n="footer.glossary"></a> ·
+  <a href="/stats" data-i18n="footer.stats"></a> ·
   <span id="conn"></span>
 </footer>
 
-<script src="/static/app.js"></script>
+<script src="/static/i18n.js?v=11"></script>
+<script src="/static/notice.js?v=11" defer></script>
+<script src="/static/app.js?v=11"></script>
 </body>
 </html>

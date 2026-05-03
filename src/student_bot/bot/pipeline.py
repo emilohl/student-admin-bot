@@ -32,6 +32,7 @@ from student_bot.bot.memory import ConversationMemory
 from student_bot.bot.prompts import (
     compose_messages,
     compose_meta_fallback_messages,
+    empty_answer_message,
     llm_unavailable_message,
     refusal_message,
 )
@@ -145,13 +146,16 @@ def _render(
     include_sources: bool,
     jargon_note: str = "",
 ) -> str:
+    # Order: [jargon] + body + [conf badge] + [sources] + tip. Keeping
+    # everything *after* the body makes the streaming tail (= rendered
+    # minus already-streamed prefix) a clean suffix.
     parts: list[str] = []
     if jargon_note and cfg.jargon.show_transparency_note:
         parts.append(jargon_note + "\n\n")
+    parts.append(body)
     if cfg.guardrails.show_confidence_badge and include_sources:
         label = "Tillförlitlighet" if lang == "sv" else "Confidence"
-        parts.append(f"_{label}: {confidence_badge(lang, gate.top1)}_\n")
-    parts.append(body)
+        parts.append(f"\n\n_{label}: {confidence_badge(lang, gate.top1)}_")
     if include_sources:
         sources = format_sources_block(cfg, chunks, lang)
         if sources:
@@ -275,6 +279,23 @@ def answer(
         if on_token:
             on_token(delta)
     body = "".join(parts).strip()
+
+    # Rare hiccup: gate passed and the LLM streamed cleanly but emitted no
+    # text (e.g., sampler stopped immediately, context full). Surface a
+    # short message instead of an empty bubble, log so operators can see
+    # how often this happens, and don't mark the turn as `answered` so it
+    # isn't saved into conversation memory.
+    answered = True
+    if not body:
+        log.warning(
+            "LLM produced empty body for question (lang=%s, gate=%s, top1=%.3f): %r",
+            lang, gate.reason, gate.top1, question[:120],
+        )
+        body = empty_answer_message(lang)
+        answered = False
+        if on_token:
+            on_token(body)
+
     rendered = _render(cfg, lang, body, retrieval.reranked, gate,
                        include_sources=True, jargon_note=jargon_note)
     if on_token:
@@ -286,7 +307,7 @@ def answer(
             on_token(tail)
 
     return AnswerResult(
-        question=question, lang=lang, answered=True,
+        question=question, lang=lang, answered=answered,
         answer=body, rendered=rendered,
         gate=gate, retrieval=retrieval,
         latency_ms=int((time.monotonic() - t0) * 1000),

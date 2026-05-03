@@ -1,21 +1,55 @@
 :root {
-  --bg: #f7f7f5;
-  --fg: #1a1a1a;
+  /* KTH brand palette (Grafisk manual v1.2 via kth-document.cls). */
+  --kth-white: #FFFFFF;
+  --kth-sand: #EBE5E0;
+  --kth-blue: #004791;       /* primary brand blue (logo) */
+  --kth-skyblue: #6298D2;
+  --kth-navy: #000061;
+  --kth-lightblue: #DEF0FF;
+  --kth-darkgreen: #0D4A21;
+  --kth-darkbrick: #78001A;
+  --kth-darkyellow: #A65900;
+  --kth-lightgray: #E6E6E6;
+  --kth-brokenblack: #212121;  /* recommended web body text on white */
+  --kth-brokenwhite: #FCFCFC;
+
+  /* Semantic vars used across the UI, mapped to the KTH palette above. */
+  --bg: var(--kth-brokenwhite);
+  --fg: var(--kth-brokenblack);
   --muted: #6b6b6b;
-  --accent: #1f5bb0;
-  --accent-fg: #fff;
-  --card: #fff;
-  --border: #e5e5e0;
-  --user: #eaf2ff;
-  --bot: #f3f1ec;
-  --warn: #b25e10;
-  --good: #1f7a3a;
-  --bad:  #b1231f;
+  --accent: var(--kth-blue);
+  --accent-fg: var(--kth-white);
+  --card: var(--kth-white);
+  --border: var(--kth-lightgray);
+  --user: var(--kth-lightblue);
+  --bot: var(--kth-sand);
+  --warn: var(--kth-darkyellow);
+  --good: var(--kth-darkgreen);
+  --bad:  var(--kth-darkbrick);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
-body { display: flex; flex-direction: column; min-height: 100vh; }
-header { padding: 24px 32px 0; }
+/* `dvh` (dynamic viewport height) accounts for Safari's collapsing URL bar
+   and bottom toolbar; `vh` would push the footer past the visible area. */
+body { display: flex; flex-direction: column; min-height: 100dvh; }
+/* 1fr / auto / 1fr keeps the side columns equal width, so the brand
+   cluster (logos + title) lands at the page midpoint while the lang
+   switch hugs the right edge. The brand explicitly takes column 2 and
+   the lang switch column 3; column 1 is left empty as a spacer to
+   match column 3's width. */
+header { padding: 24px 32px 0; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; column-gap: 14px; }
+.brand { grid-column: 2; display: flex; align-items: center; gap: 14px; }
+.brand-text { text-align: center; min-width: 0; }
+.brand-text h1 { margin: 0; }
+.brand-text .tagline { margin: 4px 0 0; }
+.logo { height: 40px; width: auto; flex-shrink: 0; display: block; }
+/* The Fraktur F SVG has a square viewBox with whitespace around the glyph.
+   A small upscale brings its visual weight in line with the KTH logo. */
+.logo-fyssek { height: 44px; }
+.lang-switch { grid-column: 3; justify-self: end; display: flex; gap: 4px; flex-shrink: 0; }
+.lang-switch button { background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 3px 9px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; cursor: pointer; }
+.lang-switch button:hover:not(.active) { color: var(--fg); border-color: var(--muted); }
+.lang-switch button.active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 header h1 { margin: 0; font-size: 22px; }
 .tagline { color: var(--muted); margin: 4px 0 0; }
 main { flex: 1; padding: 24px 32px; max-width: 880px; width: 100%; margin: 0 auto; }
@@ -24,16 +58,25 @@ footer a { color: var(--muted); margin-right: 8px; }
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 16px; }
 .card h2 { margin-top: 0; }
 .caveat { background: #fff7e7; border-left: 3px solid var(--warn); padding: 8px 12px; border-radius: 4px; margin: 12px 0; }
+.notice { position: relative; background: var(--kth-sand); border-left: 3px solid var(--kth-blue); padding: 8px 36px 8px 14px; border-radius: 4px; margin-bottom: 24px; font-size: 13px; line-height: 1.45; }
+.notice .notice-body p { margin: 0; }
+.notice .notice-body p + p { margin-top: 4px; color: var(--muted); font-size: 12px; }
+/* Scoped under .notice so future global button rules can't push the close
+   control back into normal flow (the bug that put it bottom-left when the
+   stylesheet was cached without this rule). */
+.notice .notice-close { position: absolute; top: 2px; right: 4px; background: transparent; border: 0; color: var(--muted); font-size: 20px; line-height: 1; padding: 2px 6px; cursor: pointer; }
+.notice .notice-close:hover { color: var(--fg); }
 label { display: block; margin: 12px 0 4px; font-weight: 500; }
 label.opt-out { font-weight: 400; }
 input[type=text], textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 15px; font-family: inherit; background: #fff; color: var(--fg); }
 button { padding: 8px 16px; border: 0; border-radius: 6px; background: var(--accent); color: var(--accent-fg); font-size: 15px; cursor: pointer; }
 button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
 button:disabled { opacity: 0.5; cursor: progress; }
-.hidden { display: none; }
+.hidden { display: none !important; }
 .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .status { color: var(--muted); flex: 1; font-size: 13px; }
-#messages { display: flex; flex-direction: column; gap: 12px; max-height: 60vh; overflow-y: auto; padding-right: 4px; }
+#chat { display: flex; flex-direction: column; gap: 16px; }
+#messages { display: flex; flex-direction: column; gap: 12px; max-height: 60dvh; overflow-y: auto; padding-right: 4px; }
 .msg { padding: 12px 14px; border-radius: 8px; max-width: 88%; }
 .msg.user { background: var(--user); align-self: flex-end; }
 .msg.bot { background: var(--bot); align-self: flex-start; white-space: pre-wrap; }
@@ -42,6 +85,33 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .msg .meta .conf.high { color: var(--good); border-color: var(--good); }
 .msg .meta .conf.low { color: var(--bad); border-color: var(--bad); }
 .msg a { color: var(--accent); }
+/* Animated three-dot indicator shown in the bot bubble while waiting for
+   the first streamed token. Cleared on first token. */
+.thinking-dots { display: inline-flex; gap: 5px; padding: 4px 0; align-items: center; }
+.thinking-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: inline-block; animation: thinking-pulse 1.3s infinite ease-in-out; }
+.thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+.thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes thinking-pulse {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.7); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+/* Inline numbered citations [1], [2] — full size, link-coloured, jumps
+   to the matching reference entry below. */
+.citation { color: var(--accent); text-decoration: none; }
+.citation:hover { text-decoration: underline; }
+
+/* References list — smaller and separated from the answer body. Only
+   sources actually cited inline appear here, renumbered in citation
+   order so [N] in the body lines up with [N] below. */
+.sources { font-size: 12.5px; margin-top: 14px; color: var(--muted); }
+.sources .source-item { margin-bottom: 3px; }
+.sources .source-num { color: var(--fg); margin-right: 6px; }
+.sources a { color: var(--accent); }
+
+/* Literacy tip footer — quietest element in the bubble. */
+.tip { font-size: 12px; color: var(--muted); margin-top: 14px; font-style: italic; }
+
 .msg .actions { margin-top: 10px; display: flex; gap: 6px; }
 .msg .actions button { background: transparent; border: 1px solid var(--border); color: var(--fg); font-size: 13px; padding: 4px 8px; }
 .msg .actions button.up:hover { border-color: var(--good); color: var(--good); }
