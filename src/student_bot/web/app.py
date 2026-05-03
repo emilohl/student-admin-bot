@@ -261,6 +261,9 @@ def _stream_answer(cfg: Config, db: LogDB, memory: ConversationMemory,
     def on_token(delta: str):
         queue.put_nowait(("token", delta))
 
+    def on_thinking(starting: bool):
+        queue.put_nowait(("thinking", "start" if starting else "end"))
+
     def run_in_thread():
         try:
             result = answer(
@@ -268,6 +271,7 @@ def _stream_answer(cfg: Config, db: LogDB, memory: ConversationMemory,
                 history=history,
                 cfg=cfg,
                 on_token=on_token,
+                on_thinking=on_thinking,
                 rate_limit_key=web_user_id,
             )
         except Exception as e:
@@ -285,7 +289,10 @@ def _stream_answer(cfg: Config, db: LogDB, memory: ConversationMemory,
             if kind is sentinel:
                 result = value
                 break
-            yield _sse("token", value)
+            if kind == "thinking":
+                yield _sse("thinking", value)
+            else:
+                yield _sse("token", value)
 
         if result is None:
             return
@@ -391,8 +398,8 @@ _HEADER_HTML = """\
 # Loaded into <head> on every server-rendered page, before notice.js, so
 # data-i18n attributes are translated before any other scripts run.
 _NOTICE_SCRIPT = (
-    '<script src="/static/i18n.js?v=11"></script>'
-    '<script src="/static/notice.js?v=11" defer></script>'
+    '<script src="/static/i18n.js?v=14"></script>'
+    '<script src="/static/notice.js?v=14" defer></script>'
 )
 
 
@@ -403,7 +410,7 @@ def _about_page(cfg: Config) -> HTMLResponse:
     cl_html = f' (<a href="{link}">{link}</a>)' if link else ""
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="/static/style.css?v=11">{_NOTICE_SCRIPT}</head>
+<link rel="stylesheet" href="/static/style.css?v=14">{_NOTICE_SCRIPT}</head>
 <body>{_HEADER_HTML.format(tagline_html="")}<main>{_NOTICE_HTML}<div class="card">
 <h2 data-i18n="about.h2.what"></h2>
 <p data-i18n="about.what.body"></p>
@@ -431,7 +438,7 @@ def _glossary_page(cfg: Config) -> HTMLResponse:
     ) or '<tr><td colspan="4" data-i18n="glossary.empty"></td></tr>'
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="/static/style.css?v=11">{_NOTICE_SCRIPT}</head>
+<link rel="stylesheet" href="/static/style.css?v=14">{_NOTICE_SCRIPT}</head>
 <body>{_HEADER_HTML.format(tagline_html='<p class="tagline" data-i18n="glossary.tagline"></p>')}
 <main>{_NOTICE_HTML}<div class="card">
 <table border="1" cellpadding="6" cellspacing="0" style="width:100%; border-collapse: collapse;">
@@ -492,7 +499,7 @@ def _stats_page(cfg: Config, db: LogDB) -> HTMLResponse:
     ) or '<tr><td colspan="6" data-i18n="stats.empty"></td></tr>'
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="/static/style.css?v=11">{_NOTICE_SCRIPT}</head>
+<link rel="stylesheet" href="/static/style.css?v=14">{_NOTICE_SCRIPT}</head>
 <body>{_HEADER_HTML.format(tagline_html="")}<main>{_NOTICE_HTML}<div class="card">
 <p data-i18n="stats.summary"
    data-logged="{overall['logged']}"

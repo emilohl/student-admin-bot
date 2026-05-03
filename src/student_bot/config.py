@@ -70,6 +70,10 @@ class LLMConfig(BaseModel):
     num_ctx: int = 16384
     temperature: float = 0.1
     max_tokens: int = 1024
+    # Gemma 4 reasoning mode: prepends <|think|> to the system prompt and
+    # filters <think>...</think> blocks from the streamed output. Default
+    # on for better multi-step answers; set false to A/B against thinking-off.
+    thinking: bool = True
 
 
 class MemoryConfig(BaseModel):

@@ -99,12 +99,27 @@ composer.addEventListener("submit", async (e) => {
         const { event, data } = parseSSE(part);
         if (event === "token") {
           if (firstToken) {
-            // Replace the animated thinking dots with real content.
+            // Replace the animated thinking indicator with real content.
             botMsg.body.textContent = "";
             firstToken = false;
           }
           botMsg.body.textContent += data;
           messages.scrollTop = messages.scrollHeight;
+        } else if (event === "thinking") {
+          // Show "<bot> funderar…" beside the dots while the model is in
+          // its <think>...</think> phase. Cleared on "end" or when the
+          // first answer token arrives.
+          const label = botMsg.body.querySelector(".thinking-label");
+          if (label) {
+            if (data === "start") {
+              const name = (window.t && window.t("brand.name")) || "Lux";
+              const phase = (window.t && window.t("chat.thinking_phase")) || "is thinking…";
+              label.textContent = `${name} ${phase}`;
+              label.removeAttribute("hidden");
+            } else {
+              label.setAttribute("hidden", "");
+            }
+          }
         } else if (event === "meta") {
           try { finalMeta = JSON.parse(data); } catch {}
         }
@@ -148,11 +163,15 @@ function appendBot() {
   const body = document.createElement("div");
   body.className = "body";
   // Animated three-dot indicator while we wait for the first token.
-  // Cleared as soon as a token arrives.
+  // The label sits next to the dots and shows "<bot> funderar…" while
+  // the model is in its <think>...</think> reasoning phase.
   body.innerHTML =
-    '<span class="thinking-dots" aria-label="thinking">' +
-      '<span></span><span></span><span></span>' +
-    '</span>';
+    '<div class="thinking-wrap" aria-live="polite">' +
+      '<span class="thinking-dots" aria-label="thinking">' +
+        '<span></span><span></span><span></span>' +
+      '</span>' +
+      '<span class="thinking-label" hidden></span>' +
+    '</div>';
   wrap.appendChild(meta);
   wrap.appendChild(body);
   messages.appendChild(wrap);
@@ -265,17 +284,45 @@ function splitMessage(text) {
   return { body: text, sources, tip };
 }
 
-// Map "Title — Section, s. N" (sources block format) → "Title · Section"
-// (LLM's inline citation format) so we can replace inline markers with [N].
+// Build a flexible lookup from inline-citation text → matching source.
+// The LLM's inline format is loose — sometimes [Title · Section], often
+// [Title · Section · Subsection · BilagaInfo, Sida X av Y] — so we register
+// multiple keys per source and fall back to title-only matching when no
+// fuller key matches and the title is unambiguous.
 function buildCitationLookup(sources) {
   const lookup = {};
+  const titleCount = {};
+
   for (const s of sources) {
-    let key = s.label.replace(/,\s*s\.\s*\d+\s*$/, "").trim();
-    lookup[key] = s;
-    lookup[key.replace(/\s+—\s+/, " · ")] = s;
-    lookup[key.replace(/\s+·\s+/, " — ")] = s;
+    const noPage = s.label.replace(/,\s*s\.\s*\d+\s*$/, "").trim();
+    lookup[noPage] = s;
+    lookup[noPage.replace(/\s+—\s+/, " · ")] = s;
+    lookup[noPage.replace(/\s+·\s+/, " — ")] = s;
+
+    const sep = noPage.indexOf(" — ");
+    const title = sep > -1 ? noPage.slice(0, sep).trim() : noPage;
+    titleCount[title] = (titleCount[title] || 0) + 1;
+  }
+
+  // Title-only fallback — only register when unambiguous, so we never
+  // collapse two sources that share a title but differ by section/page.
+  for (const s of sources) {
+    const noPage = s.label.replace(/,\s*s\.\s*\d+\s*$/, "").trim();
+    const sep = noPage.indexOf(" — ");
+    const title = sep > -1 ? noPage.slice(0, sep).trim() : noPage;
+    if (titleCount[title] === 1 && !lookup[title]) {
+      lookup[title] = s;
+    }
   }
   return lookup;
+}
+
+// Pull the title (everything before the first " · ") from an inline
+// citation. Used as the last-resort matching key when the full text
+// doesn't line up with any registered lookup entry.
+function inlineCitationTitle(text) {
+  const idx = text.indexOf(" · ");
+  return (idx > -1 ? text.slice(0, idx) : text).trim();
 }
 
 // Walk the body's inline citations in order:
@@ -297,7 +344,8 @@ function renderBodyWithCitations(body, allSources) {
     const trimmed = content.trim();
     const src = lookup[trimmed]
       || lookup[trimmed.replace(/\s+·\s+/, " — ")]
-      || lookup[trimmed.replace(/\s+—\s+/, " · ")];
+      || lookup[trimmed.replace(/\s+—\s+/, " · ")]
+      || lookup[inlineCitationTitle(trimmed)];
     if (!src) return full;
     let n = numberFor.get(src.n);
     if (!n) {
