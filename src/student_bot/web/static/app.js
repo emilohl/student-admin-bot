@@ -27,6 +27,7 @@ el("#start").addEventListener("click", () => {
   // Tell the server about the name + opt-out preference.
   fetch("/api/session", {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: state.name, session_id: state.sessionId, opt_out: state.optOut }),
   }).catch(() => {});
@@ -38,6 +39,7 @@ el("#start").addEventListener("click", () => {
 el("#reset").addEventListener("click", async () => {
   await fetch("/api/reset", {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ session_id: state.sessionId }),
   }).catch(() => {});
@@ -71,6 +73,7 @@ composer.addEventListener("submit", async (e) => {
   try {
     const resp = await fetch("/api/chat", {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         question: q,
@@ -198,6 +201,7 @@ function decorateBot(botMsg, meta) {
     const send = (sentiment, btn) => {
       fetch("/api/feedback", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ qa_id: meta.qa_id, sentiment }),
       });

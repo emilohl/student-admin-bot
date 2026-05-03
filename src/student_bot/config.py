@@ -10,7 +10,20 @@ import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+def _discover_project_root() -> Path:
+    """Repo root for config paths. Docker sets STUDENT_BOT_ROOT=/app; local dev uses pyproject walk."""
+    if env := os.environ.get("STUDENT_BOT_ROOT"):
+        return Path(env).expanduser().resolve()
+    here = Path(__file__).resolve()
+    for p in here.parents:
+        if (p / "pyproject.toml").exists():
+            return p
+    # Last resort: src/student_bot/config.py -> two parents above package dir
+    return here.parents[2]
+
+
+PROJECT_ROOT = _discover_project_root()
 
 
 class Paths(BaseModel):

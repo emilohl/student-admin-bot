@@ -43,6 +43,16 @@ dev = [
     "ruff>=0.6",
 ]
 
+# On Linux, PyPI's default torch wheels target CUDA and pull nvidia-* packages.
+# This stack only needs CPU torch inside containers / for embeddings; GPU is optional and unused here.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+
 [project.scripts]
 student-bot-cli = "student_bot.bot.pipeline:main"
 student-bot = "student_bot.bot.mattermost_client:main"

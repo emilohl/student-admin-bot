@@ -90,6 +90,97 @@ uv run student-bot
 
 ---
 
+## Docker (Compose)
+
+The repo ships a **`Dockerfile`** and **`docker-compose.yml`**. **Ollama stays on the host** (Metal/GPU); containers talk to it via **`OLLAMA_URL=http://host.docker.internal:11434`**.
+
+Compose defines two services that share the same image:
+
+| Service | Purpose |
+|---|---|
+| **`bot`** | Default container **`CMD`** is the Mattermost websocket client (`mattermost_client`). |
+| **`beta-web`** | Runs **`student-bot-web`** bound to **`0.0.0.0:8000`** with **`WEB_AUTH_ENABLED=true`** for beta testers. |
+
+Both services set **`STUDENT_BOT_ROOT=/app`** so paths from **`config.yaml`** resolve correctly inside Linux (editable installs do not always infer the repo root from `__file__`). **`paths.docs_dir`** defaults to **`docs/corpus`** relative to that root → **`/app/docs/corpus`** in the container.
+
+### Prerequisites
+
+- Docker Desktop (or compatible engine).
+- **Ollama** on the machine with the chat model pulled (**same model name as `config.yaml`** → **`llm.model`**).
+- **`docs/corpus`** (or an alternate corpus directory — see corpus bind mount below).
+
+### Environment (`.env`)
+
+Copy **`.env.example`** → **`.env`**. Beyond Mattermost and **`USER_ID_HASH_SALT`**, beta-web expects:
+
+| Variable | Role |
+|---|---|
+| **`WEB_ACCESS_TOKEN`** | Required when auth is on (Compose enables it for `beta-web`). Generate once: `python -c "import secrets; print(secrets.token_urlsafe(32))"`. Users open **`http://<host>:8000/?access=<token>`** once so the server sets the session cookie (see **Web app** below). |
+| **`WEB_SESSION_SECRET`** | Recommended for Docker: stable signing key so sessions survive container restarts. Generate once: `python -c "import secrets; print(secrets.token_hex(32))"`. If unset, each process start picks a new random key and browsers lose the grant cookie. |
+| **`CORPUS_HOST_PATH`** | Optional; see Corpus bind mount. |
+
+Secrets belong only in **`.env`** (gitignored). **`docker compose`** substitutes **`CORPUS_HOST_PATH`** from the host `.env` next to **`docker-compose.yml`**.
+
+### Corpus bind mount
+
+Compose mounts the corpus **into `/app/docs/corpus`**:
+
+```yaml
+${CORPUS_HOST_PATH:-./docs/corpus}:/app/docs/corpus:ro
+```
+
+- If **`CORPUS_HOST_PATH`** is unset, Compose uses **`./docs/corpus`** relative to the compose project directory (same as the default **`paths.docs_dir`** layout).
+- If **`docs/corpus`** on the host is a **symlink that points outside `docs/`**, it usually **does not resolve correctly inside the container** — bind-mount **`CORPUS_HOST_PATH`** to the **absolute path** of the directory that actually holds the corpus files (the symlink target).
+
+All ingestion and citation **`/docs/…`** URLs use **`paths.docs_dir`**; an extra **`corpus`** symlink at the **repository root** is **not** read by the app unless you change **`config.yaml`**.
+
+### Build and run (beta web UI)
+
+```bash
+docker compose build
+docker compose run --rm beta-web python -m scripts.reindex   # persist ./data on host (Chroma + SQLite paths from config)
+# Auth requires data/web_users to exist before the server stays up:
+docker compose run --rm beta-web student-bot-mkuser alice --password '…'
+docker compose up -d beta-web
+```
+
+Logs (**stderr only**; there are no rotating web log files in the container):
+
+```bash
+docker compose logs -f beta-web
+```
+
+Structured Q&A / feedback lives in **`data/logs.sqlite`** on the host (mounted **`./data:/app/data`**).
+
+**Mattermost + web:** start **`bot`** as well, e.g. **`docker compose up -d beta-web bot`**.
+
+**Reindex without Mattermost:** **`docker compose run --rm bot python -m scripts.reindex`** (equivalent image).
+
+### When to rebuild vs restart
+
+| Change | Action |
+|---|---|
+| **Python / static assets under `src/`**, **`Dockerfile`**, **`scripts/`**, etc. | **`docker compose build`** then **`docker compose up -d …`** |
+| **Only `.env`** (tokens, **`WEB_SESSION_SECRET`**, **`CORPUS_HOST_PATH`**) | **`docker compose up -d`** or **`docker compose restart beta-web`** — **no** rebuild |
+
+(Optional dev workflow: bind-mount **`./src:/app/src`** into **`beta-web`** to iterate without rebuilding; not configured by default.)
+
+### Memory on macOS
+
+Docker Desktop runs Linux in a **VM**: total Docker RAM in Activity Monitor is often **much larger** than **`docker stats`** for a single container. Lower **Settings → Resources → Memory** if you need RAM for **Ollama** on the host; **`docker compose stop beta-web`** when you are not testing frees the embedding stack inside the VM.
+
+### Troubleshooting (beta web)
+
+- **`[error 403]`** on chat: the **`?access=`** session grant failed — reload the **full** invite URL with **`WEB_ACCESS_TOKEN`**, keep **`WEB_SESSION_SECRET`** stable, and use **one hostname** (do not mix **`localhost`** and **`127.0.0.1`** for the same session cookie).
+- **`[stream error: Load failed]`**: the browser lost the SSE connection mid-reply — check **`docker compose logs beta-web`** at that time (Ollama stalls, timeouts, or host RAM pressure). **`check server logs`** + **`ollama ps`** on the host.
+
+### Image notes
+
+- The Dockerfile installs **`torch`** from **CPU-only** wheels for Linux (see **`pyproject.toml`** **`[tool.uv.sources]`** / PyTorch CPU index) so the image does not pull NVIDIA CUDA packages.
+- **`topics.yaml`** and **`dictionary.json`** are **`COPY`**’d into the image; **`config.yaml`**, **`./data`**, and the corpus mount remain host-mounted volumes.
+
+---
+
 ## Design considerations & decisions
 
 ### Models
@@ -283,7 +374,7 @@ and `data/web_users` are all in `.gitignore`; secrets stay out.
 
 ## Web app
 
-Localhost-only by default. Two-factor authentication when exposed to a network.
+Localhost-only by default. Two-factor authentication when exposed to a network. For running the authenticated web UI under Docker Compose (**`beta-web`**), secrets, corpus mounts, and logs, see **Docker (Compose)** earlier in this file.
 
 | Mode | How |
 |---|---|

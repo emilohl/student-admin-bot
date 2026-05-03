@@ -7,12 +7,37 @@ services:
     env_file: .env
     environment:
       OLLAMA_URL: http://host.docker.internal:11434
+      # Editable installs can mis-resolve __file__; paths in config.yaml are relative to this root.
+      STUDENT_BOT_ROOT: /app
     extra_hosts:
       # On macOS, host.docker.internal already resolves; keep this for Linux parity.
       - "host.docker.internal:host-gateway"
     volumes:
       - ./config.yaml:/app/config.yaml:ro
       - ./data:/app/data
-      - ./docs:/app/docs:ro
+      # Corpus → /app/docs/corpus (paths.docs_dir in config.yaml). Override host path via CORPUS_HOST_PATH in .env
+      - ${CORPUS_HOST_PATH:-./docs/corpus}:/app/docs/corpus:ro
     # Override the default to (re)index instead of running the bot:
     #   docker compose run --rm bot python -m scripts.reindex
+
+  # Beta web UI (authenticated). Start alone: docker compose up -d beta-web
+  beta-web:
+    build: .
+    image: student-bot:latest
+    container_name: student-bot-beta-web
+    restart: unless-stopped
+    env_file: .env
+    command: ["student-bot-web"]
+    environment:
+      OLLAMA_URL: http://host.docker.internal:11434
+      STUDENT_BOT_ROOT: /app
+      WEB_BIND_HOST: "0.0.0.0"
+      WEB_AUTH_ENABLED: "true"
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./data:/app/data
+      - ${CORPUS_HOST_PATH:-./docs/corpus}:/app/docs/corpus:ro
