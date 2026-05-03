@@ -70,7 +70,13 @@ def get_chroma_collection(cfg: Config):
     persist_dir.mkdir(parents=True, exist_ok=True)
     client = chromadb.PersistentClient(
         path=str(persist_dir),
-        settings=ChromaSettings(anonymized_telemetry=False, allow_reset=False),
+        settings=ChromaSettings(
+            anonymized_telemetry=False,
+            chroma_product_telemetry_impl=(
+                "student_bot.ingest._chroma_telemetry.NoopTelemetry"
+            ),
+            allow_reset=False,
+        ),
     )
     # Cosine on normalised vectors == dot product == proper similarity.
     return client.get_or_create_collection(
