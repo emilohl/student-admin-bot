@@ -10,7 +10,20 @@ import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+def _discover_project_root() -> Path:
+    """Repo root for config paths. Docker sets STUDENT_BOT_ROOT=/app; local dev uses pyproject walk."""
+    if env := os.environ.get("STUDENT_BOT_ROOT"):
+        return Path(env).expanduser().resolve()
+    here = Path(__file__).resolve()
+    for p in here.parents:
+        if (p / "pyproject.toml").exists():
+            return p
+    # Last resort: src/student_bot/config.py -> two parents above package dir
+    return here.parents[2]
+
+
+PROJECT_ROOT = _discover_project_root()
 
 
 class Paths(BaseModel):
@@ -57,6 +70,10 @@ class LLMConfig(BaseModel):
     num_ctx: int = 16384
     temperature: float = 0.1
     max_tokens: int = 1024
+    # Gemma 4 reasoning mode: prepends <|think|> to the system prompt and
+    # filters <think>...</think> blocks from the streamed output. Default
+    # on for better multi-step answers; set false to A/B against thinking-off.
+    thinking: bool = True
 
 
 class MemoryConfig(BaseModel):

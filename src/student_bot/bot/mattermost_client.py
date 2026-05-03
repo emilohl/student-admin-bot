@@ -29,6 +29,36 @@ from student_bot.config import Config, get_config
 from student_bot.logging_db import LogDB
 
 
+# --- Python 3.12+ compatibility shim for mattermostdriver 7.3.2 ----------
+# That version constructs the websocket SSL context with
+# `ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)`, which
+# yields a PROTOCOL_TLS_SERVER context — Python 3.12+ refuses to use a
+# server-purpose context on a client socket and the connect loop fails
+# with "Cannot create a client socket with a PROTOCOL_TLS_SERVER context".
+# Upstream issue (still open):
+#   https://github.com/Vaelor/python-mattermost-driver/issues/115
+# We replace the `ssl` reference inside that one module with a thin shim
+# that forces `Purpose.SERVER_AUTH`, leaving the rest of the process's
+# ssl module untouched.
+import ssl as _ssl_module
+import mattermostdriver.websocket as _mm_ws
+
+
+class _SslShim:
+    Purpose = _ssl_module.Purpose
+    CERT_NONE = _ssl_module.CERT_NONE
+
+    @staticmethod
+    def create_default_context(purpose=None, **kwargs):
+        return _ssl_module.create_default_context(
+            purpose=_ssl_module.Purpose.SERVER_AUTH, **kwargs,
+        )
+
+
+_mm_ws.ssl = _SslShim
+# -------------------------------------------------------------------------
+
+
 log = logging.getLogger("student_bot")
 
 

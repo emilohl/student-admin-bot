@@ -28,6 +28,7 @@
       "chat.reset": "Ny tråd",
       "chat.send": "Fråga",
       "chat.thinking": "tänker…",
+      "chat.thinking_phase": "funderar…",
       "chat.newthread": "ny tråd",
       "answer.sources": "Källor",
 
@@ -93,6 +94,7 @@
       "chat.reset": "New thread",
       "chat.send": "Ask",
       "chat.thinking": "thinking…",
+      "chat.thinking_phase": "is thinking…",
       "chat.newthread": "new thread",
       "answer.sources": "Sources",
 

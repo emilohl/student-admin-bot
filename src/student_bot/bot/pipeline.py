@@ -169,6 +169,7 @@ def answer(
     history: list[dict] | None = None,
     cfg: Config | None = None,
     on_token=None,
+    on_thinking=None,
     rate_limit_key: str | None = None,
 ) -> AnswerResult:
     cfg = cfg or get_config()
@@ -234,7 +235,7 @@ def answer(
         llm_error = False
         try:
             parts: list[str] = []
-            for delta in _stream_answer(cfg, meta_messages):
+            for delta in _stream_answer(cfg, meta_messages, on_thinking=on_thinking):
                 parts.append(delta)
                 if on_token:
                     on_token(delta)
@@ -274,7 +275,7 @@ def answer(
         on_token(jargon_note + "\n\n")
 
     parts: list[str] = []
-    for delta in _stream_answer(cfg, messages):
+    for delta in _stream_answer(cfg, messages, on_thinking=on_thinking):
         parts.append(delta)
         if on_token:
             on_token(delta)
@@ -315,8 +316,8 @@ def answer(
     )
 
 
-def _stream_answer(cfg: Config, messages: list[dict]) -> Iterator[str]:
-    yield from stream_chat(cfg, messages)
+def _stream_answer(cfg: Config, messages: list[dict], on_thinking=None) -> Iterator[str]:
+    yield from stream_chat(cfg, messages, on_thinking=on_thinking)
 
 
 # --- CLI ---

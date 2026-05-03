@@ -51,8 +51,11 @@ llm:
   model: gemma-4-E4B-it-GGUF:UD-Q4_K_XL
   ollama_url: http://127.0.0.1:11434
   num_ctx: 16384
-  temperature: 0.1
-  max_tokens: 1024
+  temperature: 0.2
+  # With thinking on, reasoning eats into this budget — give the answer
+  # itself enough headroom for multi-bullet replies.
+  max_tokens: 4096
+  thinking: true                 # Gemma 4 reasoning mode (<|think|> tag)
 
 memory:
   max_turns: 4                   # last N user/assistant pairs per (user, thread)

@@ -85,6 +85,11 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .msg .meta .conf.high { color: var(--good); border-color: var(--good); }
 .msg .meta .conf.low { color: var(--bad); border-color: var(--bad); }
 .msg a { color: var(--accent); }
+/* Wrapper so the dots and the optional "<bot> funderar…" phase label
+   sit on one line in the bot bubble while waiting for the first token. */
+.thinking-wrap { display: inline-flex; align-items: center; gap: 8px; }
+.thinking-label { font-size: 12px; color: var(--muted); font-style: italic; }
+.thinking-label[hidden] { display: none; }
 /* Animated three-dot indicator shown in the bot bubble while waiting for
    the first streamed token. Cleared on first token. */
 .thinking-dots { display: inline-flex; gap: 5px; padding: 4px 0; align-items: center; }
