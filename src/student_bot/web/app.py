@@ -360,50 +360,63 @@ def _conf_class(top1: float) -> str:
 
 # Shared experimental-service notice. Same markup the chat page uses, so
 # notice.js dismissal state is shared across all pages on this origin.
+# Body text is filled in by i18n.js based on the user's language choice.
 _NOTICE_HTML = """\
 <div class="notice" role="note">
   <div class="notice-body">
-    <p><strong>Experimentell testtjänst.</strong> Servern har begränsade resurser och språkmodellen är liten — svar kan vara långsamma och inte alltid korrekta. Första frågan kan ta extra lång tid medan modellen laddas. Använd gärna 👍 eller 👎 på svaren — feedback hjälper oss att förbättra tjänsten.</p>
-    <p><em>Experimental test service. The server has limited resources and the language model is small — responses may be slow and not always correct. The first question can take noticeably longer while the model loads. Please use 👍 or 👎 on the replies — feedback helps us improve the service.</em></p>
+    <p><strong data-i18n="notice.title"></strong><span data-i18n="notice.body"></span></p>
   </div>
-  <button class="notice-close" type="button" aria-label="Stäng / Close">×</button>
+  <button class="notice-close" type="button" data-i18n-aria="notice.close.aria">×</button>
 </div>
 """
 
-_NOTICE_SCRIPT = '<script src="/static/notice.js?v=3" defer></script>'
+# Shared header: centered brand cluster (KTH logo + title + Fraktur F)
+# with the language switch on the right. {tagline_html} is replaced per page.
+_HEADER_HTML = """\
+<header>
+  <div class="brand">
+    <img src="/static/KTH_logo_RGB_bla.svg" alt="KTH" class="logo logo-kth">
+    <div class="brand-text">
+      <h1 data-i18n="brand.name"></h1>{tagline_html}
+    </div>
+    <img src="/static/FrakturF2020.svg" alt="Fysiksektionen" class="logo logo-fyssek">
+  </div>
+  <div class="lang-switch" role="group" aria-label="Language">
+    <button type="button" data-lang="sv">SV</button>
+    <button type="button" data-lang="en">EN</button>
+  </div>
+</header>
+"""
+
+# Loaded into <head> on every server-rendered page, before notice.js, so
+# data-i18n attributes are translated before any other scripts run.
+_NOTICE_SCRIPT = (
+    '<script src="/static/i18n.js?v=8"></script>'
+    '<script src="/static/notice.js?v=8" defer></script>'
+)
 
 
 def _about_page(cfg: Config) -> HTMLResponse:
-    counselor = cfg.fallback.counselor_label_sv
     link = cfg.fallback.counselor_link
+    # Counselor link is config-driven, not language-bound, so we render it
+    # server-side and append it after the translatable tip text.
     cl_html = f' (<a href="{link}">{link}</a>)' if link else ""
     body = f"""
-<!doctype html><html><head><meta charset="utf-8"><title>Om boten</title>
-<link rel="stylesheet" href="/static/style.css?v=3">{_NOTICE_SCRIPT}</head>
-<body><header><h1>Om boten</h1></header><main>{_NOTICE_HTML}<div class="card">
-<h2>Vad är det här?</h2>
-<p>En lokal RAG-bot som svarar på administrativa frågor om CTFYS-programmet,
-grundad på de officiella dokumenten under <code>docs/corpus</code>.</p>
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
+<link rel="stylesheet" href="/static/style.css?v=8">{_NOTICE_SCRIPT}</head>
+<body>{_HEADER_HTML.format(tagline_html="")}<main>{_NOTICE_HTML}<div class="card">
+<h2 data-i18n="about.h2.what"></h2>
+<p data-i18n="about.what.body"></p>
 
-<h2>Fem saker att tänka på när du använder boten</h2>
+<h2 data-i18n="about.h2.tips"></h2>
 <ol>
-<li><strong>Verifiera källan.</strong> Klicka på källänkarna under varje svar
-och dubbelkolla mot dokumenten — boten kan ha fel även när den låter säker.</li>
-<li><strong>Flytande språk är inte korrekthet.</strong> Att en LLM låter
-övertygande betyder inte att den har rätt. Lita på källorna, inte på tonen.
-Konfidensbadgen vid varje svar visar hur säker retrievalsteget är.</li>
-<li><strong>Boten har gränser.</strong> Den känner bara till de indexerade
-dokumenten — inte ditt enskilda fall, inte aktuella personer eller datum
-utanför dokumenten. För personliga ärenden, kontakta {counselor}{cl_html}.</li>
-<li><strong>Du blir loggad — men du kan stänga av det.</strong> Frågor och
-svar lagras anonymt (med saltad SHA-256 av ditt session-id) för att förbättra
-boten. Bocka i <em>"Logga inte mina frågor"</em> i onboarding-skärmen, eller
-kör <code>!privacy off</code> i Mattermost.</li>
-<li><strong>Komplement, inte ersättare.</strong> Boten kan ge snabba svar på
-välkända frågor; viktiga beslut om dina studier ska du diskutera med en
-människa.</li>
+<li data-i18n="about.tip1"></li>
+<li data-i18n="about.tip2"></li>
+<li><span data-i18n="about.tip3"></span>{cl_html}</li>
+<li data-i18n="about.tip4"></li>
+<li data-i18n="about.tip5"></li>
 </ol>
-<p><a href="/">← Tillbaka</a></p>
+<p><a href="/" data-i18n="about.back"></a></p>
 </div></main></body></html>
 """
     return HTMLResponse(body)
@@ -415,37 +428,35 @@ def _glossary_page(cfg: Config) -> HTMLResponse:
         f"<tr><td><code>{_h(e.term)}</code></td><td>{_h(e.expansion)}</td>"
         f"<td>{_h(e.definition) or '—'}</td><td>{_h(e.lang)}</td></tr>"
         for e in j.all_entries()
-    ) or '<tr><td colspan="4">no entries yet</td></tr>'
+    ) or '<tr><td colspan="4" data-i18n="glossary.empty"></td></tr>'
     body = f"""
-<!doctype html><html><head><meta charset="utf-8"><title>Ordlista</title>
-<link rel="stylesheet" href="/static/style.css?v=3">{_NOTICE_SCRIPT}</head>
-<body><header><h1>Ordlista</h1>
-<p class="tagline">Slang och förkortningar boten förstår. Saknar du något? Föreslå nedan, eller öppna en PR mot <code>dictionary.json</code>.</p>
-</header>
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
+<link rel="stylesheet" href="/static/style.css?v=8">{_NOTICE_SCRIPT}</head>
+<body>{_HEADER_HTML.format(tagline_html='<p class="tagline" data-i18n="glossary.tagline"></p>')}
 <main>{_NOTICE_HTML}<div class="card">
 <table border="1" cellpadding="6" cellspacing="0" style="width:100%; border-collapse: collapse;">
-<thead><tr><th>Term</th><th>Betydelse</th><th>Förklaring</th><th>Språk</th></tr></thead>
+<thead><tr><th data-i18n="glossary.th.term"></th><th data-i18n="glossary.th.meaning"></th><th data-i18n="glossary.th.def"></th><th data-i18n="glossary.th.lang"></th></tr></thead>
 <tbody>{rows}</tbody></table>
 
-<h2 style="margin-top: 24px">Föreslå en ny term</h2>
+<h2 style="margin-top: 24px" data-i18n="glossary.suggest.h2"></h2>
 <form id="jargon-form" onsubmit="return submitJargon(event);">
-  <label>Term: <input name="term" required maxlength="64" placeholder="t.ex. KS"></label>
-  <label>Betydelse: <input name="expansion" required maxlength="200" placeholder="kontrollskrivning"></label>
-  <label>Förklaring (valfritt): <input name="definition" maxlength="500"></label>
-  <label>Språk:
+  <label><span data-i18n="glossary.suggest.term"></span> <input name="term" required maxlength="64" placeholder="t.ex. KS"></label>
+  <label><span data-i18n="glossary.suggest.expansion"></span> <input name="expansion" required maxlength="200" placeholder="kontrollskrivning"></label>
+  <label><span data-i18n="glossary.suggest.definition"></span> <input name="definition" maxlength="500"></label>
+  <label><span data-i18n="glossary.suggest.lang"></span>
     <select name="lang"><option value="sv">sv</option><option value="en">en</option><option value="any">any</option></select>
   </label>
-  <button type="submit">Skicka förslag</button>
+  <button type="submit" data-i18n="glossary.suggest.submit"></button>
   <span id="jargon-status" class="status"></span>
 </form>
-<p style="margin-top: 16px"><a href="/">← Tillbaka</a></p>
+<p style="margin-top: 16px"><a href="/" data-i18n="glossary.back"></a></p>
 </div></main>
 <script>
 async function submitJargon(e) {{
   e.preventDefault();
   const f = e.target;
   const status = document.getElementById('jargon-status');
-  status.textContent = 'skickar…';
+  status.textContent = window.t ? window.t('glossary.status.sending') : 'skickar…';
   const r = await fetch('/api/jargon/suggest', {{
     method: 'POST',
     headers: {{ 'Content-Type': 'application/json' }},
@@ -456,8 +467,8 @@ async function submitJargon(e) {{
       lang: f.lang.value,
     }}),
   }});
-  if (r.ok) {{ status.textContent = 'tack — förslaget köades för granskning'; f.reset(); }}
-  else {{ status.textContent = 'fel: ' + r.status; }}
+  if (r.ok) {{ status.textContent = window.t ? window.t('glossary.status.ok') : 'tack — förslaget köades för granskning'; f.reset(); }}
+  else {{ status.textContent = (window.t ? window.t('glossary.status.error') : 'fel') + ': ' + r.status; }}
   return false;
 }}
 </script>
@@ -478,19 +489,21 @@ def _stats_page(cfg: Config, db: LogDB) -> HTMLResponse:
         f"<td>{r['avg_latency_ms']}</td>"
         f"<td>{r['thumbs_up']}</td><td>{r['thumbs_down']}</td></tr>"
         for r in by_topic
-    ) or '<tr><td colspan="6">no data yet</td></tr>'
+    ) or '<tr><td colspan="6" data-i18n="stats.empty"></td></tr>'
     body = f"""
-<!doctype html><html><head><meta charset="utf-8"><title>Stats</title>
-<link rel="stylesheet" href="/static/style.css?v=3">{_NOTICE_SCRIPT}</head>
-<body><header><h1>Statistik</h1></header><main>{_NOTICE_HTML}<div class="card">
-<p>Loggade frågor: {overall['logged']} · Besvarade: {overall['answered']} ·
-Genomsnittlig latens: {overall['avg_latency_ms']} ms ·
-Anonym räknare (opt-out): {overall['anon']}</p>
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
+<link rel="stylesheet" href="/static/style.css?v=8">{_NOTICE_SCRIPT}</head>
+<body>{_HEADER_HTML.format(tagline_html="")}<main>{_NOTICE_HTML}<div class="card">
+<p data-i18n="stats.summary"
+   data-logged="{overall['logged']}"
+   data-answered="{overall['answered']}"
+   data-latency="{overall['avg_latency_ms']}"
+   data-anon="{overall['anon']}"></p>
 <table border="1" cellpadding="6" cellspacing="0">
-<thead><tr><th>topic</th><th>n</th><th>answered</th>
-<th>avg ms</th><th>👍</th><th>👎</th></tr></thead>
+<thead><tr><th data-i18n="stats.th.topic"></th><th data-i18n="stats.th.n"></th><th data-i18n="stats.th.answered"></th>
+<th data-i18n="stats.th.avgms"></th><th>👍</th><th>👎</th></tr></thead>
 <tbody>{rows}</tbody></table>
-<p><a href="/">← Tillbaka</a></p>
+<p><a href="/" data-i18n="stats.back"></a></p>
 </div></main></body></html>
 """
     return HTMLResponse(body)

@@ -42,7 +42,7 @@ el("#reset").addEventListener("click", async () => {
     body: JSON.stringify({ session_id: state.sessionId }),
   }).catch(() => {});
   messages.innerHTML = "";
-  statusEl.textContent = "ny tråd";
+  statusEl.textContent = window.t ? window.t("chat.newthread") : "ny tråd";
 });
 
 // Enter submits, Shift+Enter (and Cmd/Ctrl+Enter) inserts a newline.
@@ -64,7 +64,7 @@ composer.addEventListener("submit", async (e) => {
   appendUser(q);
 
   const botMsg = appendBot();
-  statusEl.textContent = "tänker…";
+  statusEl.textContent = window.t ? window.t("chat.thinking") : "tänker…";
 
   let buf = "";
   let finalMeta = null;
