@@ -1,21 +1,31 @@
 :root {
-  --bg: #f7f7f5;
-  --fg: #1a1a1a;
-  --muted: #6b6b6b;
-  --accent: #1f5bb0;
-  --accent-fg: #fff;
-  --card: #fff;
-  --border: #e5e5e0;
-  --user: #eaf2ff;
-  --bot: #f3f1ec;
-  --warn: #b25e10;
-  --good: #1f7a3a;
-  --bad:  #b1231f;
-
-  /* KTH brand palette (Grafisk manual v1.2). Used for the notice today;
-     a follow-up theming pass will switch the rest of the UI over. */
-  --kth-blue: #004791;
+  /* KTH brand palette (Grafisk manual v1.2 via kth-document.cls). */
+  --kth-white: #FFFFFF;
   --kth-sand: #EBE5E0;
+  --kth-blue: #004791;       /* primary brand blue (logo) */
+  --kth-skyblue: #6298D2;
+  --kth-navy: #000061;
+  --kth-lightblue: #DEF0FF;
+  --kth-darkgreen: #0D4A21;
+  --kth-darkbrick: #78001A;
+  --kth-darkyellow: #A65900;
+  --kth-lightgray: #E6E6E6;
+  --kth-brokenblack: #212121;  /* recommended web body text on white */
+  --kth-brokenwhite: #FCFCFC;
+
+  /* Semantic vars used across the UI, mapped to the KTH palette above. */
+  --bg: var(--kth-brokenwhite);
+  --fg: var(--kth-brokenblack);
+  --muted: #6b6b6b;
+  --accent: var(--kth-blue);
+  --accent-fg: var(--kth-white);
+  --card: var(--kth-white);
+  --border: var(--kth-lightgray);
+  --user: var(--kth-lightblue);
+  --bot: var(--kth-sand);
+  --warn: var(--kth-darkyellow);
+  --good: var(--kth-darkgreen);
+  --bad:  var(--kth-darkbrick);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }

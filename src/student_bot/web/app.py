@@ -370,7 +370,7 @@ _NOTICE_HTML = """\
 </div>
 """
 
-_NOTICE_SCRIPT = '<script src="/static/notice.js?v=2" defer></script>'
+_NOTICE_SCRIPT = '<script src="/static/notice.js?v=3" defer></script>'
 
 
 def _about_page(cfg: Config) -> HTMLResponse:
@@ -379,7 +379,7 @@ def _about_page(cfg: Config) -> HTMLResponse:
     cl_html = f' (<a href="{link}">{link}</a>)' if link else ""
     body = f"""
 <!doctype html><html><head><meta charset="utf-8"><title>Om boten</title>
-<link rel="stylesheet" href="/static/style.css?v=2">{_NOTICE_SCRIPT}</head>
+<link rel="stylesheet" href="/static/style.css?v=3">{_NOTICE_SCRIPT}</head>
 <body><header><h1>Om boten</h1></header><main>{_NOTICE_HTML}<div class="card">
 <h2>Vad är det här?</h2>
 <p>En lokal RAG-bot som svarar på administrativa frågor om CTFYS-programmet,
@@ -418,7 +418,7 @@ def _glossary_page(cfg: Config) -> HTMLResponse:
     ) or '<tr><td colspan="4">no entries yet</td></tr>'
     body = f"""
 <!doctype html><html><head><meta charset="utf-8"><title>Ordlista</title>
-<link rel="stylesheet" href="/static/style.css?v=2">{_NOTICE_SCRIPT}</head>
+<link rel="stylesheet" href="/static/style.css?v=3">{_NOTICE_SCRIPT}</head>
 <body><header><h1>Ordlista</h1>
 <p class="tagline">Slang och förkortningar boten förstår. Saknar du något? Föreslå nedan, eller öppna en PR mot <code>dictionary.json</code>.</p>
 </header>
@@ -481,7 +481,7 @@ def _stats_page(cfg: Config, db: LogDB) -> HTMLResponse:
     ) or '<tr><td colspan="6">no data yet</td></tr>'
     body = f"""
 <!doctype html><html><head><meta charset="utf-8"><title>Stats</title>
-<link rel="stylesheet" href="/static/style.css?v=2">{_NOTICE_SCRIPT}</head>
+<link rel="stylesheet" href="/static/style.css?v=3">{_NOTICE_SCRIPT}</head>
 <body><header><h1>Statistik</h1></header><main>{_NOTICE_HTML}<div class="card">
 <p>Loggade frågor: {overall['logged']} · Besvarade: {overall['answered']} ·
 Genomsnittlig latens: {overall['avg_latency_ms']} ms ·
