@@ -91,6 +91,20 @@ REFUSAL_EN = (
 )
 
 
+# Surfaced when the LLM call itself fails (e.g. Ollama unreachable). We
+# deliberately do NOT fall back to the refusal text here — that would
+# misrepresent a service outage as a content decision.
+LLM_UNAVAILABLE_SV = (
+    "Boten är tyvärr otillgänglig just nu — det går inte att nå språkmodellen. "
+    "Försök igen om en stund. Om problemet kvarstår, kontakta administratören."
+)
+
+LLM_UNAVAILABLE_EN = (
+    "The bot is currently unavailable — the language model can't be reached. "
+    "Please try again shortly. If the problem persists, contact the administrator."
+)
+
+
 # Used when the retrieval gate refused (no strong corpus match). Lets the
 # model reflect on its scope or politely decline, *without* retrieved
 # context to ground specific facts in.
@@ -157,6 +171,10 @@ def system_prompt(cfg: Config, lang: str) -> str:
     return SYSTEM_SV.format(
         scope=SCOPE_SV, counselor_label=cfg.fallback.counselor_label_sv,
     )
+
+
+def llm_unavailable_message(lang: str) -> str:
+    return LLM_UNAVAILABLE_EN if lang == "en" else LLM_UNAVAILABLE_SV
 
 
 def refusal_message(cfg: Config, lang: str) -> str:
@@ -245,6 +263,7 @@ def compose_messages(
 __all__ = [
     "system_prompt",
     "refusal_message",
+    "llm_unavailable_message",
     "meta_fallback_system_prompt",
     "compose_meta_fallback_messages",
     "format_context",

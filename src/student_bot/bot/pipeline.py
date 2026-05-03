@@ -9,6 +9,7 @@ CLI:
 """
 from __future__ import annotations
 
+import logging
 import sys
 import time
 from collections import deque
@@ -31,8 +32,12 @@ from student_bot.bot.memory import ConversationMemory
 from student_bot.bot.prompts import (
     compose_messages,
     compose_meta_fallback_messages,
+    llm_unavailable_message,
     refusal_message,
 )
+
+
+log = logging.getLogger("student_bot")
 from student_bot.bot.retrieval import RetrievalResult, RetrievedChunk, retrieve
 from student_bot.config import Config, get_config
 from student_bot.jargon import Jargon, JargonEntry
@@ -214,12 +219,15 @@ def answer(
         # Run a single LLM call with a self-aware system prompt and no
         # retrieved context, so the bot can either reflect on its scope
         # (when the user asks about it) or politely decline (when the
-        # question is genuinely off-topic). Falls back to the static
-        # refusal if the LLM call fails.
+        # question is genuinely off-topic). If the LLM itself is
+        # unreachable we surface a service-unavailable error rather than
+        # a refusal — refusing would mis-attribute an outage to scope.
         meta_messages = compose_meta_fallback_messages(cfg, lang, history, question)
         if on_token and jargon_note and cfg.jargon.show_transparency_note:
             on_token(jargon_note + "\n\n")
         body = ""
+        meta_fallback = False
+        llm_error = False
         try:
             parts: list[str] = []
             for delta in _stream_answer(cfg, meta_messages):
@@ -227,11 +235,12 @@ def answer(
                 if on_token:
                     on_token(delta)
             body = "".join(parts).strip()
-        except Exception:
-            body = ""
-        meta_fallback = bool(body)
+            meta_fallback = bool(body)
+        except Exception as e:
+            log.warning("meta-fallback LLM call failed: %s", e)
+            llm_error = True
         if not body:
-            body = refusal_message(cfg, lang)
+            body = llm_unavailable_message(lang) if llm_error else refusal_message(cfg, lang)
             if on_token:
                 on_token(body)
         rendered = _render(cfg, lang, body, [], gate,
