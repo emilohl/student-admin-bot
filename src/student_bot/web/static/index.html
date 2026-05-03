@@ -4,15 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>student-bot</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/style.css?v=2">
 </head>
 <body>
 <header>
   <h1>student-bot</h1>
-  <p class="tagline">Administrative Q&amp;A for KTH CTFYS · grounded in the official corpus</p>
+  <p class="tagline">Administrative Q&amp;A bot for KTH CTFYS · grounded in a  corpus of official steering documents and FAQs</p>
 </header>
 
 <main>
+  <div class="notice" role="note">
+    <div class="notice-body">
+      <p><strong>Experimentell testtjänst.</strong> Servern har begränsade resurser och språkmodellen är liten — svar kan vara långsamma och inte alltid korrekta. Första frågan kan ta extra lång tid medan modellen laddas. Använd gärna 👍 eller 👎 på svaren — feedback hjälper oss att förbättra tjänsten.</p>
+      <p><em>Experimental test service. The server has limited resources and the language model is small — responses may be slow and not always correct. The first question can take noticeably longer while the model loads. Please use 👍 or 👎 on the replies — feedback helps us improve the service.</em></p>
+    </div>
+    <button class="notice-close" type="button" aria-label="Stäng / Close">×</button>
+  </div>
+
   <section id="onboarding" class="card">
     <h2>Hej!</h2>
     <p>
@@ -56,6 +64,7 @@
   <span id="conn"></span>
 </footer>
 
-<script src="/static/app.js"></script>
+<script src="/static/notice.js?v=2" defer></script>
+<script src="/static/app.js?v=2"></script>
 </body>
 </html>

@@ -358,14 +358,29 @@ def _conf_class(top1: float) -> str:
 # --- about + stats pages (server-rendered) ---
 
 
+# Shared experimental-service notice. Same markup the chat page uses, so
+# notice.js dismissal state is shared across all pages on this origin.
+_NOTICE_HTML = """\
+<div class="notice" role="note">
+  <div class="notice-body">
+    <p><strong>Experimentell testtjänst.</strong> Servern har begränsade resurser och språkmodellen är liten — svar kan vara långsamma och inte alltid korrekta. Första frågan kan ta extra lång tid medan modellen laddas. Använd gärna 👍 eller 👎 på svaren — feedback hjälper oss att förbättra tjänsten.</p>
+    <p><em>Experimental test service. The server has limited resources and the language model is small — responses may be slow and not always correct. The first question can take noticeably longer while the model loads. Please use 👍 or 👎 on the replies — feedback helps us improve the service.</em></p>
+  </div>
+  <button class="notice-close" type="button" aria-label="Stäng / Close">×</button>
+</div>
+"""
+
+_NOTICE_SCRIPT = '<script src="/static/notice.js?v=2" defer></script>'
+
+
 def _about_page(cfg: Config) -> HTMLResponse:
     counselor = cfg.fallback.counselor_label_sv
     link = cfg.fallback.counselor_link
     cl_html = f' (<a href="{link}">{link}</a>)' if link else ""
     body = f"""
 <!doctype html><html><head><meta charset="utf-8"><title>Om boten</title>
-<link rel="stylesheet" href="/static/style.css"></head>
-<body><header><h1>Om boten</h1></header><main class="card">
+<link rel="stylesheet" href="/static/style.css?v=2">{_NOTICE_SCRIPT}</head>
+<body><header><h1>Om boten</h1></header><main>{_NOTICE_HTML}<div class="card">
 <h2>Vad är det här?</h2>
 <p>En lokal RAG-bot som svarar på administrativa frågor om CTFYS-programmet,
 grundad på de officiella dokumenten under <code>docs/corpus</code>.</p>
@@ -389,7 +404,7 @@ välkända frågor; viktiga beslut om dina studier ska du diskutera med en
 människa.</li>
 </ol>
 <p><a href="/">← Tillbaka</a></p>
-</main></body></html>
+</div></main></body></html>
 """
     return HTMLResponse(body)
 
@@ -403,11 +418,11 @@ def _glossary_page(cfg: Config) -> HTMLResponse:
     ) or '<tr><td colspan="4">no entries yet</td></tr>'
     body = f"""
 <!doctype html><html><head><meta charset="utf-8"><title>Ordlista</title>
-<link rel="stylesheet" href="/static/style.css"></head>
+<link rel="stylesheet" href="/static/style.css?v=2">{_NOTICE_SCRIPT}</head>
 <body><header><h1>Ordlista</h1>
 <p class="tagline">Slang och förkortningar boten förstår. Saknar du något? Föreslå nedan, eller öppna en PR mot <code>dictionary.json</code>.</p>
 </header>
-<main class="card">
+<main>{_NOTICE_HTML}<div class="card">
 <table border="1" cellpadding="6" cellspacing="0" style="width:100%; border-collapse: collapse;">
 <thead><tr><th>Term</th><th>Betydelse</th><th>Förklaring</th><th>Språk</th></tr></thead>
 <tbody>{rows}</tbody></table>
@@ -424,7 +439,7 @@ def _glossary_page(cfg: Config) -> HTMLResponse:
   <span id="jargon-status" class="status"></span>
 </form>
 <p style="margin-top: 16px"><a href="/">← Tillbaka</a></p>
-</main>
+</div></main>
 <script>
 async function submitJargon(e) {{
   e.preventDefault();
@@ -466,8 +481,8 @@ def _stats_page(cfg: Config, db: LogDB) -> HTMLResponse:
     ) or '<tr><td colspan="6">no data yet</td></tr>'
     body = f"""
 <!doctype html><html><head><meta charset="utf-8"><title>Stats</title>
-<link rel="stylesheet" href="/static/style.css"></head>
-<body><header><h1>Statistik</h1></header><main class="card">
+<link rel="stylesheet" href="/static/style.css?v=2">{_NOTICE_SCRIPT}</head>
+<body><header><h1>Statistik</h1></header><main>{_NOTICE_HTML}<div class="card">
 <p>Loggade frågor: {overall['logged']} · Besvarade: {overall['answered']} ·
 Genomsnittlig latens: {overall['avg_latency_ms']} ms ·
 Anonym räknare (opt-out): {overall['anon']}</p>
@@ -476,7 +491,7 @@ Anonym räknare (opt-out): {overall['anon']}</p>
 <th>avg ms</th><th>👍</th><th>👎</th></tr></thead>
 <tbody>{rows}</tbody></table>
 <p><a href="/">← Tillbaka</a></p>
-</main></body></html>
+</div></main></body></html>
 """
     return HTMLResponse(body)
 
