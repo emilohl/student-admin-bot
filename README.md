@@ -457,3 +457,9 @@ click + rich              — CLI scaffolding
 ```
 
 Total Python: ~3000 lines across `src/`, `scripts/`, and `eval/`.
+
+---
+
+## License
+
+[MIT](LICENSE.md) © 2026 Christian Ohm.
