@@ -6,6 +6,7 @@ Citations are the bot's primary defence against blind trust:
 3. A short rotating footer reinforces a different LLM-literacy concept each
    time, so the lesson isn't ignored as a static disclaimer.
 """
+
 from __future__ import annotations
 
 import random

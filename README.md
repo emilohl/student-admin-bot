@@ -177,7 +177,7 @@ Docker Desktop runs Linux in a **VM**: total Docker RAM in Activity Monitor is o
 ### Image notes
 
 - The Dockerfile installs **`torch`** from **CPU-only** wheels for Linux (see **`pyproject.toml`** **`[tool.uv.sources]`** / PyTorch CPU index) so the image does not pull NVIDIA CUDA packages.
-- **`topics.yaml`** and **`dictionary.json`** are **`COPY`**’d into the image; **`config.yaml`**, **`./data`**, and the corpus mount remain host-mounted volumes.
+- **`topics.yaml`** and **`dictionary.json`** are **`COPY`**’d into the image as a fallback for non-compose runs. Compose host-mounts **`config.yaml`**, **`./data`**, **`dictionary.json`**, **`dictionary_proposals.json`**, and the corpus on top, so jargon proposals submitted via the running bot/web and the host’s **`student-bot-jargon`** CLI share the same files.
 
 ---
 
@@ -457,3 +457,9 @@ click + rich              — CLI scaffolding
 ```
 
 Total Python: ~3000 lines across `src/`, `scripts/`, and `eval/`.
+
+---
+
+## License
+
+[MIT](LICENSE.md) © 2026 Christian Ohm.

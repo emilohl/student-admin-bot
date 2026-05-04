@@ -1,4 +1,5 @@
 """Configuration loader: merges config.yaml with environment / .env secrets."""
+
 from __future__ import annotations
 
 import os
@@ -194,16 +195,16 @@ def get_config() -> Config:
             team=os.environ.get("MATTERMOST_TEAM") or None,
         )
 
-    if (ollama_url := os.environ.get("OLLAMA_URL")):
+    if ollama_url := os.environ.get("OLLAMA_URL"):
         cfg.llm.ollama_url = ollama_url
 
     # Web bind/auth overrides via env so docker-compose / launchd can flip
     # them without editing config.yaml.
-    if (h := os.environ.get("WEB_BIND_HOST")):
+    if h := os.environ.get("WEB_BIND_HOST"):
         cfg.web.bind_host = h
-    if (p := os.environ.get("WEB_PORT")):
+    if p := os.environ.get("WEB_PORT"):
         cfg.web.port = int(p)
-    if (a := os.environ.get("WEB_AUTH_ENABLED")):
+    if a := os.environ.get("WEB_AUTH_ENABLED"):
         cfg.web.auth_enabled = a.lower() in ("1", "true", "yes", "on")
 
     return cfg

@@ -4,6 +4,7 @@ System prompts emphasise: ground in context only, cite sources inline, refuse
 when the corpus doesn't cover the question, refer to the study counselor for
 case-by-case decisions. Bilingual (sv / en).
 """
+
 from __future__ import annotations
 
 from student_bot.bot.retrieval import RetrievedChunk
@@ -185,11 +186,13 @@ def _link_suffix(cfg: Config) -> str:
 def system_prompt(cfg: Config, lang: str) -> str:
     if lang == "en":
         sp = SYSTEM_EN.format(
-            scope=SCOPE_EN, counselor_label=cfg.fallback.counselor_label_en,
+            scope=SCOPE_EN,
+            counselor_label=cfg.fallback.counselor_label_en,
         )
     else:
         sp = SYSTEM_SV.format(
-            scope=SCOPE_SV, counselor_label=cfg.fallback.counselor_label_sv,
+            scope=SCOPE_SV,
+            counselor_label=cfg.fallback.counselor_label_sv,
         )
     return _maybe_thinking(cfg, sp)
 
@@ -249,9 +252,7 @@ def compose_meta_fallback_messages(
 ) -> list[dict]:
     """Messages for the gate-failed path: no retrieved context, just a
     self-aware system prompt + history + the user's question."""
-    messages: list[dict] = [
-        {"role": "system", "content": meta_fallback_system_prompt(cfg, lang)}
-    ]
+    messages: list[dict] = [{"role": "system", "content": meta_fallback_system_prompt(cfg, lang)}]
     messages.extend(history)
     messages.append({"role": "user", "content": question})
     return messages

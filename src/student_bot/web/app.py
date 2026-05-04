@@ -10,6 +10,7 @@ When auth is enabled, two factors are required:
 2. Each request must carry HTTP Basic Auth credentials from `data/web_users`.
    Add a user with `student-bot-mkuser <username>`.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -26,7 +27,6 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
-    JSONResponse,
     StreamingResponse,
 )
 from fastapi.staticfiles import StaticFiles
@@ -38,7 +38,7 @@ from student_bot.bot.citations import confidence_badge
 from student_bot.bot.memory import ConversationMemory
 from student_bot.bot.pipeline import answer
 from student_bot.bot.topics import classify
-from student_bot.config import PROJECT_ROOT, Config, get_config
+from student_bot.config import Config, get_config
 from student_bot.jargon import Jargon, _nfc_lower, _read_json, _write_json
 from student_bot.logging_db import LogDB
 from student_bot.web.auth import require_access
@@ -68,7 +68,7 @@ class ChatRequest(BaseModel):
 
 class FeedbackRequest(BaseModel):
     qa_id: int
-    sentiment: str   # "positive" | "negative"
+    sentiment: str  # "positive" | "negative"
 
 
 class ResetRequest(BaseModel):
@@ -209,13 +209,15 @@ def create_app(cfg: Config | None = None) -> FastAPI:
         bot_post_id = f"web:{payload.qa_id}"
         # Ensure the qa row exists and gets its bot_post_id stamped.
         with db._connect() as conn:  # noqa: SLF001 (intentional lightweight write)
-            row = conn.execute("SELECT bot_post_id FROM qa_log WHERE id = ?",
-                               (payload.qa_id,)).fetchone()
+            row = conn.execute(
+                "SELECT bot_post_id FROM qa_log WHERE id = ?", (payload.qa_id,)
+            ).fetchone()
             if row is None:
                 raise HTTPException(404, "qa not found")
             if not row[0]:
-                conn.execute("UPDATE qa_log SET bot_post_id = ? WHERE id = ?",
-                             (bot_post_id, payload.qa_id))
+                conn.execute(
+                    "UPDATE qa_log SET bot_post_id = ? WHERE id = ?", (bot_post_id, payload.qa_id)
+                )
                 conn.commit()
             else:
                 bot_post_id = row[0]
@@ -249,8 +251,9 @@ def _web_user_id_from_request(request: Request, session_id: str) -> str:
     return f"web:{name}:{session_id or 'default'}"
 
 
-def _stream_answer(cfg: Config, db: LogDB, memory: ConversationMemory,
-                   payload: ChatRequest, web_user_id: str):
+def _stream_answer(
+    cfg: Config, db: LogDB, memory: ConversationMemory, payload: ChatRequest, web_user_id: str
+):
     """Generator producing SSE blocks. Streams answer tokens and a final
     `meta` event with confidence, qa_id, and gate info."""
     history = memory.get(web_user_id, "default")
@@ -305,7 +308,7 @@ def _stream_answer(cfg: Config, db: LogDB, memory: ConversationMemory,
         chunk_ids = [c.chunk_id for c in result.retrieval.reranked]
         qa_id = db.record_qa(
             user_id=web_user_id,
-            channel_type="W",                  # 'W' = web
+            channel_type="W",  # 'W' = web
             channel_id=payload.session_id,
             bot_post_id=None,
             root_id=None,
@@ -431,11 +434,14 @@ def _about_page(cfg: Config) -> HTMLResponse:
 
 def _glossary_page(cfg: Config) -> HTMLResponse:
     j = Jargon.from_config(cfg)
-    rows = "".join(
-        f"<tr><td><code>{_h(e.term)}</code></td><td>{_h(e.expansion)}</td>"
-        f"<td>{_h(e.definition) or '—'}</td><td>{_h(e.lang)}</td></tr>"
-        for e in j.all_entries()
-    ) or '<tr><td colspan="4" data-i18n="glossary.empty"></td></tr>'
+    rows = (
+        "".join(
+            f"<tr><td><code>{_h(e.term)}</code></td><td>{_h(e.expansion)}</td>"
+            f"<td>{_h(e.definition) or '—'}</td><td>{_h(e.lang)}</td></tr>"
+            for e in j.all_entries()
+        )
+        or '<tr><td colspan="4" data-i18n="glossary.empty"></td></tr>'
+    )
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
 <link rel="stylesheet" href="/static/style.css?v=14">{_NOTICE_SCRIPT}</head>
@@ -491,21 +497,24 @@ def _h(s: str) -> str:
 def _stats_page(cfg: Config, db: LogDB) -> HTMLResponse:
     overall = db.overall_counts()
     by_topic = db.stats_by_topic()
-    rows = "".join(
-        f"<tr><td>{r['topic']}</td><td>{r['n']}</td><td>{r['answered']}</td>"
-        f"<td>{r['avg_latency_ms']}</td>"
-        f"<td>{r['thumbs_up']}</td><td>{r['thumbs_down']}</td></tr>"
-        for r in by_topic
-    ) or '<tr><td colspan="6" data-i18n="stats.empty"></td></tr>'
+    rows = (
+        "".join(
+            f"<tr><td>{r['topic']}</td><td>{r['n']}</td><td>{r['answered']}</td>"
+            f"<td>{r['avg_latency_ms']}</td>"
+            f"<td>{r['thumbs_up']}</td><td>{r['thumbs_down']}</td></tr>"
+            for r in by_topic
+        )
+        or '<tr><td colspan="6" data-i18n="stats.empty"></td></tr>'
+    )
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
 <link rel="stylesheet" href="/static/style.css?v=14">{_NOTICE_SCRIPT}</head>
 <body>{_HEADER_HTML.format(tagline_html="")}<main>{_NOTICE_HTML}<div class="card">
 <p data-i18n="stats.summary"
-   data-logged="{overall['logged']}"
-   data-answered="{overall['answered']}"
-   data-latency="{overall['avg_latency_ms']}"
-   data-anon="{overall['anon']}"></p>
+   data-logged="{overall["logged"]}"
+   data-answered="{overall["answered"]}"
+   data-latency="{overall["avg_latency_ms"]}"
+   data-anon="{overall["anon"]}"></p>
 <table border="1" cellpadding="6" cellspacing="0">
 <thead><tr><th data-i18n="stats.th.topic"></th><th data-i18n="stats.th.n"></th><th data-i18n="stats.th.answered"></th>
 <th data-i18n="stats.th.avgms"></th><th>👍</th><th>👎</th></tr></thead>
@@ -524,8 +533,9 @@ def _stats_page(cfg: Config, db: LogDB) -> HTMLResponse:
 @click.option("--port", type=int, default=None, help="Override port.")
 @click.option("--reload", is_flag=True, help="Enable autoreload (dev).")
 def main(host: str | None, port: int | None, reload: bool):
-    logging.basicConfig(level=logging.INFO, format="%(message)s",
-                         datefmt="[%X]", handlers=[RichHandler()])
+    logging.basicConfig(
+        level=logging.INFO, format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
+    )
     cfg = get_config()
     bind_host = host or cfg.web.bind_host
     bind_port = port or cfg.web.port
@@ -537,23 +547,30 @@ def main(host: str | None, port: int | None, reload: bool):
     if cfg.web.auth_enabled:
         users_path = cfg.absolute(Path(cfg.web.users_file))
         if not users_path.exists():
-            log.error("auth enabled but users file %s does not exist; "
-                      "create one with `student-bot-mkuser <name>`.", users_path)
+            log.error(
+                "auth enabled but users file %s does not exist; "
+                "create one with `student-bot-mkuser <name>`.",
+                users_path,
+            )
             raise SystemExit(2)
         token = os.environ.get("WEB_ACCESS_TOKEN", "")
-        log.info("auth enabled. login URL: http://%s:%s/?access=%s",
-                 bind_host, bind_port, token)
+        log.info("auth enabled. login URL: http://%s:%s/?access=%s", bind_host, bind_port, token)
     else:
         log.info("auth disabled. binding to http://%s:%s", bind_host, bind_port)
         if bind_host != "127.0.0.1":
             log.warning(
                 "WEB_BIND_HOST is %s but auth is disabled — anyone reaching "
-                "this host can chat. Set WEB_AUTH_ENABLED=true.", bind_host,
+                "this host can chat. Set WEB_AUTH_ENABLED=true.",
+                bind_host,
             )
 
     uvicorn.run(
         "student_bot.web.app:create_app",
-        host=bind_host, port=bind_port, factory=True, reload=reload, log_level="info",
+        host=bind_host,
+        port=bind_port,
+        factory=True,
+        reload=reload,
+        log_level="info",
     )
 
 

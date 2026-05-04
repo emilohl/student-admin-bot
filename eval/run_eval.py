@@ -10,6 +10,7 @@ Outputs:
 
 Does not call the LLM; retrieval + gate only.
 """
+
 from __future__ import annotations
 
 import statistics
@@ -58,7 +59,9 @@ def _suggest_threshold(in_scores: list[float], ood_scores: list[float]) -> float
 
 @click.command()
 @click.option("--eval-file", type=click.Path(path_type=Path), default=EVAL_FILE)
-@click.option("--show-failures", is_flag=True, help="Print details for queries that miss expected doc.")
+@click.option(
+    "--show-failures", is_flag=True, help="Print details for queries that miss expected doc."
+)
 def main(eval_file: Path, show_failures: bool):
     cfg = get_config()
     console = Console()

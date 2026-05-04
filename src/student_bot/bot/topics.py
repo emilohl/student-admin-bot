@@ -3,6 +3,7 @@
 Runs AFTER the answer is produced so it never adds user-visible latency.
 Uses the same Gemma model that's already loaded in Ollama.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

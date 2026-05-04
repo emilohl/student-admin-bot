@@ -7,6 +7,7 @@ thread root so different threads don't bleed into each other.
 Ring buffer of last N user/assistant pairs; entries older than TTL are dropped
 on the next access.
 """
+
 from __future__ import annotations
 
 import time

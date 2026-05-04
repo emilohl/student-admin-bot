@@ -4,9 +4,9 @@ Usage:
     python -m scripts.inspect_pdf path/to/file.pdf
     python -m scripts.inspect_pdf path/to/file.pdf --docling
 """
+
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import click
@@ -25,9 +25,11 @@ def main(pdf_path: Path, use_docling: bool):
 
     if use_docling:
         from docling.document_converter import DocumentConverter
+
         text = DocumentConverter().convert(str(pdf_path)).document.export_to_markdown()
     else:
         import pymupdf4llm
+
         text = pymupdf4llm.to_markdown(str(pdf_path))
 
     out_path.write_text(text, encoding="utf-8")

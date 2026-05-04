@@ -2,6 +2,7 @@
 
 Reads SQLite logs only — does not call the LLM.
 """
+
 from __future__ import annotations
 
 import time

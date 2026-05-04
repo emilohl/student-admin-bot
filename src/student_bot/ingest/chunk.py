@@ -5,6 +5,7 @@ then emits a chunk with overlap. Header lines snapshot the current section_path
 so each chunk knows where it lives. Splits on paragraph (\\n\\n) and sentence
 boundaries when individual blocks exceed the target.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -21,16 +22,16 @@ SENTENCE_RE = re.compile(r"(?<=[.!?])\s+(?=[A-ZÅÄÖ])")
 
 @dataclass
 class Chunk:
-    chunk_id: str               # stable: f"{rel_source}#{idx}"
+    chunk_id: str  # stable: f"{rel_source}#{idx}"
     rel_source: str
     doc_title: str
     doc_type: str
     language: str
-    section_path: list[str]     # outer→inner header texts
+    section_path: list[str]  # outer→inner header texts
     chunk_index: int
-    text: str                   # plain text, no leading/trailing whitespace
-    content_hash: str           # sha256 of the text for incremental indexing
-    page_start: int | None = None   # PDF page (1-indexed) or None
+    text: str  # plain text, no leading/trailing whitespace
+    content_hash: str  # sha256 of the text for incremental indexing
+    page_start: int | None = None  # PDF page (1-indexed) or None
     metadata: dict = field(default_factory=dict)
 
 
@@ -129,7 +130,7 @@ def chunk_document(
     # Greedy pack into chunks. Each accumulated piece carries its source
     # line so we can attach a `page_start` to the emitted chunk.
     chunks: list[Chunk] = []
-    cur_pieces: list[tuple[str, int]] = []   # (text, line_start)
+    cur_pieces: list[tuple[str, int]] = []  # (text, line_start)
     cur_tokens = 0
     cur_section: list[str] = []
     idx = 0
@@ -141,18 +142,20 @@ def chunk_document(
             return
         h = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
         page_start = page_for_line(pieces[0][1])
-        chunks.append(Chunk(
-            chunk_id=f"{doc.rel_source}#{idx}",
-            rel_source=doc.rel_source,
-            doc_title=doc.doc_title,
-            doc_type=doc.doc_type,
-            language=doc.language,
-            section_path=section,
-            chunk_index=idx,
-            text=text,
-            content_hash=h,
-            page_start=page_start,
-        ))
+        chunks.append(
+            Chunk(
+                chunk_id=f"{doc.rel_source}#{idx}",
+                rel_source=doc.rel_source,
+                doc_title=doc.doc_title,
+                doc_type=doc.doc_type,
+                language=doc.language,
+                section_path=section,
+                chunk_index=idx,
+                text=text,
+                content_hash=h,
+                page_start=page_start,
+            )
+        )
         idx += 1
 
     for section_path, block, block_line_start in blocks:

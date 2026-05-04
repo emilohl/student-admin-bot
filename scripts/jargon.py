@@ -4,9 +4,9 @@ Curates `dictionary.json` (canonical) and reviews `dictionary_proposals.json`
 (student-submitted queue). Uses the same JSON shape as the runtime so a
 careful admin can also edit the file by hand.
 """
+
 from __future__ import annotations
 
-import json
 import time
 from pathlib import Path
 
@@ -125,8 +125,14 @@ def proposals_cmd():
     for i, (_, v) in enumerate(pending, 1):
         ts = v.get("suggested_ts") or 0
         when = time.strftime("%Y-%m-%d", time.gmtime(ts)) if ts else "—"
-        t.add_row(str(i), v.get("term", ""), v.get("expansion", ""),
-                   v.get("definition", "") or "—", v.get("lang", ""), when)
+        t.add_row(
+            str(i),
+            v.get("term", ""),
+            v.get("expansion", ""),
+            v.get("definition", "") or "—",
+            v.get("lang", ""),
+            when,
+        )
     console.print(t)
 
 
@@ -141,8 +147,7 @@ def _resolve_proposal_index(cfg: Config, n: int) -> tuple[str, dict]:
 
 @main.command("accept")
 @click.argument("n", type=int)
-@click.option("--def", "definition", default=None,
-              help="Override the suggested definition.")
+@click.option("--def", "definition", default=None, help="Override the suggested definition.")
 @click.option("--lang", default=None, help="Override the suggested language.")
 def accept_cmd(n: int, definition: str | None, lang: str | None):
     """Move proposal #N from the queue into the canonical dictionary."""
