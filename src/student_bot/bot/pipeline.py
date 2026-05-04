@@ -22,6 +22,7 @@ import click
 from rich.console import Console
 
 from student_bot.bot.citations import (
+    apply_citation_numbering,
     confidence_badge,
     format_sources_block,
     literacy_footer,
@@ -148,7 +149,9 @@ def _render(
 ) -> str:
     # Order: [jargon] + body + [conf badge] + [sources] + tip. Keeping
     # everything *after* the body makes the streaming tail (= rendered
-    # minus already-streamed prefix) a clean suffix.
+    # minus already-streamed prefix) a clean suffix. Citation numbering
+    # is applied separately by pipeline.answer() in the answered path,
+    # because rewriting body here would break the streaming-tail math.
     parts: list[str] = []
     if jargon_note and cfg.jargon.show_transparency_note:
         parts.append(jargon_note + "\n\n")
@@ -297,15 +300,42 @@ def answer(
         if on_token:
             on_token(body)
 
-    rendered = _render(cfg, lang, body, retrieval.reranked, gate,
-                       include_sources=True, jargon_note=jargon_note)
-    if on_token:
-        # Compute the tail from the rendered version *minus* what we've
-        # already streamed (jargon note + body).
-        already = (jargon_note + "\n\n" if jargon_note and cfg.jargon.show_transparency_note else "") + body
-        tail = rendered[len(already):]
-        if tail:
-            on_token(tail)
+    # Replace inline [Title · Section] citations with [N] numbering and
+    # trim the Sources block to only those actually cited (or fall back
+    # to all retrieved when the model cited nothing). Done server-side
+    # so Mattermost / CLI / web all get the same compact reference list.
+    sources_chunks = retrieval.reranked
+    numbered_body = body
+    if retrieval.reranked:
+        numbered_body, cited = apply_citation_numbering(body, retrieval.reranked)
+        sources_chunks = cited or retrieval.reranked
+
+    # Build everything that comes after the body: confidence badge,
+    # sources block, literacy tip. Same content for the streaming tail
+    # and for the final rendered string consumed by non-streaming
+    # channels (Mattermost, CLI --no-stream).
+    tail_parts: list[str] = []
+    if cfg.guardrails.show_confidence_badge:
+        label = "Tillförlitlighet" if lang == "sv" else "Confidence"
+        tail_parts.append(f"\n\n_{label}: {confidence_badge(lang, gate.top1)}_")
+    sources_md = format_sources_block(cfg, sources_chunks, lang)
+    if sources_md:
+        tail_parts.append(sources_md)
+    tail_parts.append("\n\n" + literacy_footer(lang))
+    tail = "".join(tail_parts)
+
+    if on_token and tail:
+        on_token(tail)
+
+    # `result.rendered` uses the numbered body so non-streaming consumers
+    # render with [N] inline. The streaming consumers (web) saw the raw
+    # body during the stream and re-render it client-side using the same
+    # numbering algorithm — the outputs match.
+    jargon_prefix = (
+        jargon_note + "\n\n"
+        if jargon_note and cfg.jargon.show_transparency_note else ""
+    )
+    rendered = (jargon_prefix + numbered_body + tail).strip()
 
     return AnswerResult(
         question=question, lang=lang, answered=answered,
