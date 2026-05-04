@@ -171,7 +171,7 @@ class StudentBot:
 
     def _handle_jargon_command(self, job: _Job, body: str) -> bool:
         """Returns True if the message was handled as a !jargon command."""
-        from student_bot.jargon import Jargon, JargonEntry, _nfc_lower
+        from student_bot.jargon import Jargon
         from student_bot.lang import detect
         text = body.strip()
         if not text.lower().startswith("!jargon"):

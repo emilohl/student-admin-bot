@@ -16,7 +16,6 @@ from collections import deque
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from threading import Lock
-from typing import Any
 
 import click
 from rich.console import Console
@@ -37,13 +36,12 @@ from student_bot.bot.prompts import (
     llm_unavailable_message,
     refusal_message,
 )
-
-
-log = logging.getLogger("student_bot")
 from student_bot.bot.retrieval import RetrievalResult, RetrievedChunk, retrieve
 from student_bot.config import Config, get_config
 from student_bot.jargon import Jargon, JargonEntry
 from student_bot.lang import detect
+
+log = logging.getLogger("student_bot")
 
 
 _jargon_cache: dict[int, Jargon] = {}

@@ -36,7 +36,9 @@ def main(dry_run: bool, limit: int | None):
     console.print(f"Found [bold]{len(files)}[/bold] candidate files under {docs_root}")
 
     if dry_run:
-        count_tokens = lambda s: max(1, len(s) // 4)  # cheap approx; avoids loading model
+        # cheap approx; avoids loading the embedding model
+        def count_tokens(s: str) -> int:
+            return max(1, len(s) // 4)
     else:
         count_tokens = token_count_fn(cfg)
 

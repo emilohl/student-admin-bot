@@ -16,7 +16,6 @@ from __future__ import annotations
 import json
 import re
 import sys
-import time
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path

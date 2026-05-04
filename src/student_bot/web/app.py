@@ -26,7 +26,6 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
-    JSONResponse,
     StreamingResponse,
 )
 from fastapi.staticfiles import StaticFiles
@@ -38,7 +37,7 @@ from student_bot.bot.citations import confidence_badge
 from student_bot.bot.memory import ConversationMemory
 from student_bot.bot.pipeline import answer
 from student_bot.bot.topics import classify
-from student_bot.config import PROJECT_ROOT, Config, get_config
+from student_bot.config import Config, get_config
 from student_bot.jargon import Jargon, _nfc_lower, _read_json, _write_json
 from student_bot.logging_db import LogDB
 from student_bot.web.auth import require_access

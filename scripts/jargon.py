@@ -6,7 +6,6 @@ careful admin can also edit the file by hand.
 """
 from __future__ import annotations
 
-import json
 import time
 from pathlib import Path
 
