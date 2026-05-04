@@ -9,10 +9,14 @@ Citations are the bot's primary defence against blind trust:
 from __future__ import annotations
 
 import random
+import re
 from urllib.parse import quote
 
 from student_bot.bot.retrieval import RetrievedChunk
 from student_bot.config import Config
+
+
+_INLINE_CITATION_RE = re.compile(r"\[([^\[\]]+?)\]")
 
 
 def build_doc_url(rel_source: str, page_start: int | None, base_url: str) -> str:
@@ -98,6 +102,78 @@ def literacy_footer(lang: str, *, seed: int | None = None) -> str:
     return rng.choice(pool)
 
 
+def apply_citation_numbering(
+    body: str,
+    chunks: list[RetrievedChunk],
+) -> tuple[str, list[RetrievedChunk]]:
+    """Replace inline ``[Title · Section]`` citations in ``body`` with
+    ``[N]`` markers numbered in citation order, and return only the
+    chunks the model actually cited (one per (title, section, page)
+    dedup row, in citation order). Citations that don't match any
+    retrieved chunk are left in the body untouched.
+
+    Numbering happens server-side so every channel — Mattermost, CLI,
+    and the web UI — gets the same compact reference list and inline
+    `[N]` markers, instead of leaving filter+renumber logic to the
+    web client to repeat.
+    """
+    if not chunks:
+        return body, []
+
+    # Dedupe by the same key format_sources_block uses, so each Sources
+    # row maps to exactly one citation number.
+    rows: list[RetrievedChunk] = []
+    seen: dict[tuple, int] = {}
+    for c in chunks:
+        key = (c.doc_title, c.section_path or None, c.page_start)
+        if key not in seen:
+            seen[key] = len(rows)
+            rows.append(c)
+
+    by_full: dict[str, int] = {}
+    by_title: dict[str, list[int]] = {}
+    for i, c in enumerate(rows):
+        title = c.doc_title
+        section = c.section_path or ""
+        if section:
+            by_full[f"{title} — {section}"] = i
+            by_full[f"{title} · {section}"] = i
+        by_title.setdefault(title, []).append(i)
+
+    cited_indices: list[int] = []
+    number_for: dict[int, int] = {}
+
+    def _assign(idx: int) -> int:
+        n = number_for.get(idx)
+        if n is None:
+            n = len(cited_indices) + 1
+            number_for[idx] = n
+            cited_indices.append(idx)
+        return n
+
+    def _replace(m: re.Match) -> str:
+        content = m.group(1).strip()
+        idx = by_full.get(content)
+        if idx is None:
+            idx = by_full.get(content.replace(" · ", " — "))
+        if idx is None:
+            idx = by_full.get(content.replace(" — ", " · "))
+        if idx is None:
+            # Title-only fallback when unambiguous.
+            sep = content.find(" · ")
+            title = (content[:sep] if sep > -1 else content).strip()
+            candidates = by_title.get(title, [])
+            if len(candidates) == 1:
+                idx = candidates[0]
+        if idx is None:
+            return m.group(0)
+        return f"[{_assign(idx)}]"
+
+    new_body = _INLINE_CITATION_RE.sub(_replace, body)
+    cited = [rows[i] for i in cited_indices]
+    return new_body, cited
+
+
 def confidence_badge(lang: str, top1: float) -> str:
     """Tiny one-word confidence label derived from the gate's top1 score."""
     if top1 >= 3.0:
@@ -110,6 +186,7 @@ def confidence_badge(lang: str, top1: float) -> str:
 __all__ = [
     "build_doc_url",
     "format_sources_block",
+    "apply_citation_numbering",
     "literacy_footer",
     "confidence_badge",
 ]
