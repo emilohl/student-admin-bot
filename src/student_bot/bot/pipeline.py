@@ -7,6 +7,7 @@ CLI:
     student-bot-cli "Hur överklagar jag ett betyg?"
     student-bot-cli --interactive
 """
+
 from __future__ import annotations
 
 import logging
@@ -59,11 +60,11 @@ def _jargon(cfg: Config) -> Jargon | None:
 
 @dataclass
 class AnswerResult:
-    question: str                # original user text (pre-expansion)
+    question: str  # original user text (pre-expansion)
     lang: str
     answered: bool
-    answer: str                  # the model's text only (no sources/footer)
-    rendered: str                # answer + sources block + footer + jargon note
+    answer: str  # the model's text only (no sources/footer)
+    rendered: str  # answer + sources block + footer + jargon note
     gate: GateDecision
     retrieval: RetrievalResult
     latency_ms: int
@@ -122,10 +123,7 @@ def _too_long_message(cfg: Config, lang: str) -> str:
             f"Your message is too long ({cap} character limit). "
             "Please ask a shorter, more focused question."
         )
-    return (
-        f"Frågan är för lång (max {cap} tecken). "
-        "Ställ en kortare, mer fokuserad fråga."
-    )
+    return f"Frågan är för lång (max {cap} tecken). Ställ en kortare, mer fokuserad fråga."
 
 
 def _rate_limited_message(cfg: Config, lang: str) -> str:
@@ -184,8 +182,11 @@ def answer(
         if on_token:
             on_token(msg)
         return AnswerResult(
-            question=question, lang=lang, answered=False,
-            answer=msg, rendered=msg,
+            question=question,
+            lang=lang,
+            answered=False,
+            answer=msg,
+            rendered=msg,
             gate=GateDecision(False, "input_too_long", 0.0, 0.0, 0),
             retrieval=RetrievalResult(query=question),
             latency_ms=int((time.monotonic() - t0) * 1000),
@@ -196,8 +197,11 @@ def answer(
         if on_token:
             on_token(msg)
         return AnswerResult(
-            question=question, lang=lang, answered=False,
-            answer=msg, rendered=msg,
+            question=question,
+            lang=lang,
+            answered=False,
+            answer=msg,
+            rendered=msg,
             gate=GateDecision(False, "rate_limited", 0.0, 0.0, 0),
             retrieval=RetrievalResult(query=question),
             latency_ms=int((time.monotonic() - t0) * 1000),
@@ -214,7 +218,9 @@ def answer(
         expanded_q, jargon_hits = jargon.expand_query(question, lang=lang)
         if jargon_hits:
             glossary_md = jargon.glossary_block(
-                jargon_hits, lang, max_entries=cfg.jargon.max_glossary_entries,
+                jargon_hits,
+                lang,
+                max_entries=cfg.jargon.max_glossary_entries,
             )
             jargon_note = jargon.transparency_note(jargon_hits, lang)
 
@@ -249,27 +255,33 @@ def answer(
             body = llm_unavailable_message(lang) if llm_error else refusal_message(cfg, lang)
             if on_token:
                 on_token(body)
-        rendered = _render(cfg, lang, body, [], gate,
-                           include_sources=False, jargon_note=jargon_note)
+        rendered = _render(
+            cfg, lang, body, [], gate, include_sources=False, jargon_note=jargon_note
+        )
         if on_token:
             already = (
-                (jargon_note + "\n\n" if jargon_note and cfg.jargon.show_transparency_note else "")
-                + body
-            )
-            tail = rendered[len(already):]
+                jargon_note + "\n\n" if jargon_note and cfg.jargon.show_transparency_note else ""
+            ) + body
+            tail = rendered[len(already) :]
             if tail:
                 on_token(tail)
         return AnswerResult(
-            question=question, lang=lang, answered=False,
-            answer=body, rendered=rendered,
-            gate=gate, retrieval=retrieval,
+            question=question,
+            lang=lang,
+            answered=False,
+            answer=body,
+            rendered=rendered,
+            gate=gate,
+            retrieval=retrieval,
             latency_ms=int((time.monotonic() - t0) * 1000),
             meta_fallback=meta_fallback,
-            expanded_question=expanded_q, jargon_hits=jargon_hits,
+            expanded_question=expanded_q,
+            jargon_hits=jargon_hits,
         )
 
-    messages = compose_messages(cfg, lang, history, retrieval.reranked,
-                                 expanded_q, glossary_md=glossary_md)
+    messages = compose_messages(
+        cfg, lang, history, retrieval.reranked, expanded_q, glossary_md=glossary_md
+    )
 
     # Emit the jargon note up-front so the user sees it before tokens stream.
     if on_token and jargon_note and cfg.jargon.show_transparency_note:
@@ -291,7 +303,10 @@ def answer(
     if not body:
         log.warning(
             "LLM produced empty body for question (lang=%s, gate=%s, top1=%.3f): %r",
-            lang, gate.reason, gate.top1, question[:120],
+            lang,
+            gate.reason,
+            gate.top1,
+            question[:120],
         )
         body = empty_answer_message(lang)
         answered = False
@@ -330,17 +345,21 @@ def answer(
     # body during the stream and re-render it client-side using the same
     # numbering algorithm — the outputs match.
     jargon_prefix = (
-        jargon_note + "\n\n"
-        if jargon_note and cfg.jargon.show_transparency_note else ""
+        jargon_note + "\n\n" if jargon_note and cfg.jargon.show_transparency_note else ""
     )
     rendered = (jargon_prefix + numbered_body + tail).strip()
 
     return AnswerResult(
-        question=question, lang=lang, answered=answered,
-        answer=body, rendered=rendered,
-        gate=gate, retrieval=retrieval,
+        question=question,
+        lang=lang,
+        answered=answered,
+        answer=body,
+        rendered=rendered,
+        gate=gate,
+        retrieval=retrieval,
         latency_ms=int((time.monotonic() - t0) * 1000),
-        expanded_question=expanded_q, jargon_hits=jargon_hits,
+        expanded_question=expanded_q,
+        jargon_hits=jargon_hits,
     )
 
 
@@ -356,7 +375,9 @@ def _stream_answer(cfg: Config, messages: list[dict], on_thinking=None) -> Itera
 @click.option("--show-context", is_flag=True, help="Print retrieved chunks before the answer.")
 @click.option("--no-stream", is_flag=True, help="Wait for full response instead of streaming.")
 @click.option(
-    "-i", "--interactive", is_flag=True,
+    "-i",
+    "--interactive",
+    is_flag=True,
     help="REPL mode: keeps short conversation memory between turns.",
 )
 def main(question: tuple[str, ...], show_context: bool, no_stream: bool, interactive: bool):
@@ -378,6 +399,7 @@ def main(question: tuple[str, ...], show_context: bool, no_stream: bool, interac
 def _run_once(cfg: Config, console: Console, q: str, *, show_context: bool, no_stream: bool):
     if show_context:
         from student_bot.bot.retrieval import retrieve as _rt
+
         r = _rt(cfg, q)
         _print_context(console, r.reranked)
 
@@ -428,6 +450,7 @@ def _repl(cfg: Config, console: Console, *, show_context: bool):
         history = memory.get(user_id, thread_id)
         if show_context:
             from student_bot.bot.retrieval import retrieve as _rt
+
             r = _rt(cfg, q)
             _print_context(console, r.reranked)
 

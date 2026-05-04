@@ -1,4 +1,5 @@
 """Retrieval: query → top-N from Chroma → cross-encoder rerank → top-K."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -20,8 +21,8 @@ class RetrievedChunk:
     language: str
     section_path: str
     chunk_index: int
-    chroma_distance: float       # cosine distance from Chroma (lower = closer)
-    rerank_score: float = 0.0    # cross-encoder logit
+    chroma_distance: float  # cosine distance from Chroma (lower = closer)
+    rerank_score: float = 0.0  # cross-encoder logit
     page_start: int | None = None
 
 
@@ -29,7 +30,7 @@ class RetrievedChunk:
 class RetrievalResult:
     query: str
     candidates: list[RetrievedChunk] = field(default_factory=list)  # full top-N from Chroma
-    reranked: list[RetrievedChunk] = field(default_factory=list)    # top-K after rerank
+    reranked: list[RetrievedChunk] = field(default_factory=list)  # top-K after rerank
 
 
 @lru_cache(maxsize=1)
@@ -60,18 +61,20 @@ def retrieve(cfg: Config, query: str) -> RetrievalResult:
     for cid, text, meta, d in zip(ids, docs, metas, dists):
         page_raw = meta.get("page_start", 0)
         page = int(page_raw) if page_raw else None
-        candidates.append(RetrievedChunk(
-            chunk_id=cid,
-            text=text or "",
-            rel_source=meta.get("rel_source", ""),
-            doc_title=meta.get("doc_title", ""),
-            doc_type=meta.get("doc_type", ""),
-            language=meta.get("language", ""),
-            section_path=meta.get("section_path", ""),
-            chunk_index=int(meta.get("chunk_index", 0)),
-            chroma_distance=float(d),
-            page_start=page,
-        ))
+        candidates.append(
+            RetrievedChunk(
+                chunk_id=cid,
+                text=text or "",
+                rel_source=meta.get("rel_source", ""),
+                doc_title=meta.get("doc_title", ""),
+                doc_type=meta.get("doc_type", ""),
+                language=meta.get("language", ""),
+                section_path=meta.get("section_path", ""),
+                chunk_index=int(meta.get("chunk_index", 0)),
+                chroma_distance=float(d),
+                page_start=page,
+            )
+        )
 
     if not candidates:
         return RetrievalResult(query=query)

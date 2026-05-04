@@ -1,4 +1,5 @@
 """Walk the corpus, parse, chunk, embed, upsert. Idempotent via content hashes."""
+
 from __future__ import annotations
 
 import sys

@@ -2,6 +2,7 @@
 
 Format: <username>:scrypt:<salt_b64>:<hash_b64>
 """
+
 from __future__ import annotations
 
 import getpass

@@ -12,6 +12,7 @@ When a user has opted out, qa_log writes are skipped and only an anonymous
 counter row is recorded so analytics can still see *that* a question
 happened (without its content).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -141,9 +142,7 @@ class LogDB:
     def has_disclosed(self, user_id: str) -> bool:
         uid = self.hash_user(user_id)
         with self._lock, self._connect() as conn:
-            row = conn.execute(
-                "SELECT 1 FROM disclosed WHERE user_id_hash = ?", (uid,)
-            ).fetchone()
+            row = conn.execute("SELECT 1 FROM disclosed WHERE user_id_hash = ?", (uid,)).fetchone()
         return row is not None
 
     def mark_disclosed(self, user_id: str) -> None:
@@ -235,11 +234,24 @@ class LogDB:
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    int(time.time()), uid, channel_type, channel_id, bot_post_id, root_id,
-                    question, lang, json.dumps(retrieved_chunk_ids),
-                    rerank_top1, rerank_meanK, distinct_sources,
-                    1 if gate_pass else 0, gate_reason, answer, latency_ms,
-                    question_expanded, ",".join(jargon_hits or []) if jargon_hits else None,
+                    int(time.time()),
+                    uid,
+                    channel_type,
+                    channel_id,
+                    bot_post_id,
+                    root_id,
+                    question,
+                    lang,
+                    json.dumps(retrieved_chunk_ids),
+                    rerank_top1,
+                    rerank_meanK,
+                    distinct_sources,
+                    1 if gate_pass else 0,
+                    gate_reason,
+                    answer,
+                    latency_ms,
+                    question_expanded,
+                    ",".join(jargon_hits or []) if jargon_hits else None,
                 ),
             )
             conn.commit()

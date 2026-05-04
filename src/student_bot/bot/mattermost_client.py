@@ -9,6 +9,7 @@ Behaviour:
 - Wraps the websocket loop in a reconnect-with-backoff retry loop.
 - LLM calls run on a worker thread so websocket events keep flowing.
 """
+
 from __future__ import annotations
 
 import json
@@ -51,7 +52,8 @@ class _SslShim:
     @staticmethod
     def create_default_context(purpose=None, **kwargs):
         return _ssl_module.create_default_context(
-            purpose=_ssl_module.Purpose.SERVER_AUTH, **kwargs,
+            purpose=_ssl_module.Purpose.SERVER_AUTH,
+            **kwargs,
         )
 
 
@@ -119,18 +121,20 @@ class StudentBot:
         # `keepalive=True` makes the websocket loop auto-reconnect with
         # `keepalive_delay` seconds between attempts; we cap with our own
         # outer loop in case the whole thing crashes.
-        return Driver({
-            "url": s.url,
-            "token": s.token,
-            "scheme": s.scheme,
-            "port": s.port,
-            "basepath": "/api/v4",
-            "verify": True,
-            "timeout": 30,
-            "keepalive": True,
-            "keepalive_delay": 5,
-            "debug": False,
-        })
+        return Driver(
+            {
+                "url": s.url,
+                "token": s.token,
+                "scheme": s.scheme,
+                "port": s.port,
+                "basepath": "/api/v4",
+                "verify": True,
+                "timeout": 30,
+                "keepalive": True,
+                "keepalive_delay": 5,
+                "debug": False,
+            }
+        )
 
     def login(self) -> None:
         with self._driver_lock:
@@ -159,11 +163,13 @@ class StudentBot:
         assert self.driver is not None
         try:
             with self._driver_lock:
-                resp = self.driver.posts.create_post({
-                    "channel_id": channel_id,
-                    "message": message,
-                    "root_id": root_id or "",
-                })
+                resp = self.driver.posts.create_post(
+                    {
+                        "channel_id": channel_id,
+                        "message": message,
+                        "root_id": root_id or "",
+                    }
+                )
             return resp.get("id")
         except Exception:
             log.exception("post failed")
@@ -173,10 +179,11 @@ class StudentBot:
         """Returns True if the message was handled as a !jargon command."""
         from student_bot.jargon import Jargon
         from student_bot.lang import detect
+
         text = body.strip()
         if not text.lower().startswith("!jargon"):
             return False
-        rest = text[len("!jargon"):].strip()
+        rest = text[len("!jargon") :].strip()
         sub, _, tail = rest.partition(" ")
         sub = sub.lower()
         lang = detect(text) if text else "sv"
@@ -188,12 +195,12 @@ class StudentBot:
             if not entries:
                 msg = "Ordlistan är tom." if lang == "sv" else "The dictionary is empty."
             else:
-                head = "| Term | Betydelse | Förklaring |\n|---|---|---|" if lang == "sv" \
+                head = (
+                    "| Term | Betydelse | Förklaring |\n|---|---|---|"
+                    if lang == "sv"
                     else "| Term | Means | Definition |\n|---|---|---|"
-                rows = [
-                    f"| {e.term} | {e.expansion} | {e.definition or '—'} |"
-                    for e in entries
-                ]
+                )
+                rows = [f"| {e.term} | {e.expansion} | {e.definition or '—'} |" for e in entries]
                 msg = "\n".join([head, *rows])
             self._post(job.channel_id, msg, job.root_id)
             return True
@@ -204,20 +211,20 @@ class StudentBot:
             expansion = expansion.strip()
             if not (term and sep and expansion):
                 example = "`!jargon suggest KEX-jobb = kandidatexamensarbete`"
-                err = (f"Format: {example}" if lang == "sv"
-                       else f"Format: {example}")
+                err = f"Format: {example}" if lang == "sv" else f"Format: {example}"
                 self._post(job.channel_id, err, job.root_id)
                 return True
             self._record_proposal(job.user_id, term, expansion, lang)
-            ack = ("Tack! Förslaget hamnar i kö för admin att granska."
-                   if lang == "sv"
-                   else "Thanks! Your suggestion is queued for admin review.")
+            ack = (
+                "Tack! Förslaget hamnar i kö för admin att granska."
+                if lang == "sv"
+                else "Thanks! Your suggestion is queued for admin review."
+            )
             self._post(job.channel_id, ack, job.root_id)
             return True
 
         # Unknown subcommand — show help.
-        help_sv = ("Användning: `!jargon list` eller "
-                   "`!jargon suggest TERM = BETYDELSE`")
+        help_sv = "Användning: `!jargon list` eller `!jargon suggest TERM = BETYDELSE`"
         help_en = "Usage: `!jargon list` or `!jargon suggest TERM = MEANING`"
         self._post(job.channel_id, help_en if lang == "en" else help_sv, job.root_id)
         return True
@@ -225,6 +232,7 @@ class StudentBot:
     def _record_proposal(self, user_id: str, term: str, expansion: str, lang: str) -> None:
         """Append a proposal to dictionary_proposals.json."""
         from student_bot.jargon import _nfc_lower, _read_json, _write_json
+
         path = self.cfg.absolute(Path(self.cfg.jargon.proposals_file))
         data = _read_json(path) if path.exists() else {"version": 1, "entries": {}}
         entries = data.setdefault("entries", {})
@@ -247,6 +255,7 @@ class StudentBot:
     def _handle_privacy_command(self, job: _Job, body: str) -> bool:
         """Returns True if the message was handled as a !privacy command."""
         from student_bot.lang import detect
+
         parts = body.lower().split()
         if not parts or parts[0] != "!privacy":
             return False
@@ -254,10 +263,14 @@ class StudentBot:
         sub = parts[1] if len(parts) > 1 else "status"
         if sub == "off":
             self.db.set_opt_out(job.user_id, True)
-            self._post(job.channel_id, PRIVACY_OFF_EN if lang == "en" else PRIVACY_OFF_SV, job.root_id)
+            self._post(
+                job.channel_id, PRIVACY_OFF_EN if lang == "en" else PRIVACY_OFF_SV, job.root_id
+            )
         elif sub == "on":
             self.db.set_opt_out(job.user_id, False)
-            self._post(job.channel_id, PRIVACY_ON_EN if lang == "en" else PRIVACY_ON_SV, job.root_id)
+            self._post(
+                job.channel_id, PRIVACY_ON_EN if lang == "en" else PRIVACY_ON_SV, job.root_id
+            )
         else:
             opted = self.db.is_opted_out(job.user_id)
             if lang == "en":
@@ -273,6 +286,7 @@ class StudentBot:
         # First-DM GDPR notice (only in DMs, only once per user).
         if job.channel_type == "D" and not self.db.has_disclosed(job.user_id):
             from student_bot.lang import detect
+
             lang = detect(job.question)
             notice = GDPR_NOTICE_EN if lang == "en" else GDPR_NOTICE_SV
             self._post(job.channel_id, notice, job.root_id)
@@ -314,6 +328,7 @@ class StudentBot:
         if qa_id is not None and self.cfg.topics.enabled:
             try:
                 from student_bot.bot.topics import classify
+
                 topic, confidence = classify(self.cfg, job.question, result.lang)
                 self.db.update_topic(qa_id, topic, confidence)
             except Exception:
@@ -366,13 +381,15 @@ class StudentBot:
             question = self._strip_mention(post.get("message", ""))
             if not question:
                 return
-            self.queue.put(_Job(
-                user_id=post.get("user_id", ""),
-                channel_id=post.get("channel_id", ""),
-                channel_type=channel_type or "O",
-                root_id=self._root_id_for_reply(post),
-                question=question,
-            ))
+            self.queue.put(
+                _Job(
+                    user_id=post.get("user_id", ""),
+                    channel_id=post.get("channel_id", ""),
+                    channel_type=channel_type or "O",
+                    root_id=self._root_id_for_reply(post),
+                    question=question,
+                )
+            )
 
         elif etype == "reaction_added":
             try:
@@ -383,8 +400,10 @@ class StudentBot:
                 return
             emoji = reaction.get("emoji_name", "")
             sentiment = (
-                "positive" if emoji in POSITIVE_EMOJI
-                else "negative" if emoji in NEGATIVE_EMOJI
+                "positive"
+                if emoji in POSITIVE_EMOJI
+                else "negative"
+                if emoji in NEGATIVE_EMOJI
                 else None
             )
             if not sentiment:

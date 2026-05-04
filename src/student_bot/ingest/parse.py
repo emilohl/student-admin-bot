@@ -8,6 +8,7 @@ Markdown: pass-through.
 Output: ParsedDoc with full text plus a list of (line_index, header_level, header_text)
 markers used downstream by the chunker to reconstruct section_path per chunk.
 """
+
 from __future__ import annotations
 
 import re
@@ -34,12 +35,12 @@ class Header:
 
 @dataclass
 class ParsedDoc:
-    source: Path           # absolute path
-    rel_source: str        # path relative to docs root (used as stable id)
+    source: Path  # absolute path
+    rel_source: str  # path relative to docs root (used as stable id)
     doc_title: str
-    doc_type: str          # "policy" | "curriculum" | "faq" | "html" | "other"
-    language: str          # "sv" | "en"
-    text: str              # markdown-ish plain text with header lines preserved
+    doc_type: str  # "policy" | "curriculum" | "faq" | "html" | "other"
+    language: str  # "sv" | "en"
+    text: str  # markdown-ish plain text with header lines preserved
     headers: list[Header] = field(default_factory=list)
     # Page number for each line in `text` (1-indexed for PDFs; None for MD/HTML).
     # Same length as text.splitlines(); used downstream to attach `page_start`
@@ -76,6 +77,7 @@ def _parse_pdf(path: Path, use_docling: bool) -> tuple[str, list[int | None]]:
     page separators we insert) keep alignment with text.splitlines()."""
     if use_docling:
         from docling.document_converter import DocumentConverter  # heavy; lazy
+
         result = DocumentConverter().convert(str(path))
         text = result.document.export_to_markdown()
         return text, [None] * len(text.splitlines())
@@ -104,7 +106,7 @@ def _parse_html(path: Path) -> tuple[str, list[int | None]]:
         soup = BeautifulSoup(f, "lxml")
     for tag in soup(["script", "style", "noscript"]):
         tag.decompose()
-    title = (soup.title.string.strip() if soup.title and soup.title.string else "")
+    title = soup.title.string.strip() if soup.title and soup.title.string else ""
     body = soup.get_text("\n", strip=True)
     text = f"# {title}\n\n{body}" if title else body
     return text, [None] * len(text.splitlines())

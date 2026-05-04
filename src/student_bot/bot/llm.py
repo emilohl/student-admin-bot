@@ -1,6 +1,7 @@
 """Ollama client wrapper. Streaming chat completion with optional
 filtering of Gemma 4 reasoning blocks.
 """
+
 from __future__ import annotations
 
 import logging
@@ -108,7 +109,7 @@ def stream_chat(
                 if idx >= 0:
                     if idx > 0:
                         yield buf[:idx]
-                    buf = buf[idx + len(_OPEN_TAG):]
+                    buf = buf[idx + len(_OPEN_TAG) :]
                     in_think = True
                     saw_thinking = True
                     if on_thinking:
@@ -134,7 +135,7 @@ def stream_chat(
             else:
                 idx = buf.find(_CLOSE_TAG)
                 if idx >= 0:
-                    buf = buf[idx + len(_CLOSE_TAG):]
+                    buf = buf[idx + len(_CLOSE_TAG) :]
                     in_think = False
                     if on_thinking:
                         on_thinking(False)
@@ -159,8 +160,8 @@ def stream_chat(
     if cfg.llm.thinking and not saw_thinking:
         sample = "".join(raw_capture)[:200]
         log.warning(
-            "thinking enabled but model emitted no reasoning tags. "
-            "Raw stream start: %r", sample,
+            "thinking enabled but model emitted no reasoning tags. Raw stream start: %r",
+            sample,
         )
 
 

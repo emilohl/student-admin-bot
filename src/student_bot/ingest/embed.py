@@ -6,6 +6,7 @@ The e5 family REQUIRES specific prefixes:
 Without them retrieval quality drops silently. Centralised here so callers
 just pass plain text.
 """
+
 from __future__ import annotations
 
 from functools import lru_cache
@@ -72,9 +73,7 @@ def get_chroma_collection(cfg: Config):
         path=str(persist_dir),
         settings=ChromaSettings(
             anonymized_telemetry=False,
-            chroma_product_telemetry_impl=(
-                "student_bot.ingest._chroma_telemetry.NoopTelemetry"
-            ),
+            chroma_product_telemetry_impl=("student_bot.ingest._chroma_telemetry.NoopTelemetry"),
             allow_reset=False,
         ),
     )

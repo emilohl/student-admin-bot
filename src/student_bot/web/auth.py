@@ -11,6 +11,7 @@ Two-factor by design:
 When `web.auth_enabled` is false, both gates are bypassed — appropriate for
 a localhost-only deployment.
 """
+
 from __future__ import annotations
 
 import base64
@@ -40,8 +41,12 @@ def hash_password(password: str) -> str:
     """Returns a passwd-style record body: 'scrypt:<salt_b64>:<hash_b64>'."""
     salt = secrets.token_bytes(16)
     digest = hashlib.scrypt(
-        password.encode("utf-8"), salt=salt,
-        n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P, dklen=SCRYPT_DKLEN,
+        password.encode("utf-8"),
+        salt=salt,
+        n=SCRYPT_N,
+        r=SCRYPT_R,
+        p=SCRYPT_P,
+        dklen=SCRYPT_DKLEN,
     )
     return f"scrypt:{base64.b64encode(salt).decode()}:{base64.b64encode(digest).decode()}"
 
@@ -59,8 +64,12 @@ def verify_password(password: str, record: str) -> bool:
     except Exception:
         return False
     actual = hashlib.scrypt(
-        password.encode("utf-8"), salt=salt,
-        n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P, dklen=SCRYPT_DKLEN,
+        password.encode("utf-8"),
+        salt=salt,
+        n=SCRYPT_N,
+        r=SCRYPT_R,
+        p=SCRYPT_P,
+        dklen=SCRYPT_DKLEN,
     )
     return hmac.compare_digest(actual, expected)
 
@@ -89,9 +98,9 @@ def load_users_file(path: Path) -> dict[str, str]:
 @dataclass
 class AuthContext:
     enabled: bool
-    user: str | None             # HTTP Basic username, if authenticated
-    granted: bool                # token-cookie granted
-    name: str | None             # user-supplied display name
+    user: str | None  # HTTP Basic username, if authenticated
+    granted: bool  # token-cookie granted
+    name: str | None  # user-supplied display name
 
 
 def _expected_token() -> str | None:

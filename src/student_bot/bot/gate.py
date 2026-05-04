@@ -6,6 +6,7 @@ Combines two signals — both must hold for the bot to attempt an answer:
 
 The thresholds are empirical — tune from `eval/run_eval.py` output.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -38,8 +39,9 @@ def evaluate(cfg: Config, result: RetrievalResult) -> GateDecision:
     if meanK < cfg.gate.rerank_meanK_min:
         return GateDecision(False, f"meanK<{cfg.gate.rerank_meanK_min}", top1, meanK, distinct)
     if distinct > cfg.gate.max_distinct_sources_in_topk:
-        return GateDecision(False, f"sources_spread>{cfg.gate.max_distinct_sources_in_topk}",
-                            top1, meanK, distinct)
+        return GateDecision(
+            False, f"sources_spread>{cfg.gate.max_distinct_sources_in_topk}", top1, meanK, distinct
+        )
 
     return GateDecision(True, "pass", top1, meanK, distinct)
 

@@ -11,6 +11,7 @@ argument binding before the body runs.
 Pointing Chroma at this class via `chroma_product_telemetry_impl`
 prevents any posthog call from being attempted at all.
 """
+
 from __future__ import annotations
 
 from chromadb.telemetry.product import ProductTelemetryClient, ProductTelemetryEvent

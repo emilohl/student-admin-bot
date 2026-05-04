@@ -11,6 +11,7 @@ Usage:
     glossary_md = j.glossary_block(hits, lang="sv")
     note = j.transparency_note(hits, lang="sv")
 """
+
 from __future__ import annotations
 
 import json
@@ -29,10 +30,10 @@ from student_bot.config import Config, get_config
 
 @dataclass
 class JargonEntry:
-    key: str             # lowercase NFC, used as dict key
-    term: str            # display capitalisation
+    key: str  # lowercase NFC, used as dict key
+    term: str  # display capitalisation
     expansion: str
-    lang: str            # "sv" | "en" | "any"
+    lang: str  # "sv" | "en" | "any"
     definition: str = ""
     added_by: str = ""
     added_ts: str = ""
@@ -56,8 +57,7 @@ def _read_json(path: Path) -> dict:
 def _write_json(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n",
-                   encoding="utf-8")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     tmp.replace(path)
 
 
@@ -159,7 +159,9 @@ class Jargon:
         return hits
 
     def expand_query(
-        self, text: str, lang: str | None = None,
+        self,
+        text: str,
+        lang: str | None = None,
     ) -> tuple[str, list[JargonEntry]]:
         """Return (text-with-inline-expansions, hits). Each matched span is
         followed by " (<expansion>)". The original surface form is preserved."""
@@ -190,7 +192,10 @@ class Jargon:
         return expanded, hits
 
     def glossary_block(
-        self, entries: list[JargonEntry], lang: str, max_entries: int = 6,
+        self,
+        entries: list[JargonEntry],
+        lang: str,
+        max_entries: int = 6,
     ) -> str:
         """Markdown block for the LLM prompt. Empty string if no entries."""
         if not entries:
@@ -205,7 +210,9 @@ class Jargon:
         return "\n".join(lines)
 
     def transparency_note(
-        self, entries: list[JargonEntry], lang: str,
+        self,
+        entries: list[JargonEntry],
+        lang: str,
     ) -> str:
         """One-line italic note shown above the answer. Empty if no hits."""
         if not entries:
