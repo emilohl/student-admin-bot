@@ -28,7 +28,7 @@ DEFAULT_LAST_NAME = "Adminbot"
 DEFAULT_NICKNAME = "Lux Adminbot"
 DEFAULT_DESCRIPTION_SV = (
     "Automatisk assistent för administrativa frågor om CTFYS-programmet vid KTH. "
-    "Svaren baseras på indexerade kursdokument — kontrollera alltid mot källorna "
+    "Svaren baseras på indexerade FAQ- och styrdokument — kontrollera alltid mot källorna "
     "och kontakta studievägledaren för personliga ärenden."
 )
 
