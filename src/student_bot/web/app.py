@@ -341,6 +341,8 @@ def _stream_answer(
             "confidence": confidence_badge(result.lang, result.gate.top1),
             "confidence_level": _conf_class(result.gate.top1),
             "latency_ms": result.latency_ms,
+            "source_urls": result.source_urls,
+            "stale_cache_days": result.stale_cache_days,
         }
         yield _sse("meta", json.dumps(meta))
 
@@ -536,6 +538,8 @@ def main(host: str | None, port: int | None, reload: bool):
     logging.basicConfig(
         level=logging.INFO, format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
     )
+    for noisy in ("httpx", "httpcore", "huggingface_hub", "sentence_transformers", "transformers"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
     cfg = get_config()
     bind_host = host or cfg.web.bind_host
     bind_port = port or cfg.web.port

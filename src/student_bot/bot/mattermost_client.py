@@ -521,6 +521,15 @@ def _setup_logging():
         datefmt="[%X]",
         handlers=[RichHandler(rich_tracebacks=True)],
     )
+    # Keep third-party hub/http chatter out of normal bot logs.
+    for noisy in (
+        "httpx",
+        "httpcore",
+        "huggingface_hub",
+        "sentence_transformers",
+        "transformers",
+    ):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
 def main():

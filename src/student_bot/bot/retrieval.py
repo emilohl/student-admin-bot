@@ -24,6 +24,9 @@ class RetrievedChunk:
     chroma_distance: float  # cosine distance from Chroma (lower = closer)
     rerank_score: float = 0.0  # cross-encoder logit
     page_start: int | None = None
+    source_url: str = ""
+    fetched_at: int | None = None
+    is_stale: bool = False
 
 
 @dataclass

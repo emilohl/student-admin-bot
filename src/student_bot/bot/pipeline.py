@@ -38,6 +38,7 @@ from student_bot.bot.prompts import (
     refusal_message,
 )
 from student_bot.bot.retrieval import RetrievalResult, RetrievedChunk, retrieve
+from student_bot.bot.web_retrieval import maybe_fetch_dynamic_web
 from student_bot.config import Config, get_config
 from student_bot.jargon import Jargon, JargonEntry
 from student_bot.lang import detect
@@ -82,6 +83,8 @@ class AnswerResult:
     # re-render the Sources block without re-parsing `rendered`.
     numbered_body: str = ""
     cited_chunks: list = field(default_factory=list)
+    source_urls: list[str] = field(default_factory=list)
+    stale_cache_days: int | None = None
 
 
 # --- Per-key rate limiter (simple sliding window over the last 60 s) ---
@@ -230,8 +233,46 @@ def answer(
             )
             jargon_note = jargon.transparency_note(jargon_hits, lang)
 
-    retrieval = retrieve(cfg, expanded_q)
-    gate = evaluate_gate(cfg, retrieval)
+    web_result = maybe_fetch_dynamic_web(cfg, expanded_q)
+    source_urls: list[str] = []
+    stale_cache_days: int | None = None
+    if web_result and web_result.chunks:
+        retrieval = RetrievalResult(query=expanded_q, candidates=web_result.chunks, reranked=web_result.chunks)
+        gate = GateDecision(
+            True,
+            "web_cache" if web_result.used_stale_cache else "web_live",
+            3.5 if not web_result.used_stale_cache else 2.5,
+            3.5 if not web_result.used_stale_cache else 2.5,
+            len({c.rel_source for c in web_result.chunks}),
+        )
+        source_urls = list(web_result.source_urls)
+        if web_result.used_stale_cache:
+            stale_cache_days = web_result.stale_age_days
+    elif web_result and web_result.failure_url:
+        msg = (
+            "KTH-sidan kunde inte nås just nu och ingen färsk cache finns. "
+            f"Prova gärna länken direkt: {web_result.failure_url}"
+            if lang == "sv"
+            else "The KTH page could not be reached and no recent cache exists. "
+            f"Try opening the URL directly: {web_result.failure_url}"
+        )
+        if on_token:
+            on_token(msg)
+        return AnswerResult(
+            question=question,
+            lang=lang,
+            answered=False,
+            answer=msg,
+            rendered=msg,
+            gate=GateDecision(False, "web_unreachable_no_cache", 0.0, 0.0, 0),
+            retrieval=RetrievalResult(query=expanded_q),
+            latency_ms=int((time.monotonic() - t0) * 1000),
+            expanded_question=expanded_q,
+            jargon_hits=jargon_hits,
+        )
+    else:
+        retrieval = retrieve(cfg, expanded_q)
+        gate = evaluate_gate(cfg, retrieval)
 
     if not gate.passed:
         # Run a single LLM call with a self-aware system prompt and no
@@ -285,9 +326,7 @@ def answer(
             jargon_hits=jargon_hits,
         )
 
-    messages = compose_messages(
-        cfg, lang, history, retrieval.reranked, expanded_q, glossary_md=glossary_md
-    )
+    messages = compose_messages(cfg, lang, history, retrieval.reranked, expanded_q, glossary_md=glossary_md)
 
     # Emit the jargon note up-front so the user sees it before tokens stream.
     if on_token and jargon_note and cfg.jargon.show_transparency_note:
@@ -299,6 +338,14 @@ def answer(
         if on_token:
             on_token(delta)
     body = "".join(parts).strip()
+    if stale_cache_days is not None:
+        note = (
+            f"Not: KTH-sidan kunde inte nås live. Svar baseras på cache från {stale_cache_days} dagar sedan."
+            if lang == "sv"
+            else "Note: The KTH page could not be reached live. This answer uses a cached copy "
+            f"from {stale_cache_days} days ago."
+        )
+        body = f"{note}\n\n{body}" if body else note
 
     # Rare hiccup: gate passed and the LLM streamed cleanly but emitted no
     # text (e.g., sampler stopped immediately, context full). Surface a
@@ -368,6 +415,8 @@ def answer(
         jargon_hits=jargon_hits,
         numbered_body=numbered_body,
         cited_chunks=list(sources_chunks),
+        source_urls=source_urls,
+        stale_cache_days=stale_cache_days,
     )
 
 

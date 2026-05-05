@@ -105,12 +105,30 @@ topics:
   classifier_temperature: 0.0
 
 # Student-jargon dictionary. Expansions happen at query time so retrieval
-# matches the formal term in the corpus. Edit `dictionary.json` (or accept
+# matches the formal term in the corpus. Edit `data/dictionary.json` (or accept
 # proposals via `student-bot-jargon accept N`) — changes are picked up on the
 # next query without a restart.
 jargon:
   enabled: true
-  file: dictionary.json
-  proposals_file: dictionary_proposals.json
+  file: data/dictionary.json
+  proposals_file: data/dictionary_proposals.json
   show_transparency_note: true   # adds "_Tolkar X som Y._" above the answer
   max_glossary_entries: 6
+
+# Dynamic KTH web retrieval for tightly allowlisted student pages.
+dynamic_web:
+  enabled: true
+  timeout_seconds: 6.0
+  max_pages_per_query: 6
+  cache_ttl_days: 7
+  # Matched against URL path only (host is hardcoded to www.kth.se).
+  allowed_patterns:
+    - "^/student/kurser/kurs/[A-Z0-9]+/?$"
+    - "^/student/kurser/program/[A-Z0-9]+(?:/[0-9]{5}/arskurs[0-9]+)?/?$"
+  user_agent: "student-bot/0.1 (+https://github.com/cohm/student-admin-bot)"
+  max_bytes: 1500000
+  max_links_followed: 24
+  cache_db: data/web_cache.sqlite
+  program_aliases_file: data/program_aliases.json
+  program_aliases_ttl_hours: 24
+  program_aliases: {}
