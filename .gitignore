@@ -11,7 +11,7 @@ data/web_users
 
 # Student-submitted jargon proposals — review with `student-bot-jargon proposals`
 # and move accepted entries to dictionary.json before pushing.
-dictionary_proposals.json
+data/dictionary_proposals.json
 
 # uv
 .python-version

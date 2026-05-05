@@ -177,7 +177,7 @@ Docker Desktop runs Linux in a **VM**: total Docker RAM in Activity Monitor is o
 ### Image notes
 
 - The Dockerfile installs **`torch`** from **CPU-only** wheels for Linux (see **`pyproject.toml`** **`[tool.uv.sources]`** / PyTorch CPU index) so the image does not pull NVIDIA CUDA packages.
-- **`topics.yaml`** and **`dictionary.json`** are **`COPY`**’d into the image as a fallback for non-compose runs. Compose host-mounts **`config.yaml`**, **`./data`**, **`dictionary.json`**, **`dictionary_proposals.json`**, and the corpus on top, so jargon proposals submitted via the running bot/web and the host’s **`student-bot-jargon`** CLI share the same files.
+- **`topics.yaml`** and **`data/dictionary.json`** are **`COPY`**’d into the image as a fallback for non-compose runs. Compose host-mounts **`config.yaml`**, **`./data`** (which contains the dictionary, proposals, logs, Chroma + index, and web users), and the corpus on top, so jargon proposals submitted via the running bot/web and the host’s **`student-bot-jargon`** CLI share the same files.
 
 ---
 
@@ -361,9 +361,9 @@ their previous label until you reclassify them.
 
 Students don't say *kandidatexamensarbete* — they say *KEX-jobb*. The
 embedding model has no signal connecting the two, so retrieval misses
-unless we bridge them. `dictionary.json` (in the repo root) is a small,
-hand-curated map of student slang to the formal corpus terms; it's applied
-at query time, never re-embedded.
+unless we bridge them. `data/dictionary.json` is a small, hand-curated map
+of student slang to the formal corpus terms; it's applied at query time, 
+never re-embedded.
 
 **What happens at query time**:
 1. The bot detects jargon terms (whole-word, NFC-normalised, case-insensitive).
@@ -428,8 +428,9 @@ suggestions never enter the public repo. Only `dictionary.json` is shared.
 
 **Open-repo security**: PR review is the gate. The bot doesn't load code
 from JSON, only string substitutions, so a poisoned entry can mislead
-retrieval but cannot escalate. `.env`, `data/`, `dictionary_proposals.json`,
-and `data/web_users` are all in `.gitignore`; secrets stay out.
+retrieval but cannot escalate. `.env`, `data/` (including
+`data/dictionary_proposals.json` and `data/web_users`) are all in
+`.gitignore`; secrets stay out.
 
 ---
 

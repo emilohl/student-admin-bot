@@ -133,8 +133,8 @@ class TopicsConfig(BaseModel):
 
 class JargonConfig(BaseModel):
     enabled: bool = True
-    file: str = "dictionary.json"
-    proposals_file: str = "dictionary_proposals.json"
+    file: str = "data/dictionary.json"
+    proposals_file: str = "data/dictionary_proposals.json"
     show_transparency_note: bool = True
     max_glossary_entries: int = 6
 
