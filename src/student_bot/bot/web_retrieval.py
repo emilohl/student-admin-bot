@@ -107,7 +107,10 @@ def _fetch_program_aliases_page(url: str, cfg: Config) -> dict[str, str]:
     log.info("dynamic-web aliases: fetching %s", url)
     req = Request(
         url,
-        headers={"User-Agent": cfg.dynamic_web.user_agent, "Accept": "text/html,application/xhtml+xml"},
+        headers={
+            "User-Agent": cfg.dynamic_web.user_agent,
+            "Accept": "text/html,application/xhtml+xml",
+        },
     )
     with urlopen(req, timeout=cfg.dynamic_web.timeout_seconds) as resp:
         html = resp.read(cfg.dynamic_web.max_bytes + 1).decode("utf-8", errors="replace")
@@ -411,4 +414,3 @@ def maybe_fetch_dynamic_web(cfg: Config, question: str) -> WebFetchResult | None
         used_stale_cache=used_stale,
         stale_age_days=stale_days,
     )
-

@@ -112,4 +112,3 @@ def test_extract_targets_prefers_multiword_program_alias_over_single_subject(mon
 def test_build_doc_url_keeps_absolute_web_urls():
     got = build_doc_url("https://www.kth.se/student/kurser/program/TNTEM", None, "/docs")
     assert got == "https://www.kth.se/student/kurser/program/TNTEM"
-

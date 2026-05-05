@@ -75,4 +75,3 @@ class WebCache:
     def age_days(fetched_at: int) -> int:
         secs = max(0, int(time.time()) - fetched_at)
         return secs // 86400
-

@@ -237,7 +237,9 @@ def answer(
     source_urls: list[str] = []
     stale_cache_days: int | None = None
     if web_result and web_result.chunks:
-        retrieval = RetrievalResult(query=expanded_q, candidates=web_result.chunks, reranked=web_result.chunks)
+        retrieval = RetrievalResult(
+            query=expanded_q, candidates=web_result.chunks, reranked=web_result.chunks
+        )
         gate = GateDecision(
             True,
             "web_cache" if web_result.used_stale_cache else "web_live",
@@ -326,7 +328,9 @@ def answer(
             jargon_hits=jargon_hits,
         )
 
-    messages = compose_messages(cfg, lang, history, retrieval.reranked, expanded_q, glossary_md=glossary_md)
+    messages = compose_messages(
+        cfg, lang, history, retrieval.reranked, expanded_q, glossary_md=glossary_md
+    )
 
     # Emit the jargon note up-front so the user sees it before tokens stream.
     if on_token and jargon_note and cfg.jargon.show_transparency_note:
