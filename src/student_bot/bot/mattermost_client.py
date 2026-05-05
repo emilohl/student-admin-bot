@@ -14,6 +14,7 @@ Behaviour:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import queue
@@ -482,6 +483,15 @@ class StudentBot:
     def serve(self):
         worker = threading.Thread(target=self.worker_loop, daemon=True, name="bot-worker")
         worker.start()
+
+        # mattermostdriver 7.3.2 calls `asyncio.get_event_loop()` inside
+        # `init_websocket`. Python 3.10 deprecated implicit loop creation
+        # on a non-asyncio thread; 3.14 made it a hard RuntimeError. Ensure
+        # a loop is present on this thread so the driver finds one.
+        try:
+            asyncio.get_event_loop()
+        except RuntimeError:
+            asyncio.set_event_loop(asyncio.new_event_loop())
 
         backoff = 1
         cap = max(1, self.cfg.mattermost.reconnect_max_seconds)

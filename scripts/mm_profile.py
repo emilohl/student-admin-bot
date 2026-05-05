@@ -45,6 +45,15 @@ DEFAULT_DESCRIPTION_SV = (
     help="Bot description (Swedish by default).",
 )
 @click.option("--dry-run", is_flag=True, help="Print what would change, don't call MM.")
+@click.option(
+    "--repair-bot",
+    is_flag=True,
+    help=(
+        "If the user has is_bot=true but no bots-table row (orphaned bot), "
+        "POST /users/{id}/convert_to_bot to recreate the bot record. "
+        "Requires the calling token to belong to a system admin."
+    ),
+)
 def main(
     display_name: str,
     first_name: str,
@@ -52,6 +61,7 @@ def main(
     nickname: str,
     description: str,
     dry_run: bool,
+    repair_bot: bool,
 ):
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     log = logging.getLogger("mm_profile")
@@ -76,7 +86,13 @@ def main(
     driver.login()
     me = driver.users.get_user(user_id="me")
     bot_id = me["id"]
-    log.info("logged in as %s (%s)", me.get("username"), bot_id)
+    is_bot_account = bool(me.get("is_bot"))
+    log.info(
+        "logged in as %s (%s) — %s account",
+        me.get("username"),
+        bot_id,
+        "bot" if is_bot_account else "user",
+    )
 
     bot_patch = {"display_name": display_name, "description": description}
     user_patch = {
@@ -86,12 +102,64 @@ def main(
     }
 
     if dry_run:
-        log.info("DRY RUN — would PATCH /bots/%s with %s", bot_id, bot_patch)
+        if is_bot_account:
+            log.info("DRY RUN — would PATCH /bots/%s with %s", bot_id, bot_patch)
+        else:
+            log.info(
+                "DRY RUN — account is a regular user (not a registered bot account); "
+                "skipping PATCH /bots/* (display_name/description are bot-only fields)"
+            )
         log.info("DRY RUN — would PATCH /users/me with %s", user_patch)
         sys.exit(0)
 
-    driver.bots.patch_bot(bot_id, bot_patch)
-    log.info("patched bot record: %s", bot_patch)
+    # mattermostdriver 7.3.2 registers `Bots` in its endpoint dict but
+    # forgot to expose it as a `@property` like users/posts/etc., so we
+    # reach through `_api` directly. Same object either way.
+    bots_api = driver._api["bots"]
+
+    def _patch_bot():
+        bots_api.patch_bot(bot_id, bot_patch)
+        log.info("patched bot record: %s", bot_patch)
+
+    if is_bot_account:
+        try:
+            _patch_bot()
+        except Exception as e:
+            # Orphaned bot: `is_bot=true` on the user, but no row in the
+            # `bots` table. `convert_to_bot` recreates the missing row,
+            # but requires a system-admin token.
+            msg = str(e).lower()
+            is_404 = "bot does not exist" in msg or "not found" in msg
+            if is_404 and repair_bot:
+                log.info("bot row missing; calling /users/%s/convert_to_bot", bot_id)
+                try:
+                    driver.client.post(f"/users/{bot_id}/convert_to_bot")
+                    log.info("convert_to_bot succeeded; retrying patch")
+                    _patch_bot()
+                except Exception as e2:
+                    log.warning(
+                        "could not repair orphaned bot row: %s. The token "
+                        "needs system-admin permissions to call "
+                        "/users/{id}/convert_to_bot. Falling back to "
+                        "user-record patch only.",
+                        e2,
+                    )
+            elif is_404:
+                log.warning(
+                    "PATCH /bots/%s returned 404 — orphaned bot (is_bot=true on "
+                    "the user, but no row in the bots table). Re-run with "
+                    "`--repair-bot` to recreate it via convert_to_bot. Requires "
+                    "system-admin permissions on the calling token.",
+                    bot_id,
+                )
+            else:
+                log.warning("patch_bot failed: %s. Falling back to user patch.", e)
+    else:
+        log.warning(
+            "account is a regular user (is_bot=false) — skipping bot-record "
+            "patch (display_name/description). To set those, register a real "
+            "bot account via System Console -> Integrations -> Bot Accounts."
+        )
 
     driver.users.patch_user("me", user_patch)
     log.info("patched user record: %s", user_patch)
