@@ -25,7 +25,7 @@ RUN uv pip install --system --no-cache-dir -e .
 
 COPY config.yaml ./
 COPY topics.yaml ./
-COPY dictionary.json ./
+COPY data/dictionary.json ./data/dictionary.json
 
 # Pre-cache the embedding + reranker models so the container is offline-ready.
 # Download happens at build time using the same library that loads them at runtime.

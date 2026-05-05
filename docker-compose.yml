@@ -14,13 +14,10 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./config.yaml:/app/config.yaml:ro
+      # ./data holds dictionary.json, dictionary_proposals.json, logs.sqlite, chroma/, web_users.
+      # The Dockerfile COPY of data/dictionary.json is a fallback for `docker run` without compose;
+      # this directory mount overrides it.
       - ./data:/app/data
-      # Jargon dictionary + proposals: shared with the host so `student-bot-jargon`
-      # on the host and !jargon suggest in the running bot read/write the same files.
-      # The Dockerfile COPY of dictionary.json acts as a fallback for `docker run`
-      # without compose; this mount overrides it.
-      - ./dictionary.json:/app/dictionary.json
-      - ./dictionary_proposals.json:/app/dictionary_proposals.json
       # Corpus → /app/docs/corpus (paths.docs_dir in config.yaml). Override host path via CORPUS_HOST_PATH in .env
       - ${CORPUS_HOST_PATH:-./docs/corpus}:/app/docs/corpus:ro
     # Override the default to (re)index instead of running the bot:
@@ -46,6 +43,4 @@ services:
     volumes:
       - ./config.yaml:/app/config.yaml:ro
       - ./data:/app/data
-      - ./dictionary.json:/app/dictionary.json
-      - ./dictionary_proposals.json:/app/dictionary_proposals.json
       - ${CORPUS_HOST_PATH:-./docs/corpus}:/app/docs/corpus:ro
