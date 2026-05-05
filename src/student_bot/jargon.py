@@ -56,9 +56,19 @@ def _read_json(path: Path) -> dict:
 
 def _write_json(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    tmp.replace(path)
+    tmp.write_text(payload, encoding="utf-8")
+    try:
+        tmp.replace(path)
+    except OSError:
+        # Single-file Docker bind mounts pin the target inode, so renaming
+        # across inodes fails with EBUSY. Fall back to an in-place write.
+        path.write_text(payload, encoding="utf-8")
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
 
 
 # --- main class ---
