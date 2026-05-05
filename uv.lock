@@ -2329,7 +2329,7 @@ docling = [
 [package.metadata]
 requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.12" },
-    { name = "chromadb", specifier = ">=0.5,<0.7" },
+    { name = "chromadb", specifier = ">=0.5,<1.6" },
     { name = "click", specifier = ">=8.1" },
     { name = "docling", marker = "extra == 'docling'", specifier = ">=2.0" },
     { name = "fastapi", specifier = ">=0.110" },

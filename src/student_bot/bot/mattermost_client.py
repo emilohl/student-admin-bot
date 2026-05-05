@@ -5,6 +5,8 @@ Behaviour:
 - Filters out the bot's own posts and other bots.
 - Replies in-thread (uses post.root_id when set, else post.id).
 - On a user's first DM ever, posts a one-line GDPR notice before answering.
+- While the RAG pipeline runs, reacts with :thinking: on the user's post as
+  a lightweight "bot is working" indicator (removed when the reply lands).
 - Listens for 👍 / 👎 reactions on bot posts and records sentiment.
 - Wraps the websocket loop in a reconnect-with-backoff retry loop.
 - LLM calls run on a worker thread so websocket events keep flowing.
@@ -89,6 +91,10 @@ PRIVACY_STATUS_EN = "Logging for you is currently: {state}."
 POSITIVE_EMOJI = {"+1", "thumbsup", "white_check_mark"}
 NEGATIVE_EMOJI = {"-1", "thumbsdown", "x", "no_entry_sign"}
 
+# Emoji used as a "bot is thinking" indicator on the user's post while the
+# RAG pipeline runs. Added when work starts, removed when the reply lands.
+THINKING_EMOJI = "thinking"
+
 
 @dataclass
 class _Job:
@@ -96,6 +102,7 @@ class _Job:
     channel_id: str
     channel_type: str
     root_id: str
+    user_post_id: str
     question: str
 
 
@@ -174,6 +181,34 @@ class StudentBot:
         except Exception:
             log.exception("post failed")
             return None
+
+    def _react(self, post_id: str, emoji_name: str) -> None:
+        """Add a reaction as the bot user. Failures are logged and swallowed —
+        a deleted post or transient API error must not crash the worker."""
+        if not post_id or not self.bot_user_id:
+            return
+        assert self.driver is not None
+        try:
+            with self._driver_lock:
+                self.driver.reactions.create_reaction(
+                    {
+                        "user_id": self.bot_user_id,
+                        "post_id": post_id,
+                        "emoji_name": emoji_name,
+                    }
+                )
+        except Exception:
+            log.debug("create_reaction(%s) failed", emoji_name, exc_info=True)
+
+    def _unreact(self, post_id: str, emoji_name: str) -> None:
+        if not post_id or not self.bot_user_id:
+            return
+        assert self.driver is not None
+        try:
+            with self._driver_lock:
+                self.driver.reactions.delete_reaction(self.bot_user_id, post_id, emoji_name)
+        except Exception:
+            log.debug("delete_reaction(%s) failed", emoji_name, exc_info=True)
 
     def _handle_jargon_command(self, job: _Job, body: str) -> bool:
         """Returns True if the message was handled as a !jargon command."""
@@ -298,9 +333,16 @@ class StudentBot:
         if self._handle_jargon_command(job, job.question.strip()):
             return
 
-        result = answer(job.question, cfg=self.cfg, rate_limit_key=job.user_id)
-
-        bot_post_id = self._post(job.channel_id, result.rendered, job.root_id)
+        # "Thinking" indicator: react to the user's post while the LLM runs.
+        # Removed in `finally` so a crash in the pipeline still clears it.
+        # Our own on_event filter (`reaction.user_id == bot_user_id`) keeps
+        # this reaction from being recorded as feedback.
+        self._react(job.user_post_id, THINKING_EMOJI)
+        try:
+            result = answer(job.question, cfg=self.cfg, rate_limit_key=job.user_id)
+            bot_post_id = self._post(job.channel_id, result.rendered, job.root_id)
+        finally:
+            self._unreact(job.user_post_id, THINKING_EMOJI)
 
         chunk_ids = [c.chunk_id for c in result.retrieval.reranked]
         qa_id = self.db.record_qa(
@@ -387,6 +429,7 @@ class StudentBot:
                     channel_id=post.get("channel_id", ""),
                     channel_type=channel_type or "O",
                     root_id=self._root_id_for_reply(post),
+                    user_post_id=post.get("id", ""),
                     question=question,
                 )
             )

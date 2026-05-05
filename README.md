@@ -285,6 +285,28 @@ uv run student-bot-stats --since 7d    # last week
 
 ---
 
+## Feedback (👍 / 👎)
+
+Both surfaces feed the same `feedback` table; `student-bot-stats` aggregates
+the ratios per topic.
+
+- **Web UI**: 👍 / 👎 buttons under each answer.
+- **Mattermost**: emoji reactions on the bot's reply post are recorded as
+  feedback. Reactions on non-bot posts are ignored. The bot's own reactions
+  (e.g. the "thinking" indicator) are filtered out.
+
+The recognised emoji shortcodes (see `mattermost_client.py`):
+
+| Sentiment | Shortcodes |
+|---|---|
+| **Positive** | `:+1:` 👍, `:thumbsup:` 👍, `:white_check_mark:` ✅ |
+| **Negative** | `:-1:` 👎, `:thumbsdown:` 👎, `:x:` ❌, `:no_entry_sign:` 🚫 |
+
+Other reactions (e.g. `:heart:`, `:eyes:`) are ignored. A removed reaction
+does not retract earlier feedback — the row stays.
+
+---
+
 ## Topic tracking
 
 `topics.yaml` is the editable taxonomy. Classification happens *after* the
