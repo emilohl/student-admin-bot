@@ -62,9 +62,12 @@ memory:
   ttl_minutes: 30
 
 mattermost:
-  trigger_mention: "@studyadminbot"   # used in channel posts; DM always triggers
+  trigger_mention: "@ohm-bot"   # used in channel posts; DM always triggers
   reply_in_thread: true
   reconnect_max_seconds: 60
+  # Render answers as Slack-style message attachments (colored sidebar +
+  # Sources fields). Off by default; enable after eyeballing in your MM.
+  use_attachments: false
 
 logging:
   retain_days: 90

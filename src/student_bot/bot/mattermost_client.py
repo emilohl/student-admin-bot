@@ -166,17 +166,24 @@ class StudentBot:
             finally:
                 self.queue.task_done()
 
-    def _post(self, channel_id: str, message: str, root_id: str | None) -> str | None:
+    def _post(
+        self,
+        channel_id: str,
+        message: str,
+        root_id: str | None,
+        props: dict | None = None,
+    ) -> str | None:
         assert self.driver is not None
+        payload: dict = {
+            "channel_id": channel_id,
+            "message": message,
+            "root_id": root_id or "",
+        }
+        if props:
+            payload["props"] = props
         try:
             with self._driver_lock:
-                resp = self.driver.posts.create_post(
-                    {
-                        "channel_id": channel_id,
-                        "message": message,
-                        "root_id": root_id or "",
-                    }
-                )
+                resp = self.driver.posts.create_post(payload)
             return resp.get("id")
         except Exception:
             log.exception("post failed")
@@ -340,7 +347,14 @@ class StudentBot:
         self._react(job.user_post_id, THINKING_EMOJI)
         try:
             result = answer(job.question, cfg=self.cfg, rate_limit_key=job.user_id)
-            bot_post_id = self._post(job.channel_id, result.rendered, job.root_id)
+            if self.cfg.mattermost.use_attachments:
+                from student_bot.bot.citations import format_for_mattermost
+
+                message, attachments = format_for_mattermost(self.cfg, result)
+                props = {"attachments": attachments} if attachments else None
+                bot_post_id = self._post(job.channel_id, message, job.root_id, props=props)
+            else:
+                bot_post_id = self._post(job.channel_id, result.rendered, job.root_id)
         finally:
             self._unreact(job.user_post_id, THINKING_EMOJI)
 
