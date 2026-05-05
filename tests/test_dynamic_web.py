@@ -69,6 +69,46 @@ def test_extract_targets_ignores_term_codes_like_ht_yyyy():
     assert "https://www.kth.se/student/kurser/kurs/HT2024" not in out
 
 
+def test_extract_targets_ignores_unknown_five_letter_token(monkeypatch):
+    cfg = get_config()
+    monkeypatch.setattr(wr, "_get_program_aliases", lambda _cfg: {"teknisk fysik": "CTFYS"})
+    q = "Vad ar programkoden for FYSIK?"
+    out = _extract_targets_with_cfg(q, cfg)
+    assert "https://www.kth.se/student/kurser/program/FYSIK" not in out
+
+
+def test_extract_targets_does_not_match_generic_masterprogram_alias(monkeypatch):
+    cfg = get_config()
+    monkeypatch.setattr(
+        wr,
+        "_get_program_aliases",
+        lambda _cfg: {
+            "masterprogram, matematik": "TMAKM",
+            "civilingenjorsutbildning i teknisk fysik": "CTFYS",
+        },
+    )
+    q = "Vad ar programkoden for masterprogrammet i teknisk fysik?"
+    out = _extract_targets_with_cfg(q, cfg)
+    assert "https://www.kth.se/student/kurser/program/CTFYS" in out
+    assert "https://www.kth.se/student/kurser/program/TMAKM" not in out
+
+
+def test_extract_targets_prefers_multiword_program_alias_over_single_subject(monkeypatch):
+    cfg = get_config()
+    monkeypatch.setattr(
+        wr,
+        "_get_program_aliases",
+        lambda _cfg: {
+            "fysik": "FYSIK",
+            "civilingenjorsutbildning i teknisk fysik": "CTFYS",
+        },
+    )
+    q = "Vad har masterprogrammet i teknisk fysik for programkod?"
+    out = _extract_targets_with_cfg(q, cfg)
+    assert "https://www.kth.se/student/kurser/program/CTFYS" in out
+    assert "https://www.kth.se/student/kurser/program/FYSIK" not in out
+
+
 def test_build_doc_url_keeps_absolute_web_urls():
     got = build_doc_url("https://www.kth.se/student/kurser/program/TNTEM", None, "/docs")
     assert got == "https://www.kth.se/student/kurser/program/TNTEM"
