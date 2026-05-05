@@ -184,10 +184,97 @@ def confidence_badge(lang: str, top1: float) -> str:
     return "Låg" if lang == "sv" else "Low"
 
 
+def _confidence_color(top1: float) -> str:
+    """Map confidence_badge thresholds to MM attachment colors. Same buckets
+    so the colored sidebar can't disagree with the textual badge."""
+    if top1 >= 3.0:
+        return "good"
+    if top1 >= 0.5:
+        return "warning"
+    return "danger"
+
+
+def _truncate_field_value(s: str, limit: int = 1000) -> str:
+    """MM attachment field values cap at ~1024 chars. Sources are short, but
+    truncate defensively in case a long URL or section path slips in."""
+    if len(s) <= limit:
+        return s
+    return s[: limit - 1] + "…"
+
+
+def format_for_mattermost(cfg, result) -> tuple[str, list[dict] | None]:
+    """Build a (message, attachments) pair for posting to Mattermost.
+
+    Returns ``(message, None)`` for paths without sources (gate refusal,
+    rate limit, too-long input, empty body) so the caller falls back to
+    plain Markdown — `result.rendered` is the right thing to post then.
+
+    On the answered path, the message holds only the (optional) jargon
+    transparency note and the body with `[N]` markers; the colored sidebar,
+    confidence text, source list, and rotating literacy tip move into a
+    single attachment. Pedagogical surfaces required by the README's
+    "five concepts" section are all preserved — they just move from inline
+    Markdown into structured fields.
+    """
+    if not result.answered or not result.cited_chunks:
+        return result.rendered, None
+
+    lang = result.lang
+    body = result.numbered_body or result.answer
+
+    # Rebuild the jargon transparency note the same way pipeline.answer() does
+    # so the prefix wording matches exactly.
+    jargon_note = ""
+    if cfg.jargon.show_transparency_note and result.jargon_hits:
+        from student_bot.jargon import Jargon
+
+        jargon = Jargon.from_config(cfg)
+        jargon_note = jargon.transparency_note(result.jargon_hits, lang)
+
+    message = (jargon_note + "\n\n" + body if jargon_note else body).strip()
+
+    label = "Tillförlitlighet" if lang == "sv" else "Confidence"
+    title = f"{label}: {confidence_badge(lang, result.gate.top1)}"
+
+    base = cfg.web.doc_base_url
+    seen: set[tuple] = set()
+    fields: list[dict] = []
+    for c in result.cited_chunks:
+        key = (c.doc_title, c.section_path or None, c.page_start)
+        if key in seen:
+            continue
+        seen.add(key)
+        url = build_doc_url(c.rel_source, c.page_start, base)
+        page_suffix = f", s. {c.page_start}" if c.page_start else ""
+        section_suffix = f" — {c.section_path}" if c.section_path else ""
+        field_title = f"{c.doc_title}{section_suffix}{page_suffix}"
+        if url:
+            link_label = "Visa dokument" if lang == "sv" else "Open document"
+            field_value = f"[{link_label}]({url})"
+        else:
+            field_value = "—"
+        fields.append(
+            {
+                "title": _truncate_field_value(field_title, 200),
+                "value": _truncate_field_value(field_value),
+                "short": True,
+            }
+        )
+
+    attachment = {
+        "color": _confidence_color(result.gate.top1),
+        "title": title,
+        "fields": fields,
+        "footer": literacy_footer(lang),
+    }
+    return message, [attachment]
+
+
 __all__ = [
     "build_doc_url",
     "format_sources_block",
     "apply_citation_numbering",
     "literacy_footer",
     "confidence_badge",
+    "format_for_mattermost",
 ]

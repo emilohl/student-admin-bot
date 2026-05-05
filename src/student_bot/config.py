@@ -86,6 +86,12 @@ class MattermostConfig(BaseModel):
     trigger_mention: str = "@studybot"
     reply_in_thread: bool = True
     reconnect_max_seconds: int = 60
+    # When true, render the answer using a Slack-style "message attachment"
+    # with a colored sidebar (confidence -> good/warning/danger) and the
+    # Sources block as fields. Falls back to plain Markdown for refusals,
+    # rate-limit, and other paths without sources. Default off until the
+    # rendering has been eyeballed in the target MM instance.
+    use_attachments: bool = False
 
 
 class LoggingConfig(BaseModel):

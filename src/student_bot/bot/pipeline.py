@@ -76,6 +76,12 @@ class AnswerResult:
     meta_fallback: bool = False
     expanded_question: str = ""  # post-jargon-expansion query used for retrieval
     jargon_hits: list = field(default_factory=list)
+    # Body with inline `[N]` citations and the chunks those numbers point to,
+    # in citation order. Populated only on the answered path; empty otherwise.
+    # Exposed so non-Markdown consumers (e.g. MM message attachments) can
+    # re-render the Sources block without re-parsing `rendered`.
+    numbered_body: str = ""
+    cited_chunks: list = field(default_factory=list)
 
 
 # --- Per-key rate limiter (simple sliding window over the last 60 s) ---
@@ -360,6 +366,8 @@ def answer(
         latency_ms=int((time.monotonic() - t0) * 1000),
         expanded_question=expanded_q,
         jargon_hits=jargon_hits,
+        numbered_body=numbered_body,
+        cited_chunks=list(sources_chunks),
     )
 
 

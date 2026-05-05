@@ -285,6 +285,67 @@ uv run student-bot-stats --since 7d    # last week
 
 ---
 
+## Feedback (👍 / 👎)
+
+Both surfaces feed the same `feedback` table; `student-bot-stats` aggregates
+the ratios per topic.
+
+- **Web UI**: 👍 / 👎 buttons under each answer.
+- **Mattermost**: emoji reactions on the bot's reply post are recorded as
+  feedback. Reactions on non-bot posts are ignored. The bot's own reactions
+  (e.g. the "thinking" indicator) are filtered out.
+
+The recognised emoji shortcodes (see `mattermost_client.py`):
+
+| Sentiment | Shortcodes |
+|---|---|
+| **Positive** | `:+1:` 👍, `:thumbsup:` 👍, `:white_check_mark:` ✅ |
+| **Negative** | `:-1:` 👎, `:thumbsdown:` 👎, `:x:` ❌, `:no_entry_sign:` 🚫 |
+
+Other reactions (e.g. `:heart:`, `:eyes:`) are ignored. A removed reaction
+does not retract earlier feedback — the row stays.
+
+---
+
+## Setting the bot's display name & description (admin task)
+
+Mattermost stores bot identities in two tables (`Users` + `Bots`, joined by
+`User.Id = Bot.UserId`). The fields visible in chat come from the `Bots`
+row — `display_name` (the bold name in the channel header) and
+`description` (the popover bio). Updating them goes through `PATCH /bots/{id}`,
+which requires the `manage_bots` permission. **A bot's own personal access
+token does not carry that permission**, so this is a one-time admin task —
+not something the bot can do for itself.
+
+Two ways to do it:
+
+**Via the System Console (recommended):**
+1. Sign in as a system admin.
+2. **System Console → Integrations → Bot Accounts** → find the bot →
+   set Display Name and Description.
+
+**Via the API (admin token required):**
+```bash
+curl -X PUT \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  https://<mm-host>/api/v4/bots/<bot_user_id> \
+  -d '{
+    "display_name": "Lux Adminbot",
+    "description": "Automatisk assistent för administrativa frågor om CTFYS-programmet vid KTH. Svaren baseras på indexerade kursdokument — kontrollera alltid mot källorna och kontakta studievägledaren för personliga ärenden."
+  }'
+```
+
+If `PATCH /bots/{id}` returns `404 Bot does not exist`, the user has
+`is_bot=true` but no row in the `Bots` table. An admin can repair this
+with `POST /api/v4/users/{id}/convert_to_bot` (requires `manage_system`).
+
+Sources: [bot accounts data model](https://developers.mattermost.com/integrate/reference/bot-accounts/#data-model),
+[bots.yaml `PatchBot`](https://github.com/mattermost/mattermost/blob/master/api/v4/source/bots.yaml#L93),
+[users.yaml `ConvertUserToBot`](https://github.com/mattermost/mattermost/blob/master/api/v4/source/users.yaml#L1658).
+
+---
+
 ## Topic tracking
 
 `topics.yaml` is the editable taxonomy. Classification happens *after* the
