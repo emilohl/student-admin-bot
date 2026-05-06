@@ -57,4 +57,3 @@ def main(build: bool, dev: bool) -> None:
 
 if __name__ == "__main__":
     main()
-
