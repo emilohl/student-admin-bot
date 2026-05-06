@@ -62,6 +62,9 @@ student-bot-stats = "scripts.stats:main"
 student-bot-mkuser = "scripts.mkuser:main"
 student-bot-jargon = "scripts.jargon:main"
 student-bot-audit-codes = "scripts.audit_course_code_patterns:main"
+student-bot-host-metrics = "scripts.host_metrics_collector:main"
+student-bot-up = "scripts.up:main"
+student-bot-down = "scripts.down:main"
 
 [build-system]
 requires = ["hatchling"]

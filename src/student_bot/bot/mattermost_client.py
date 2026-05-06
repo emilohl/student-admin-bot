@@ -66,6 +66,12 @@ _mm_ws.ssl = _SslShim
 
 
 log = logging.getLogger("student_bot")
+HOST_METRICS_START_CMD = "uv run student-bot-host-metrics"
+HOST_METRICS_STOP_CMD = "pkill -f student-bot-host-metrics"
+
+
+def _perf_panel_enabled(cfg: Config) -> bool:
+    return bool(getattr(cfg.web, "performance_panel_enabled", False))
 
 
 GDPR_NOTICE_SV = (
@@ -551,10 +557,16 @@ def _setup_logging():
 def main():
     _setup_logging()
     cfg = get_config()
+    if _perf_panel_enabled(cfg):
+        log.info("performance panel enabled; start host metrics collector on host.")
+        log.info("command: %s", HOST_METRICS_START_CMD)
     bot = StudentBot(cfg)
 
     def handle_sig(signum, frame):
         log.info("signal %s; shutting down", signum)
+        if _perf_panel_enabled(cfg):
+            log.info("bot stopping; stop host metrics collector if still running.")
+            log.info("command: %s", HOST_METRICS_STOP_CMD)
         bot.shutdown.set()
         # Try to nudge the websocket.
         if bot.driver is not None:

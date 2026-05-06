@@ -10,6 +10,7 @@ data/logs.sqlite-*
 data/web_cache.sqlite
 data/web_users
 data/course_code_pattern_audit.json
+data/host_metrics.json
 
 # Student-submitted jargon proposals — review with `student-bot-jargon proposals`
 # and move accepted entries to dictionary.json before pushing.

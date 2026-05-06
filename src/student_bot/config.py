@@ -123,6 +123,7 @@ class WebConfig(BaseModel):
     #   user:scrypt:<saltb64>:<hashb64>
     users_file: str = "data/web_users"
     session_idle_minutes: int = 60
+    performance_panel_enabled: bool = False
 
 
 class TopicsConfig(BaseModel):

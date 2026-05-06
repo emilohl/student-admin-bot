@@ -97,6 +97,7 @@ web:
   auth_enabled: false
   users_file: data/web_users   # passwd-like: "user:scrypt:<salt_b64>:<hash_b64>"
   session_idle_minutes: 60
+  performance_panel_enabled: true
 
 # Topic classification (analytics only — runs after the answer is sent).
 topics:

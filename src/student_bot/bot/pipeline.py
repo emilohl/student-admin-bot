@@ -90,6 +90,24 @@ class AnswerResult:
     cited_chunks: list = field(default_factory=list)
     source_urls: list[str] = field(default_factory=list)
     stale_cache_days: int | None = None
+    context_tokens_est: int | None = None
+    context_tokens_limit: int | None = None
+    gen_tokens_est: int | None = None
+    ttft_ms: int | None = None
+    gen_tps: float | None = None
+
+
+def _estimate_tokens(text: str) -> int:
+    # Coarse heuristic for UI telemetry; avoids model-specific tokenizers.
+    return max(0, int(round(len(text or "") / 4)))
+
+
+def _estimate_context_tokens(messages: list[dict]) -> int:
+    total = 0
+    for m in messages:
+        total += _estimate_tokens(m.get("content", ""))
+        total += 3  # rough message framing overhead
+    return total
 
 
 # --- Per-key rate limiter (simple sliding window over the last 60 s) ---
@@ -317,14 +335,27 @@ def answer(
         body = ""
         meta_fallback = False
         llm_error = False
+        ttft_ms: int | None = None
+        gen_tps: float | None = None
+        gen_tokens_est = 0
+        context_tokens_est = _estimate_context_tokens(meta_messages)
         try:
             parts: list[str] = []
+            stream_t0 = time.monotonic()
+            first_tok_at: float | None = None
             for delta in _stream_answer(cfg, meta_messages, on_thinking=on_thinking):
                 parts.append(delta)
+                if first_tok_at is None and delta:
+                    first_tok_at = time.monotonic()
                 if on_token:
                     on_token(delta)
             body = "".join(parts).strip()
             meta_fallback = bool(body)
+            gen_tokens_est = _estimate_tokens(body)
+            if first_tok_at is not None:
+                ttft_ms = int((first_tok_at - stream_t0) * 1000)
+                gen_secs = max(0.001, time.monotonic() - first_tok_at)
+                gen_tps = gen_tokens_est / gen_secs if gen_tokens_est else 0.0
         except Exception as e:
             log.warning("meta-fallback LLM call failed: %s", e)
             llm_error = True
@@ -354,6 +385,11 @@ def answer(
             meta_fallback=meta_fallback,
             expanded_question=expanded_q,
             jargon_hits=jargon_hits,
+            context_tokens_est=context_tokens_est,
+            context_tokens_limit=cfg.llm.num_ctx,
+            gen_tokens_est=gen_tokens_est or None,
+            ttft_ms=ttft_ms,
+            gen_tps=gen_tps,
         )
 
     messages = compose_messages(
@@ -370,11 +406,22 @@ def answer(
         on_token(jargon_note + "\n\n")
 
     parts: list[str] = []
+    ttft_ms: int | None = None
+    gen_tps: float | None = None
+    stream_t0 = time.monotonic()
+    first_tok_at: float | None = None
     for delta in _stream_answer(cfg, messages, on_thinking=on_thinking):
         parts.append(delta)
+        if first_tok_at is None and delta:
+            first_tok_at = time.monotonic()
         if on_token:
             on_token(delta)
     body = "".join(parts).strip()
+    gen_tokens_est = _estimate_tokens(body)
+    if first_tok_at is not None:
+        ttft_ms = int((first_tok_at - stream_t0) * 1000)
+        gen_secs = max(0.001, time.monotonic() - first_tok_at)
+        gen_tps = gen_tokens_est / gen_secs if gen_tokens_est else 0.0
     if stale_cache_days is not None:
         note = (
             f"Not: KTH-sidan kunde inte nås live. Svar baseras på cache från {stale_cache_days} dagar sedan."
@@ -454,6 +501,11 @@ def answer(
         cited_chunks=list(sources_chunks),
         source_urls=source_urls,
         stale_cache_days=stale_cache_days,
+        context_tokens_est=_estimate_context_tokens(messages),
+        context_tokens_limit=cfg.llm.num_ctx,
+        gen_tokens_est=gen_tokens_est or None,
+        ttft_ms=ttft_ms,
+        gen_tps=gen_tps,
     )
 
 

@@ -61,6 +61,7 @@ _GENERIC_ALIAS_TOKENS = {
     "utbildning",
     "utbildningsplan",
     "civilingenjorsutbildning",
+    "civilingenjorsprogram",
     "civilingenjor",
     "kth",
     "the",

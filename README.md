@@ -143,6 +143,13 @@ docker compose run --rm beta-web python -m scripts.reindex   # persist ./data on
 # Auth requires data/web_users to exist before the server stays up:
 docker compose run --rm beta-web student-bot-mkuser alice --password '…'
 docker compose up -d beta-web
+# helper: starts beta-web + bot (optionally rebuild first)
+uv run student-bot-up
+uv run student-bot-up --build
+# helper: dev mode with bind-mounted code (often no rebuild needed)
+uv run student-bot-up --dev
+# helper: stops beta-web + bot
+uv run student-bot-down
 ```
 
 Logs (**stderr only**; there are no rotating web log files in the container):
@@ -164,7 +171,8 @@ Structured Q&A / feedback lives in **`data/logs.sqlite`** on the host (mounted *
 | **Python / static assets under `src/`**, **`Dockerfile`**, **`scripts/`**, etc. | **`docker compose build`** then **`docker compose up -d …`** |
 | **Only `.env`** (tokens, **`WEB_SESSION_SECRET`**, **`CORPUS_HOST_PATH`**) | **`docker compose up -d`** or **`docker compose restart beta-web`** — **no** rebuild |
 
-(Optional dev workflow: bind-mount **`./src:/app/src`** into **`beta-web`** to iterate without rebuilding; not configured by default.)
+(Optional dev workflow: bind-mount code into containers to iterate without rebuilding:
+`uv run student-bot-up --dev` uses `docker-compose.dev.yml` with `./src`, `./scripts`, and `./eval` mounts for both `beta-web` and `bot`.)
 
 ### Memory on macOS
 

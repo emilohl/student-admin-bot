@@ -19,11 +19,15 @@ COPY --from=ghcr.io/astral-sh/uv:0.5 /uv /uvx /usr/local/bin/
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
+# Prefer CPU-only torch (PyPI Linux default is CUDA + nvidia-*); Ollama/GPU stay on the host.
+ENV UV_TORCH_BACKEND=cpu
+# 1) Install third-party deps first (cacheable across code-only edits).
+RUN uv sync --frozen --no-dev --no-install-project
+
+# 2) Copy project code and install just the local package.
 COPY src ./src
 COPY scripts ./scripts
 COPY eval ./eval
-# Prefer CPU-only torch (PyPI Linux default is CUDA + nvidia-*); Ollama/GPU stay on the host.
-ENV UV_TORCH_BACKEND=cpu
 RUN uv sync --frozen --no-dev
 ENV PATH="/app/.venv/bin:$PATH"
 

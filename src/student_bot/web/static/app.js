@@ -15,6 +15,16 @@ const messages = el("#messages");
 const composer = el("#composer");
 const statusEl = el("#status");
 const connEl = el("#conn");
+const perfContextEl = el("#perf-context");
+const perfTokensEl = el("#perf-tokens");
+const perfSystemEl = el("#perf-system");
+const perfPanelEl = el("#perf-panel");
+let perfEnabled = false;
+
+function botDisplayName() {
+  const full = ((window.t && window.t("brand.name")) || "Lux").trim();
+  return full.split(" - ")[0].trim() || full;
+}
 
 el("#name").value = state.name;
 el("#opt-out").checked = state.optOut;
@@ -34,6 +44,7 @@ el("#start").addEventListener("click", () => {
   onboarding.classList.add("hidden");
   chat.classList.remove("hidden");
   el("#question").focus();
+  if (perfEnabled) refreshSystemLoad();
 });
 
 el("#reset").addEventListener("click", async () => {
@@ -67,6 +78,8 @@ composer.addEventListener("submit", async (e) => {
 
   const botMsg = appendBot();
   let firstToken = true;
+  const reqStartedAt = performance.now();
+  let firstTokenAt = null;
 
   let buf = "";
   let finalMeta = null;
@@ -102,6 +115,7 @@ composer.addEventListener("submit", async (e) => {
             // Replace the animated thinking indicator with real content.
             botMsg.body.textContent = "";
             firstToken = false;
+            firstTokenAt = performance.now();
           }
           botMsg.body.textContent += data;
           messages.scrollTop = messages.scrollHeight;
@@ -112,7 +126,7 @@ composer.addEventListener("submit", async (e) => {
           const label = botMsg.body.querySelector(".thinking-label");
           if (label) {
             if (data === "start") {
-              const name = (window.t && window.t("brand.name")) || "Lux";
+              const name = botDisplayName();
               const phase = (window.t && window.t("chat.thinking_phase")) || "is thinking…";
               label.textContent = `${name} ${phase}`;
               label.removeAttribute("hidden");
@@ -133,9 +147,108 @@ composer.addEventListener("submit", async (e) => {
   }
 
   if (finalMeta) {
+    if (Object.prototype.hasOwnProperty.call(finalMeta, "performance_panel_enabled")) {
+      setPerfEnabled(!!finalMeta.performance_panel_enabled);
+    }
+    if (firstTokenAt && botMsg.body.textContent) {
+      const tokEst = estimateTokens(botMsg.body.textContent);
+      const genSecs = Math.max(0.001, (performance.now() - firstTokenAt) / 1000);
+      finalMeta.client_ttft_ms = Math.max(0, Math.round(firstTokenAt - reqStartedAt));
+      finalMeta.client_tps = tokEst / genSecs;
+    }
     decorateBot(botMsg, finalMeta);
+    if (perfEnabled) updatePerfPanel(finalMeta);
   }
 });
+
+function setPerfEnabled(enabled) {
+  perfEnabled = !!enabled;
+  if (!perfPanelEl) return;
+  perfPanelEl.classList.toggle("hidden", !perfEnabled);
+}
+
+function estimateTokens(text) {
+  return Math.max(0, Math.round((text || "").length / 4));
+}
+
+function formatPct(v) {
+  return Number.isFinite(v) ? `${v.toFixed(0)}%` : "—";
+}
+
+function updatePerfPanel(meta) {
+  if (!perfEnabled) return;
+  const used = meta.context_tokens_est;
+  const limit = meta.context_tokens_limit;
+  if (Number.isFinite(used) && Number.isFinite(limit) && limit > 0) {
+    const pct = Math.max(0, Math.min(100, (used / limit) * 100));
+    perfContextEl.textContent = `${used}/${limit} (${pct.toFixed(0)}%)`;
+  } else {
+    perfContextEl.textContent = "—";
+  }
+
+  const ttft = Number.isFinite(meta.ttft_ms) ? meta.ttft_ms : meta.client_ttft_ms;
+  const tps = Number.isFinite(meta.gen_tps) ? meta.gen_tps : meta.client_tps;
+  const tok = meta.gen_tokens_est;
+  const parts = [];
+  if (Number.isFinite(ttft)) parts.push(`TTFT ${formatDuration(ttft)}`);
+  if (Number.isFinite(tps)) parts.push(`${tps.toFixed(1)} tok/s`);
+  if (Number.isFinite(tok)) parts.push(`~${tok} tok`);
+  perfTokensEl.textContent = parts.length ? parts.join(" · ") : "—";
+
+  applyMergedSystemLoad(meta.system_load, meta.host_system_load);
+}
+
+function formatDuration(ms) {
+  if (!Number.isFinite(ms)) return "—";
+  if (ms < 1000) return `${Math.round(ms)} ms`;
+  return `${(ms / 1000).toFixed(1)} s`;
+}
+
+function applyMergedSystemLoad(containerLoad, hostLoad) {
+  if (!perfSystemEl) return;
+  const cCpu = formatPct(containerLoad?.cpu_pct);
+  const hCpu = formatPct(hostLoad?.cpu_pct);
+  const cMem = formatPct(containerLoad?.mem_pct);
+  const hMem = formatPct(hostLoad?.mem_pct);
+  perfSystemEl.innerHTML = (
+    `<span class="host">Host</span> / <span class="cont">Container</span> · ` +
+    `CPU: <span class="host">${hCpu}</span> / <span class="cont">${cCpu}</span> · ` +
+    `RAM: <span class="host">${hMem}</span> / <span class="cont">${cMem}</span>`
+  );
+}
+
+async function refreshSystemLoad() {
+  if (!perfEnabled) return;
+  try {
+    const resp = await fetch("/api/system-load", { credentials: "include" });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (Object.prototype.hasOwnProperty.call(data, "performance_panel_enabled")) {
+      setPerfEnabled(!!data.performance_panel_enabled);
+      if (!perfEnabled) return;
+    }
+    applyMergedSystemLoad(data.system_load, data.host_system_load);
+  } catch (_) {}
+}
+
+setInterval(() => {
+  if (!perfEnabled) return;
+  if (document.hidden) return;
+  refreshSystemLoad();
+}, 1000);
+
+async function initPerf() {
+  try {
+    const resp = await fetch("/api/health", { credentials: "include" });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    setPerfEnabled(!!data.performance_panel_enabled);
+  } catch (_) {
+    setPerfEnabled(false);
+  }
+}
+
+initPerf();
 
 function parseSSE(block) {
   let event = "token", data = "";
@@ -159,7 +272,7 @@ function appendBot() {
   wrap.className = "msg bot";
   const meta = document.createElement("div");
   meta.className = "meta";
-  meta.textContent = "studybot";
+  meta.textContent = botDisplayName();
   const body = document.createElement("div");
   body.className = "body";
   // Animated three-dot indicator while we wait for the first token.
@@ -185,6 +298,11 @@ function decorateBot(botMsg, meta) {
     const badge = document.createElement("span");
     badge.className = `conf ${meta.confidence_level}`;
     badge.textContent = meta.confidence;
+    const tip = confidenceTooltip(meta.confidence_level);
+    if (tip) {
+      badge.title = tip;
+      badge.setAttribute("aria-label", tip);
+    }
     botMsg.meta.appendChild(badge);
   }
 
@@ -198,13 +316,10 @@ function decorateBot(botMsg, meta) {
 
   const { html: bodyHtml, citedSources } = renderBodyWithCitations(body, allSources);
   let html = bodyHtml;
-  // If the LLM cited some sources, show only those (renumbered in
-  // citation order). If it cited none — common when the answer is
-  // truncated, or the model is sloppy — fall back to the full set of
-  // retrieved sources so the user still has something to verify with.
-  const refsToShow = citedSources.length ? citedSources : allSources;
-  if (refsToShow.length) {
-    html += renderSources(refsToShow, meta.lang || "sv");
+  // Show only sources that were actually cited inline.
+  // This avoids surfacing unrelated retrieved chunks as references.
+  if (citedSources.length) {
+    html += renderSources(citedSources, meta.lang || "sv");
   }
   if (tip) html += renderTip(tip);
   botMsg.body.innerHTML = html;
@@ -234,6 +349,14 @@ function decorateBot(botMsg, meta) {
     actions.appendChild(down);
     botMsg.wrap.appendChild(actions);
   }
+}
+
+function confidenceTooltip(level) {
+  const t = window.t || ((k) => k);
+  if (level === "high") return t("confidence.tip.high");
+  if (level === "medium") return t("confidence.tip.medium");
+  if (level === "low") return t("confidence.tip.low");
+  return "";
 }
 
 // Split the streamed answer (body + optional confidence badge + optional

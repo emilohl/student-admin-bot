@@ -1,0 +1,12 @@
+services:
+  bot:
+    volumes:
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+      - ./eval:/app/eval
+
+  beta-web:
+    volumes:
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+      - ./eval:/app/eval

@@ -9,7 +9,7 @@
 
   const T = {
     sv: {
-      "brand.name": "Lux",
+      "brand.name": "Lux - adminbot",
       "header.tagline": "Administrativ Q&A-bot för KTH CTFYS · baserad på officiella styrdokument och FAQ",
 
       "notice.title": "Experimentell testtjänst.",
@@ -26,10 +26,19 @@
 
       "chat.placeholder": "Skriv din fråga på svenska eller engelska — Enter skickar, Shift+Enter ny rad…",
       "chat.reset": "Ny tråd",
-      "chat.send": "Fråga",
+      "chat.send": "Skicka",
       "chat.thinking": "tänker…",
       "chat.thinking_phase": "funderar…",
       "chat.newthread": "ny tråd",
+      "perf.context": "Kontext",
+      "perf.tokens": "Generering",
+      "perf.system": "System",
+      "perf.tip.context": "Uppskattad tokenanvändning i promptkontexten jämfört med modellens context window (num_ctx).",
+      "perf.tip.tokens": "Uppskattade genereringsmått: TTFT = time to first token, tok/s = ungefärlig tokens per sekund.",
+      "perf.tip.system": "Visar CPU och RAM för container respektive host. GPU visas inte här.",
+      "confidence.tip.high": "Hög: retrieval hittade starkt och relevant underlag. Verifiera ändå i källorna.",
+      "confidence.tip.medium": "Medel: viss relevans finns, men underlaget är inte entydigt. Dubbelkolla källorna noggrant.",
+      "confidence.tip.low": "Låg: svagt eller osäkert underlag. Behandla svaret som preliminärt och verifiera i källorna.",
       "answer.sources": "Källor",
 
       "footer.about": "Om boten",
@@ -75,8 +84,8 @@
       "stats.back": "← Tillbaka",
     },
     en: {
-      "brand.name": "Lux",
-      "header.tagline": "Administrative Q&A bot for KTH CTFYS · grounded in a corpus of official steering documents and FAQs",
+      "brand.name": "Lux - adminbot",
+      "header.tagline": "Administrative Q&A bot for KTH CTFYS · grounded in official steering documents and FAQs",
 
       "notice.title": "Experimental test service.",
       "notice.body": " The server has limited resources and the language model is small — responses may be slow and not always correct. The first question can take noticeably longer while the model loads. Please use 👍 or 👎 on the replies — feedback helps us improve the service.",
@@ -92,10 +101,19 @@
 
       "chat.placeholder": "Type your question in Swedish or English — Enter sends, Shift+Enter for newline…",
       "chat.reset": "New thread",
-      "chat.send": "Ask",
+      "chat.send": "Submit",
       "chat.thinking": "thinking…",
       "chat.thinking_phase": "is thinking…",
       "chat.newthread": "new thread",
+      "perf.context": "Context",
+      "perf.tokens": "Generation",
+      "perf.system": "System",
+      "perf.tip.context": "Estimated prompt-context token usage versus model context window (num_ctx).",
+      "perf.tip.tokens": "Estimated generation metrics: TTFT = time to first token, tok/s = approximate tokens per second.",
+      "perf.tip.system": "Shows CPU and RAM for container and host. GPU is omitted here.",
+      "confidence.tip.high": "High: retrieval found strong, relevant grounding. Still verify against sources.",
+      "confidence.tip.medium": "Medium: some relevant grounding exists, but evidence is mixed. Double-check sources carefully.",
+      "confidence.tip.low": "Low: weak or uncertain grounding. Treat the answer as tentative and verify in sources.",
       "answer.sources": "Sources",
 
       "footer.about": "About",
@@ -169,6 +187,9 @@
     });
     root.querySelectorAll("[data-i18n-aria]").forEach((el) => {
       el.setAttribute("aria-label", t(el.getAttribute("data-i18n-aria")));
+    });
+    root.querySelectorAll("[data-i18n-title]").forEach((el) => {
+      el.setAttribute("title", t(el.getAttribute("data-i18n-title")));
     });
     document.documentElement.lang = currentLang();
     document.title = t("brand.name");
