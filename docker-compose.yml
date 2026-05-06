@@ -7,7 +7,7 @@ services:
     env_file: .env
     environment:
       OLLAMA_URL: http://host.docker.internal:11434
-      # Editable installs can mis-resolve __file__; paths in config.yaml are relative to this root.
+      # config.yaml paths are relative to project root (STUDENT_BOT_ROOT).
       STUDENT_BOT_ROOT: /app
     extra_hosts:
       # On macOS, host.docker.internal already resolves; keep this for Linux parity.
@@ -33,6 +33,7 @@ services:
     command: ["student-bot-web"]
     environment:
       OLLAMA_URL: http://host.docker.internal:11434
+      # config.yaml paths are relative to project root (STUDENT_BOT_ROOT).
       STUDENT_BOT_ROOT: /app
       WEB_BIND_HOST: "0.0.0.0"
       WEB_AUTH_ENABLED: "true"

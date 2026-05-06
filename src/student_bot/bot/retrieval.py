@@ -10,6 +10,8 @@ from sentence_transformers import CrossEncoder
 from student_bot.config import Config
 from student_bot.ingest.embed import encode_query, get_chroma_collection
 
+_CORPUS_FILTER_MIN_PRIMARY = 6
+
 
 @dataclass
 class RetrievedChunk:
@@ -46,7 +48,16 @@ def get_reranker(cfg: Config) -> CrossEncoder:
     return _reranker((cfg.reranker.model, cfg.reranker.device))
 
 
-def retrieve(cfg: Config, query: str) -> RetrievalResult:
+def _chunk_matches_programme_hints(chunk: RetrievedChunk, hints: frozenset[str]) -> bool:
+    blob = f"{chunk.rel_source} {chunk.chunk_id}".upper()
+    return any(part.upper() in blob for part in hints)
+
+
+def retrieve(
+    cfg: Config,
+    query: str,
+    corpus_programme_substrings: frozenset[str] | None = None,
+) -> RetrievalResult:
     coll = get_chroma_collection(cfg)
     qvec = encode_query(cfg, query).tolist()
     res = coll.query(
@@ -78,6 +89,18 @@ def retrieve(cfg: Config, query: str) -> RetrievalResult:
                 page_start=page,
             )
         )
+
+    if corpus_programme_substrings:
+        narrowed = [
+            c for c in candidates if _chunk_matches_programme_hints(c, corpus_programme_substrings)
+        ]
+        # Prefer cohort-matching study-plan docs without starving rerank input.
+        if len(narrowed) >= _CORPUS_FILTER_MIN_PRIMARY:
+            candidates = narrowed
+        elif narrowed:
+            seen_ids = {c.chunk_id for c in narrowed}
+            candidates = narrowed + [c for c in candidates if c.chunk_id not in seen_ids]
+            candidates = candidates[: cfg.reranker.candidates]
 
     if not candidates:
         return RetrievalResult(query=query)

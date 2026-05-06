@@ -61,6 +61,7 @@ student-bot-reindex = "scripts.reindex:main"
 student-bot-stats = "scripts.stats:main"
 student-bot-mkuser = "scripts.mkuser:main"
 student-bot-jargon = "scripts.jargon:main"
+student-bot-audit-codes = "scripts.audit_course_code_patterns:main"
 
 [build-system]
 requires = ["hatchling"]

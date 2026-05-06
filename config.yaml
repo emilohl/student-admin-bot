@@ -124,7 +124,7 @@ dynamic_web:
   # Matched against URL path only (host is hardcoded to www.kth.se).
   allowed_patterns:
     - "^/student/kurser/kurs/[A-Z0-9]+/?$"
-    - "^/student/kurser/program/[A-Z0-9]+(?:/[0-9]{5}/arskurs[0-9]+)?/?$"
+    - "^/student/kurser/program/[A-Z0-9]+(?:/[0-9]{5}(?:/arskurs[0-9]+)?)?/?$"
   user_agent: "student-bot/0.1 (+https://github.com/cohm/student-admin-bot)"
   max_bytes: 1500000
   max_links_followed: 24

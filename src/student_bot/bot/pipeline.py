@@ -38,7 +38,10 @@ from student_bot.bot.prompts import (
     refusal_message,
 )
 from student_bot.bot.retrieval import RetrievalResult, RetrievedChunk, retrieve
-from student_bot.bot.web_retrieval import maybe_fetch_dynamic_web
+from student_bot.bot.web_retrieval import (
+    corpus_programme_substrings_for_query,
+    maybe_fetch_dynamic_web,
+)
 from student_bot.config import Config, get_config
 from student_bot.jargon import Jargon, JargonEntry
 from student_bot.lang import detect
@@ -233,9 +236,25 @@ def answer(
             )
             jargon_note = jargon.transparency_note(jargon_hits, lang)
 
-    web_result = maybe_fetch_dynamic_web(cfg, expanded_q)
+    web_result = maybe_fetch_dynamic_web(cfg, expanded_q, lang)
     source_urls: list[str] = []
     stale_cache_days: int | None = None
+    if web_result and web_result.clarification:
+        msg = web_result.clarification[0] if lang == "sv" else web_result.clarification[1]
+        if on_token:
+            on_token(msg)
+        return AnswerResult(
+            question=question,
+            lang=lang,
+            answered=False,
+            answer=msg,
+            rendered=msg,
+            gate=GateDecision(False, "programme_clarification", 0.0, 0.0, 0),
+            retrieval=RetrievalResult(query=expanded_q),
+            latency_ms=int((time.monotonic() - t0) * 1000),
+            expanded_question=expanded_q,
+            jargon_hits=jargon_hits,
+        )
     if web_result and web_result.chunks:
         retrieval = RetrievalResult(
             query=expanded_q, candidates=web_result.chunks, reranked=web_result.chunks
@@ -273,7 +292,8 @@ def answer(
             jargon_hits=jargon_hits,
         )
     else:
-        retrieval = retrieve(cfg, expanded_q)
+        corpus_terms = corpus_programme_substrings_for_query(expanded_q)
+        retrieval = retrieve(cfg, expanded_q, corpus_programme_substrings=corpus_terms)
         gate = evaluate_gate(cfg, retrieval)
 
     if not gate.passed:

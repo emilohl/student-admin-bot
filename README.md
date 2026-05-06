@@ -60,17 +60,18 @@ Concrete components, file by file:
 | `scripts/stats.py` | Per-topic counts, latency, 👍/👎 ratios |
 | `scripts/mkuser.py` | Add/update web auth users |
 | `scripts/inspect_pdf.py` | Dump a single PDF's parsed output for QA (pymupdf4llm vs docling) |
+| `scripts/audit_course_code_patterns.py` | `uv run student-bot-audit-codes` — crawl programme pages (compressed JSON store), compare tokens to strict course-code regex → `data/course_code_pattern_audit.json`. **Slow:** sequential HTTP over many URLs; commonly **several minutes** depending on seeds. |
 
 ---
 
 ## Quick start
-
+For info about the specific model used below, see [this HuggingFace link](https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF)
 ```bash
 # 1. Setup
 cp .env.example .env             # fill MATTERMOST_*, USER_ID_HASH_SALT
 uv sync
 
-# 2. Pull the LLM, see [this HF link](https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF) (download Ollama first if not done already)
+# 2. Pull the LLM (download Ollama first if not done already)
 ollama pull gemma-4-E4B-it-GGUF:UD-Q4_K_XL
 
 # 3. Index the corpus (~1 min after first run; bge-m3 + reranker are cached)
@@ -176,6 +177,7 @@ Docker Desktop runs Linux in a **VM**: total Docker RAM in Activity Monitor is o
 
 ### Image notes
 
+- The image uses **Python 3.12** (aligned with **`requires-python`** in **`pyproject.toml`**) and **`uv sync --frozen`** against **`uv.lock`**, so the container’s **chromadb** build matches local **`uv sync`** installs. If you still see Chroma errors like **`metadata segment`** / **`INTEGER` vs `BLOB`**, the host **`./data/chroma`** directory was likely written by a different client: stop the stack, remove **`./data/chroma`**, then **`docker compose run --rm bot python -m scripts.reindex`**.
 - The Dockerfile installs **`torch`** from **CPU-only** wheels for Linux (see **`pyproject.toml`** **`[tool.uv.sources]`** / PyTorch CPU index) so the image does not pull NVIDIA CUDA packages.
 - **`topics.yaml`** and **`data/dictionary.json`** are **`COPY`**’d into the image as a fallback for non-compose runs. Compose host-mounts **`config.yaml`**, **`./data`** (which contains the dictionary, proposals, logs, Chroma + index, and web users), and the corpus on top, so jargon proposals submitted via the running bot/web and the host’s **`student-bot-jargon`** CLI share the same files.
 
@@ -473,7 +475,7 @@ believes, not on what process it runs in. The relevant boundary is
 When enabled (`config.yaml` → `dynamic_web.enabled: true`), the pipeline may
 fetch a tightly allowlisted subset of KTH pages at answer time:
 
-- `https://www.kth.se/student/kurser/kurs/<COURSECODE>`
+- `https://www.kth.se/student/kurser/kurs/<COURSECODE>` (`COURSECODE` is recognised as standard `LL1234`, or thesis-style `LL123X` — two letters plus three digits and a trailing letter.)
 - `https://www.kth.se/student/kurser/program/<PROGRAMCODE>` (+ cohort subtree),
   where KTH program codes are five letters (e.g. `CTFYS`)
 

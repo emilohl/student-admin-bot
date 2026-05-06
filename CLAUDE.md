@@ -18,7 +18,7 @@ Entry-point names come from `pyproject.toml` `[project.scripts]`; the `student-b
 - `uv run student-bot-mkuser <name>` — create a web auth user (scrypt).
 - `uv run student-bot-jargon list|proposals|accept|reject|add|remove` — manage `dictionary.json`.
 - `uv run ruff check .` / `uv run ruff format .` — line-length 100, target py311.
-- Docker: `docker compose build`; `docker compose run --rm beta-web python -m scripts.reindex`; `docker compose up -d beta-web bot`.
+- Docker: `docker compose build` (Python 3.12, dependencies from `uv.lock` via `uv sync --frozen`); `docker compose run --rm beta-web python -m scripts.reindex`; `docker compose up -d beta-web bot`. Chroma **INTEGER/BLOB** metadata errors usually mean `./data/chroma` was built with another chromadb/Python — delete that directory on the host and reindex.
 
 There is **no test suite** (no `tests/`, no `test_*.py`); `pytest` is declared in `[dev]` but unused. The `eval/` harness is the de-facto regression check for the retrieval+gate stack — run it after any change to embeddings, reranker, gate logic, or the corpus.
 

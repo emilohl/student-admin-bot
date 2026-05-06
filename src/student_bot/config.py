@@ -148,7 +148,7 @@ class DynamicWebConfig(BaseModel):
     allowed_patterns: list[str] = Field(
         default_factory=lambda: [
             r"^/student/kurser/kurs/[A-Z0-9]+/?$",
-            r"^/student/kurser/program/[A-Z0-9]+(?:/[0-9]{5}/arskurs[0-9]+)?/?$",
+            r"^/student/kurser/program/[A-Z0-9]+(?:/[0-9]{5}(?:/arskurs[0-9]+)?)?/?$",
         ]
     )
     user_agent: str = "student-bot/0.1 (+https://github.com/cohm/student-admin-bot)"
