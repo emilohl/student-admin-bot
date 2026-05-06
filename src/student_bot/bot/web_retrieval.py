@@ -5,6 +5,7 @@ import json
 import re
 import time
 import unicodedata
+from typing import Any
 from dataclasses import dataclass, field
 from html import unescape
 from pathlib import Path
@@ -34,6 +35,21 @@ _PROGRAM_CODE_RE = re.compile(r"\b([A-Z]{5})\b")
 _PROGRAM_LIST_EN = "https://www.kth.se/student/kurser/kurser-inom-program?l=en"
 _PROGRAM_LIST_SV = "https://www.kth.se/student/kurser/kurser-inom-program"
 _PROGRAM_URL_CODE_RE = re.compile(r"/student/kurser/program/([A-Z]{5})(?:/|$)")
+# Match a course code as the whole token (embedded JSON strings, no \\b quirks).
+_STRICT_COURSE_TOKEN = re.compile(
+    r"^(?:"
+    r"(?!(?:HT|VT)[0-9]{4}$)[A-Z]{2}[0-9]{4}"
+    r"|"
+    r"[A-Z]{2}[0-9]{3}[A-Z]"
+    r")$",
+    re.I,
+)
+
+# Cap extracted programme JSON text — study-plan stores can be large.
+_MAX_STORE_WALK_NODES = 50_000
+_MAX_STORE_COURSE_LINES = 150
+_MAX_DYNAMIC_WEB_CHUNK_CHARS = 36_000
+
 _GENERIC_ALIAS_TOKENS = {
     "program",
     "programmet",
@@ -107,6 +123,20 @@ def parse_program_admission_hints(q: str) -> AdmissionHints:
         if m:
             return AdmissionHints(year_prefix=m.group(1))
 
+    # Conversational cohort replies (e.g. after bot asked for admission round).
+    if re.search(
+        r"\b(?:började|startade|påbörjade|påbörjat|antagen|antagna|intagen)\b",
+        q,
+        re.I,
+    ):
+        m = re.search(r"\b(20\d{2})\b", q)
+        if m:
+            return AdmissionHints(year_prefix=m.group(1))
+    if re.search(r"\b(?:started|began)\b", q, re.I):
+        m = re.search(r"\b(20\d{2})\b", q)
+        if m:
+            return AdmissionHints(year_prefix=m.group(1))
+
     if program_study_intent_question(q):
         m = re.search(
             r"(?:ANTAGE|ANTAGN|INTAG|COHORT|ADMISSION|ADMITTED)[A-Z\s,;:?'\u2019-]*\b(20\d{2})\b",
@@ -121,6 +151,58 @@ def parse_program_admission_hints(q: str) -> AdmissionHints:
         if m:
             return AdmissionHints(year_prefix=m.group(1))
     return AdmissionHints()
+
+
+def is_programme_clarification_assistant_message(content: str) -> bool:
+    """True if this assistant text is our bilingual admission-round clarification."""
+    c = (content or "").lower()
+    return (
+        "antagningsomgång" in c
+        or "vilken antagningsomgång" in c
+        or "admission round" in c
+        or ("utbildningsplan" in c and "behöver jag veta" in c)
+        or ("study plan" in c and "admission" in c and "which" in c)
+    )
+
+
+def merge_programme_clarification_followup(question: str, history: list[dict] | None) -> str:
+    """If the user is answering our admission-year question, fuse with the prior user ask."""
+    hist = history or []
+    if len(hist) < 2:
+        return question
+    last = hist[-1]
+    if last.get("role") != "assistant":
+        return question
+    if not is_programme_clarification_assistant_message(last.get("content", "")):
+        return question
+
+    qstrip = question.strip()
+    hints = parse_program_admission_hints(question)
+    bare_year = bool(re.fullmatch(r"20\d{2}", qstrip))
+    if not (hints.exact_term or hints.year_prefix or bare_year):
+        return question
+
+    prev_user = ""
+    for entry in reversed(hist[:-1]):
+        if entry.get("role") == "user":
+            prev_user = (entry.get("content") or "").strip()
+            break
+    if not prev_user:
+        return question
+    merged = f"{prev_user}\n\n{qstrip}"
+    log.info("dynamic-web: merged programme clarification follow-up with prior user question")
+    return merged
+
+
+def history_without_programme_clarification_tail(
+    history: list[dict], programme_followup_merged: bool
+) -> list[dict]:
+    """Drop the last user+assistant pair when folded into the current user prompt."""
+    if not programme_followup_merged or len(history) < 2 or history[-1].get("role") != "assistant":
+        return history
+    if not is_programme_clarification_assistant_message(history[-1].get("content", "")):
+        return history
+    return history[:-2]
 
 
 @dataclass
@@ -348,7 +430,98 @@ def _sanitize_to_text(html: str) -> tuple[str, str]:
             lines.append(f"{'#' * int(node.name[1])} {txt}")
         else:
             lines.append(txt)
+    # Course tables sometimes carry almost all visible structure on programme pages.
+    for table in soup.find_all("table"):
+        rows: list[str] = []
+        for tr in table.find_all("tr"):
+            cells = [
+                unescape(c.get_text(" ", strip=True))
+                for c in tr.find_all(["th", "td"])
+                if c.get_text(strip=True)
+            ]
+            if cells:
+                row = " | ".join(cells)
+                if len(row) > 800:
+                    row = row[:800] + "…"
+                rows.append(row)
+        if rows:
+            lines.append("\n".join(rows))
     return title or "KTH page", "\n".join(lines)
+
+
+def _truncate_web_chunk_text(text: str) -> str:
+    if len(text) <= _MAX_DYNAMIC_WEB_CHUNK_CHARS:
+        return text
+    return text[:_MAX_DYNAMIC_WEB_CHUNK_CHARS].rstrip() + "\n…"
+
+
+def _course_list_plaintext_from_store(store: dict | None) -> str:
+    """Best-effort course rows from KTH's embedded programme JSON (SPA shell)."""
+    if not store:
+        return ""
+
+    seen: set[str] = set()
+    lines: list[str] = []
+    nodes = 0
+
+    def walk(o: Any) -> None:
+        nonlocal nodes
+        if len(lines) >= _MAX_STORE_COURSE_LINES or nodes >= _MAX_STORE_WALK_NODES:
+            return
+        nodes += 1
+        if isinstance(o, dict):
+            raw_code = (
+                o.get("courseCode") or o.get("code") or o.get("course_code") or o.get("courseId")
+            )
+            if isinstance(raw_code, str):
+                cc = raw_code.strip().upper()
+                if _STRICT_COURSE_TOKEN.fullmatch(cc) and cc not in seen:
+                    name = (
+                        o.get("titleSv")
+                        or o.get("title_sv")
+                        or o.get("title")
+                        or o.get("shortTitleSv")
+                        or o.get("nameSv")
+                        or o.get("name")
+                    )
+                    name_s = name.strip() if isinstance(name, str) else ""
+                    lines.append(f"- **{cc}** — {name_s}" if name_s else f"- **{cc}**")
+                    seen.add(cc)
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+
+    walk(store)
+
+    if not lines:
+        try:
+            blob = json.dumps(store, ensure_ascii=False)
+        except Exception:
+            return ""
+        codes = sorted(set(_COURSE_CODE_RE.findall(blob.upper())))
+        if not codes:
+            return ""
+        lines = [f"- `{c}`" for c in codes[:_MAX_STORE_COURSE_LINES]]
+
+    header = (
+        "## Kurser (extraherade från KTH:s inbäddade programdata)\n"
+        "_Raderna kommer från sidans JavaScript/JSON, inte bara synlig HTML._\n"
+    )
+    return header + "\n".join(lines)
+
+
+def _programme_page_text_with_store(html: str, visible_body: str) -> str:
+    """Append course lines from __compressedApplicationStore__ when DOM text is thin."""
+    store = _compressed_application_store(html)
+    appendix = _course_list_plaintext_from_store(store)
+    if not appendix:
+        return visible_body
+    base = visible_body.strip()
+    if not base:
+        return appendix.strip()
+    return f"{base}\n\n{appendix}".strip()
 
 
 def _program_links(html: str, base_url: str) -> list[str]:
@@ -443,8 +616,7 @@ def _clarify_program_terms_sv(program_code: str, terms: list[str]) -> str:
             span_line = f"\nJust nu finns webbdata för år mellan **{y0}** och **{y1}**."
     return (
         f"För att visa rätt utbildningsplan för **{program_code}** behöver jag veta "
-        "vilken antagningsomgång som gäller. Skriv gärna t.ex. **HT2024**, **VT2025**, "
-        "eller den **femsiffriga KTH-periodkoden** som syns vid programvalet på kth.se (t.ex. **20242**)."
+        "vilken antagningsomgång som gäller. Skriv gärna t.ex. **HT2024** eller **VT2025**."
         f"{span_line}"
     )
 
@@ -462,8 +634,7 @@ def _clarify_program_terms_en(program_code: str, terms: list[str]) -> str:
             )
     return (
         f"To show the right study plan for **{program_code}**, which **admission round** applies to you? "
-        "Please mention e.g. **autumn intake (HT2024)**, **spring (VT2025)**, "
-        "or KTH's **five-digit programme period code** shown on course-web (e.g. **20242**)."
+        "Please mention e.g. **autumn intake (HT2024)** or **spring (VT2025)**."
         f"{span_line}"
     )
 
@@ -635,6 +806,9 @@ def maybe_fetch_dynamic_web(
             if final_url != target:
                 log.info("dynamic-web: fetch redirected %s -> %s", target, final_url)
             title, content = _sanitize_to_text(html)
+            if "/student/kurser/program/" in final_url:
+                content = _programme_page_text_with_store(html, content)
+            content = _truncate_web_chunk_text(content)
             # Validate program fetches: if a requested program code maps to a page
             # whose visible heading mentions another code, treat it as mismatch.
             req_m = _PROGRAM_URL_CODE_RE.search(urlsplit(target).path)

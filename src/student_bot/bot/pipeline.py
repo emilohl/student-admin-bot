@@ -40,7 +40,9 @@ from student_bot.bot.prompts import (
 from student_bot.bot.retrieval import RetrievalResult, RetrievedChunk, retrieve
 from student_bot.bot.web_retrieval import (
     corpus_programme_substrings_for_query,
+    history_without_programme_clarification_tail,
     maybe_fetch_dynamic_web,
+    merge_programme_clarification_followup,
 )
 from student_bot.config import Config, get_config
 from student_bot.jargon import Jargon, JargonEntry
@@ -220,14 +222,20 @@ def answer(
             rate_limited=True,
         )
 
+    contextual_q = merge_programme_clarification_followup(question, history)
+    programme_followup_merged = contextual_q != question
+    history_for_llm = history_without_programme_clarification_tail(
+        history, programme_followup_merged
+    )
+
     # --- jargon: expand query for retrieval, build glossary for prompt ---
     jargon = _jargon(cfg)
-    expanded_q = question
+    expanded_q = contextual_q
     jargon_hits: list[JargonEntry] = []
     glossary_md = ""
     jargon_note = ""
     if jargon is not None:
-        expanded_q, jargon_hits = jargon.expand_query(question, lang=lang)
+        expanded_q, jargon_hits = jargon.expand_query(contextual_q, lang=lang)
         if jargon_hits:
             glossary_md = jargon.glossary_block(
                 jargon_hits,
@@ -303,7 +311,7 @@ def answer(
         # question is genuinely off-topic). If the LLM itself is
         # unreachable we surface a service-unavailable error rather than
         # a refusal — refusing would mis-attribute an outage to scope.
-        meta_messages = compose_meta_fallback_messages(cfg, lang, history, question)
+        meta_messages = compose_meta_fallback_messages(cfg, lang, history_for_llm, expanded_q)
         if on_token and jargon_note and cfg.jargon.show_transparency_note:
             on_token(jargon_note + "\n\n")
         body = ""
@@ -349,7 +357,12 @@ def answer(
         )
 
     messages = compose_messages(
-        cfg, lang, history, retrieval.reranked, expanded_q, glossary_md=glossary_md
+        cfg,
+        lang,
+        history_for_llm,
+        retrieval.reranked,
+        expanded_q,
+        glossary_md=glossary_md,
     )
 
     # Emit the jargon note up-front so the user sees it before tokens stream.

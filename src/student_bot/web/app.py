@@ -301,7 +301,11 @@ def _stream_answer(
             return
 
         # Persist to memory and DB after the stream finishes.
-        if result.answered or result.meta_fallback:
+        if (
+            result.answered
+            or result.meta_fallback
+            or result.gate.reason == "programme_clarification"
+        ):
             memory.append(web_user_id, "default", "user", payload.question)
             memory.append(web_user_id, "default", "assistant", result.answer)
 

@@ -28,6 +28,7 @@ from pathlib import Path
 from mattermostdriver import Driver
 from rich.logging import RichHandler
 
+from student_bot.bot.memory import ConversationMemory
 from student_bot.bot.pipeline import answer
 from student_bot.config import Config, get_config
 from student_bot.logging_db import LogDB
@@ -115,6 +116,7 @@ class StudentBot:
             raise RuntimeError("USER_ID_HASH_SALT not set (see .env.example)")
         self.cfg = cfg
         self.db = LogDB(cfg)
+        self.memory = ConversationMemory(cfg)
         self.queue: queue.Queue[_Job] = queue.Queue()
         self.shutdown = threading.Event()
         self._driver_lock = threading.Lock()
@@ -347,7 +349,13 @@ class StudentBot:
         # this reaction from being recorded as feedback.
         self._react(job.user_post_id, THINKING_EMOJI)
         try:
-            result = answer(job.question, cfg=self.cfg, rate_limit_key=job.user_id)
+            hist = self.memory.get(job.user_id, job.root_id)
+            result = answer(
+                job.question,
+                history=hist,
+                cfg=self.cfg,
+                rate_limit_key=job.user_id,
+            )
             if self.cfg.mattermost.use_attachments:
                 from student_bot.bot.citations import format_for_mattermost
 
@@ -358,6 +366,14 @@ class StudentBot:
                 bot_post_id = self._post(job.channel_id, result.rendered, job.root_id)
         finally:
             self._unreact(job.user_post_id, THINKING_EMOJI)
+
+        if (
+            result.answered
+            or result.meta_fallback
+            or result.gate.reason == "programme_clarification"
+        ):
+            self.memory.append(job.user_id, job.root_id, "user", job.question)
+            self.memory.append(job.user_id, job.root_id, "assistant", result.answer)
 
         chunk_ids = [c.chunk_id for c in result.retrieval.reranked]
         qa_id = self.db.record_qa(

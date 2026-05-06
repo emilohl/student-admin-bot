@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from urllib.parse import quote
 
 import student_bot.bot.web_retrieval as wr
 from student_bot.bot.web_cache import WebCache
@@ -12,6 +14,8 @@ from student_bot.bot.web_retrieval import (
     _is_allowed_url,
     _select_programme_urls,
     corpus_programme_substrings_for_query,
+    history_without_programme_clarification_tail,
+    merge_programme_clarification_followup,
     parse_program_admission_hints,
     program_study_intent_question,
 )
@@ -173,3 +177,76 @@ def test_select_programme_urls_explicit_term():
         AdmissionHints(exact_term="20252"),
     )
     assert r.queue_urls[0].endswith("/20252")
+
+
+def test_parse_admission_hints_started_year_sv():
+    h = parse_program_admission_hints("Jag började 2025")
+    assert h.year_prefix == "2025"
+
+
+def test_merge_programme_clarification_followup_with_history():
+    hist = [
+        {"role": "user", "content": "Vilka kurser ingår i år 2 av programmet CTMAT?"},
+        {
+            "role": "assistant",
+            "content": (
+                "För att visa rätt utbildningsplan för **CTMAT** behöver jag veta "
+                "vilken antagningsomgång som gäller."
+            ),
+        },
+    ]
+    merged = merge_programme_clarification_followup("Jag började 2025", hist)
+    assert "CTMAT" in merged and "år 2" in merged and "Jag började 2025" in merged
+
+
+def test_merge_programme_followup_bare_year():
+    hist = [
+        {"role": "user", "content": "Utbildningsplan för CDATE"},
+        {
+            "role": "assistant",
+            "content": "vilken antagningsomgång som gäller — ange HT2024 eller VT2025.",
+        },
+    ]
+    merged = merge_programme_clarification_followup("2026", hist)
+    assert "CDATE" in merged and "2026" in merged
+
+
+def test_history_without_programme_clarification_tail():
+    hist = [
+        {"role": "user", "content": "first"},
+        {"role": "assistant", "content": "vilken antagningsomgång som gäller för dig?"},
+    ]
+    trimmed = history_without_programme_clarification_tail(hist, programme_followup_merged=True)
+    assert trimmed == []
+
+
+def test_programme_page_merges_courses_from_compressed_store():
+    """Study-plan listings often live only in embedded JSON — not in p/li text."""
+    payload = {"courses": [{"courseCode": "BB1190", "titleSv": "Introduktion till bioteknik"}]}
+    enc = quote(json.dumps(payload, separators=(",", ":")))
+    html = (
+        "<html><body><h1>CBIOT år 1</h1><p>kort stub</p>"
+        f'<script>window.__compressedApplicationStore__="{enc}";</script></body></html>'
+    )
+    _, body = wr._sanitize_to_text(html)
+    assert "BB1190" not in body
+    merged = wr._programme_page_text_with_store(html, body)
+    assert "BB1190" in merged
+    assert "Introduktion" in merged
+
+
+def test_programme_page_store_fallback_extracts_codes_without_titles():
+    payload = {"items": [{"code": "AB1234"}]}
+    enc = quote(json.dumps(payload, separators=(",", ":")))
+    html = (
+        "<html><body><h1>Test</h1>"
+        f'<script>window.__compressedApplicationStore__="{enc}";</script></body></html>'
+    )
+    merged = wr._programme_page_text_with_store(html, "")
+    assert "AB1234" in merged
+
+
+def test_sanitize_includes_table_rows():
+    html = "<html><body><table><tr><th>Kod</th><th>Namn</th></tr><tr><td>XX1001</td><td>Foo</td></tr></table></body></html>"
+    _, body = wr._sanitize_to_text(html)
+    assert "XX1001" in body and "Foo" in body
