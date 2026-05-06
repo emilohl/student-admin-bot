@@ -1,4 +1,8 @@
-FROM python:3.14-slim
+FROM python:3.12-slim
+
+# Match pyproject.toml requires-python (<3.13). Python 3.14 + unconstrained chromadb
+# resolves have produced Chroma persist-dir metadata errors against volumes built
+# with other client versions.
 
 # System deps for pymupdf4llm, lxml, sentence-transformers
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -14,14 +18,18 @@ COPY --from=ghcr.io/astral-sh/uv:0.5 /uv /uvx /usr/local/bin/
 
 WORKDIR /app
 
-# Editable install must see package roots ( hatch `packages = src/student_bot, scripts, eval` ).
-COPY pyproject.toml ./
+COPY pyproject.toml uv.lock ./
+# Prefer CPU-only torch (PyPI Linux default is CUDA + nvidia-*); Ollama/GPU stay on the host.
+ENV UV_TORCH_BACKEND=cpu
+# 1) Install third-party deps first (cacheable across code-only edits).
+RUN uv sync --frozen --no-dev --no-install-project
+
+# 2) Copy project code and install just the local package.
 COPY src ./src
 COPY scripts ./scripts
 COPY eval ./eval
-# Prefer CPU-only torch (PyPI Linux default is CUDA + nvidia-*); Ollama/GPU stay on the host.
-ENV UV_TORCH_BACKEND=cpu
-RUN uv pip install --system --no-cache-dir -e .
+RUN uv sync --frozen --no-dev
+ENV PATH="/app/.venv/bin:$PATH"
 
 COPY config.yaml ./
 COPY topics.yaml ./

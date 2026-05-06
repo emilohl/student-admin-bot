@@ -74,6 +74,38 @@ button.ghost { background: transparent; color: var(--accent); border: 1px solid 
 button:disabled { opacity: 0.5; cursor: progress; }
 .hidden { display: none !important; }
 .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.composer-row { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; align-items: flex-start; }
+.composer-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.perf-panel {
+  flex: 0 1 50%;
+  width: 50%;
+  max-width: 50%;
+  min-width: 240px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+}
+.perf-line {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.perf-line + .perf-line { margin-top: 2px; }
+.perf-label { color: var(--muted); }
+.perf-value {
+  color: var(--muted);
+  font-size: inherit;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.perf-value .cont { color: #0D4A21; }
+.perf-value .host { color: #78001A; }
 .status { color: var(--muted); flex: 1; font-size: 13px; }
 #chat { display: flex; flex-direction: column; gap: 16px; }
 #messages { display: flex; flex-direction: column; gap: 12px; max-height: 60dvh; overflow-y: auto; padding-right: 4px; }
@@ -123,3 +155,18 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .msg .actions button.down:hover { border-color: var(--bad); color: var(--bad); }
 .msg .actions button.active.up { background: #e5f6ec; border-color: var(--good); color: var(--good); }
 .msg .actions button.active.down { background: #f9e7e6; border-color: var(--bad); color: var(--bad); }
+.github-link {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+.github-link a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  text-decoration: none;
+}
+.github-link a:hover { text-decoration: underline; }
+.github-mark { width: 16px; height: 16px; fill: currentColor; }

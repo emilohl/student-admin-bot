@@ -38,6 +38,12 @@ from student_bot.bot.prompts import (
     refusal_message,
 )
 from student_bot.bot.retrieval import RetrievalResult, RetrievedChunk, retrieve
+from student_bot.bot.web_retrieval import (
+    corpus_programme_substrings_for_query,
+    history_without_programme_clarification_tail,
+    maybe_fetch_dynamic_web,
+    merge_programme_clarification_followup,
+)
 from student_bot.config import Config, get_config
 from student_bot.jargon import Jargon, JargonEntry
 from student_bot.lang import detect
@@ -82,6 +88,26 @@ class AnswerResult:
     # re-render the Sources block without re-parsing `rendered`.
     numbered_body: str = ""
     cited_chunks: list = field(default_factory=list)
+    source_urls: list[str] = field(default_factory=list)
+    stale_cache_days: int | None = None
+    context_tokens_est: int | None = None
+    context_tokens_limit: int | None = None
+    gen_tokens_est: int | None = None
+    ttft_ms: int | None = None
+    gen_tps: float | None = None
+
+
+def _estimate_tokens(text: str) -> int:
+    # Coarse heuristic for UI telemetry; avoids model-specific tokenizers.
+    return max(0, int(round(len(text or "") / 4)))
+
+
+def _estimate_context_tokens(messages: list[dict]) -> int:
+    total = 0
+    for m in messages:
+        total += _estimate_tokens(m.get("content", ""))
+        total += 3  # rough message framing overhead
+    return total
 
 
 # --- Per-key rate limiter (simple sliding window over the last 60 s) ---
@@ -214,14 +240,20 @@ def answer(
             rate_limited=True,
         )
 
+    contextual_q = merge_programme_clarification_followup(question, history)
+    programme_followup_merged = contextual_q != question
+    history_for_llm = history_without_programme_clarification_tail(
+        history, programme_followup_merged
+    )
+
     # --- jargon: expand query for retrieval, build glossary for prompt ---
     jargon = _jargon(cfg)
-    expanded_q = question
+    expanded_q = contextual_q
     jargon_hits: list[JargonEntry] = []
     glossary_md = ""
     jargon_note = ""
     if jargon is not None:
-        expanded_q, jargon_hits = jargon.expand_query(question, lang=lang)
+        expanded_q, jargon_hits = jargon.expand_query(contextual_q, lang=lang)
         if jargon_hits:
             glossary_md = jargon.glossary_block(
                 jargon_hits,
@@ -230,8 +262,65 @@ def answer(
             )
             jargon_note = jargon.transparency_note(jargon_hits, lang)
 
-    retrieval = retrieve(cfg, expanded_q)
-    gate = evaluate_gate(cfg, retrieval)
+    web_result = maybe_fetch_dynamic_web(cfg, expanded_q, lang)
+    source_urls: list[str] = []
+    stale_cache_days: int | None = None
+    if web_result and web_result.clarification:
+        msg = web_result.clarification[0] if lang == "sv" else web_result.clarification[1]
+        if on_token:
+            on_token(msg)
+        return AnswerResult(
+            question=question,
+            lang=lang,
+            answered=False,
+            answer=msg,
+            rendered=msg,
+            gate=GateDecision(False, "programme_clarification", 0.0, 0.0, 0),
+            retrieval=RetrievalResult(query=expanded_q),
+            latency_ms=int((time.monotonic() - t0) * 1000),
+            expanded_question=expanded_q,
+            jargon_hits=jargon_hits,
+        )
+    if web_result and web_result.chunks:
+        retrieval = RetrievalResult(
+            query=expanded_q, candidates=web_result.chunks, reranked=web_result.chunks
+        )
+        gate = GateDecision(
+            True,
+            "web_cache" if web_result.used_stale_cache else "web_live",
+            3.5 if not web_result.used_stale_cache else 2.5,
+            3.5 if not web_result.used_stale_cache else 2.5,
+            len({c.rel_source for c in web_result.chunks}),
+        )
+        source_urls = list(web_result.source_urls)
+        if web_result.used_stale_cache:
+            stale_cache_days = web_result.stale_age_days
+    elif web_result and web_result.failure_url:
+        msg = (
+            "KTH-sidan kunde inte nås just nu och ingen färsk cache finns. "
+            f"Prova gärna länken direkt: {web_result.failure_url}"
+            if lang == "sv"
+            else "The KTH page could not be reached and no recent cache exists. "
+            f"Try opening the URL directly: {web_result.failure_url}"
+        )
+        if on_token:
+            on_token(msg)
+        return AnswerResult(
+            question=question,
+            lang=lang,
+            answered=False,
+            answer=msg,
+            rendered=msg,
+            gate=GateDecision(False, "web_unreachable_no_cache", 0.0, 0.0, 0),
+            retrieval=RetrievalResult(query=expanded_q),
+            latency_ms=int((time.monotonic() - t0) * 1000),
+            expanded_question=expanded_q,
+            jargon_hits=jargon_hits,
+        )
+    else:
+        corpus_terms = corpus_programme_substrings_for_query(expanded_q)
+        retrieval = retrieve(cfg, expanded_q, corpus_programme_substrings=corpus_terms)
+        gate = evaluate_gate(cfg, retrieval)
 
     if not gate.passed:
         # Run a single LLM call with a self-aware system prompt and no
@@ -240,20 +329,33 @@ def answer(
         # question is genuinely off-topic). If the LLM itself is
         # unreachable we surface a service-unavailable error rather than
         # a refusal — refusing would mis-attribute an outage to scope.
-        meta_messages = compose_meta_fallback_messages(cfg, lang, history, question)
+        meta_messages = compose_meta_fallback_messages(cfg, lang, history_for_llm, expanded_q)
         if on_token and jargon_note and cfg.jargon.show_transparency_note:
             on_token(jargon_note + "\n\n")
         body = ""
         meta_fallback = False
         llm_error = False
+        ttft_ms: int | None = None
+        gen_tps: float | None = None
+        gen_tokens_est = 0
+        context_tokens_est = _estimate_context_tokens(meta_messages)
         try:
             parts: list[str] = []
+            stream_t0 = time.monotonic()
+            first_tok_at: float | None = None
             for delta in _stream_answer(cfg, meta_messages, on_thinking=on_thinking):
                 parts.append(delta)
+                if first_tok_at is None and delta:
+                    first_tok_at = time.monotonic()
                 if on_token:
                     on_token(delta)
             body = "".join(parts).strip()
             meta_fallback = bool(body)
+            gen_tokens_est = _estimate_tokens(body)
+            if first_tok_at is not None:
+                ttft_ms = int((first_tok_at - stream_t0) * 1000)
+                gen_secs = max(0.001, time.monotonic() - first_tok_at)
+                gen_tps = gen_tokens_est / gen_secs if gen_tokens_est else 0.0
         except Exception as e:
             log.warning("meta-fallback LLM call failed: %s", e)
             llm_error = True
@@ -283,10 +385,20 @@ def answer(
             meta_fallback=meta_fallback,
             expanded_question=expanded_q,
             jargon_hits=jargon_hits,
+            context_tokens_est=context_tokens_est,
+            context_tokens_limit=cfg.llm.num_ctx,
+            gen_tokens_est=gen_tokens_est or None,
+            ttft_ms=ttft_ms,
+            gen_tps=gen_tps,
         )
 
     messages = compose_messages(
-        cfg, lang, history, retrieval.reranked, expanded_q, glossary_md=glossary_md
+        cfg,
+        lang,
+        history_for_llm,
+        retrieval.reranked,
+        expanded_q,
+        glossary_md=glossary_md,
     )
 
     # Emit the jargon note up-front so the user sees it before tokens stream.
@@ -294,11 +406,30 @@ def answer(
         on_token(jargon_note + "\n\n")
 
     parts: list[str] = []
+    ttft_ms: int | None = None
+    gen_tps: float | None = None
+    stream_t0 = time.monotonic()
+    first_tok_at: float | None = None
     for delta in _stream_answer(cfg, messages, on_thinking=on_thinking):
         parts.append(delta)
+        if first_tok_at is None and delta:
+            first_tok_at = time.monotonic()
         if on_token:
             on_token(delta)
     body = "".join(parts).strip()
+    gen_tokens_est = _estimate_tokens(body)
+    if first_tok_at is not None:
+        ttft_ms = int((first_tok_at - stream_t0) * 1000)
+        gen_secs = max(0.001, time.monotonic() - first_tok_at)
+        gen_tps = gen_tokens_est / gen_secs if gen_tokens_est else 0.0
+    if stale_cache_days is not None:
+        note = (
+            f"Not: KTH-sidan kunde inte nås live. Svar baseras på cache från {stale_cache_days} dagar sedan."
+            if lang == "sv"
+            else "Note: The KTH page could not be reached live. This answer uses a cached copy "
+            f"from {stale_cache_days} days ago."
+        )
+        body = f"{note}\n\n{body}" if body else note
 
     # Rare hiccup: gate passed and the LLM streamed cleanly but emitted no
     # text (e.g., sampler stopped immediately, context full). Surface a
@@ -368,6 +499,13 @@ def answer(
         jargon_hits=jargon_hits,
         numbered_body=numbered_body,
         cited_chunks=list(sources_chunks),
+        source_urls=source_urls,
+        stale_cache_days=stale_cache_days,
+        context_tokens_est=_estimate_context_tokens(messages),
+        context_tokens_limit=cfg.llm.num_ctx,
+        gen_tokens_est=gen_tokens_est or None,
+        ttft_ms=ttft_ms,
+        gen_tps=gen_tps,
     )
 
 

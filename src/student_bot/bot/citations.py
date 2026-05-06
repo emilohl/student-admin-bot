@@ -27,6 +27,8 @@ def build_doc_url(rel_source: str, page_start: int | None, base_url: str) -> str
     or "https://kth.example.org/docs" if hosted externally. PDFs get
     `#page=N` so the browser jumps to the cited page.
     """
+    if rel_source.startswith("https://") or rel_source.startswith("http://"):
+        return rel_source
     if not base_url:
         return ""
     encoded = quote(rel_source, safe="/")
@@ -82,9 +84,9 @@ def format_sources_block(
 # the README's "five concepts" list — keep these short so they don't bury
 # the answer.
 LITERACY_FOOTERS_SV = [
-    "_Tips: klicka på källorna och dubbelkolla mot dokumenten — boten kan ha fel även när den låter säker._",
-    "_Tips: ett LLM kan låta övertygande utan att ha rätt. Lita på källorna, inte på tonen._",
-    "_Tips: boten känner bara till dokumenten den indexerats på. Personliga ärenden — kontakta studievägledaren._",
+    "_Tips: klicka på källorna och dubbelkolla svaren mot dokumenten — boten kan ha fel även när den låter säker._",
+    "_Tips: en stor språkmodell (LLM) kan låta övertygande utan att ha rätt. Lita på källorna, inte på tonen._",
+    "_Tips: boten känner bara till dokumenten den indexerats på. För personliga ärenden — kontakta studievägledaren._",
     "_Tips: dina frågor loggas anonymt för att förbättra boten. Skicka `!privacy off` om du vill stänga av loggning._",
     "_Tips: boten är ett komplement, inte en ersättning för studievägledaren — särskilt vid beslut som påverkar dina studier._",
 ]

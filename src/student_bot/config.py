@@ -123,6 +123,7 @@ class WebConfig(BaseModel):
     #   user:scrypt:<saltb64>:<hashb64>
     users_file: str = "data/web_users"
     session_idle_minutes: int = 60
+    performance_panel_enabled: bool = False
 
 
 class TopicsConfig(BaseModel):
@@ -137,6 +138,28 @@ class JargonConfig(BaseModel):
     proposals_file: str = "data/dictionary_proposals.json"
     show_transparency_note: bool = True
     max_glossary_entries: int = 6
+
+
+class DynamicWebConfig(BaseModel):
+    enabled: bool = False
+    timeout_seconds: float = 6.0
+    max_pages_per_query: int = 6
+    cache_ttl_days: int = 7
+    # Regexes matched against URL path only (no scheme/host/query).
+    allowed_patterns: list[str] = Field(
+        default_factory=lambda: [
+            r"^/student/kurser/kurs/[A-Z0-9]+/?$",
+            r"^/student/kurser/program/[A-Z0-9]+(?:/[0-9]{5}(?:/arskurs[0-9]+)?)?/?$",
+        ]
+    )
+    user_agent: str = "student-bot/0.1 (+https://github.com/cohm/student-admin-bot)"
+    max_bytes: int = 1_500_000
+    max_links_followed: int = 24
+    cache_db: str = "data/web_cache.sqlite"
+    program_aliases_file: str = "data/program_aliases.json"
+    program_aliases_ttl_hours: int = 24
+    # Optional manual overrides/additions: alias -> five-letter program code.
+    program_aliases: dict[str, str] = Field(default_factory=dict)
 
 
 class MattermostSecrets(BaseModel):
@@ -162,6 +185,7 @@ class Config(BaseModel):
     web: WebConfig = Field(default_factory=WebConfig)
     topics: TopicsConfig = Field(default_factory=TopicsConfig)
     jargon: JargonConfig = Field(default_factory=JargonConfig)
+    dynamic_web: DynamicWebConfig = Field(default_factory=DynamicWebConfig)
 
     # Secrets injected from env (only required when actually used).
     user_id_hash_salt: str | None = None

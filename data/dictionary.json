@@ -97,6 +97,54 @@
       "definition": "SF1674 Flervariabelanalys 7,5 hp - en mattekurs",
       "added_by": "admin (accepted from student suggestion)",
       "added_ts": "2026-05-02"
+    },
+    "linalg fk": {
+      "term": "linalg fk",
+      "expansion": "linjär algebra fortsättningskurs",
+      "lang": "sv",
+      "definition": "SF1681 Linjär algebra fortsättningskurs",
+      "added_by": "admin (accepted from student suggestion)",
+      "added_ts": "2026-05-05"
+    },
+    "linalg": {
+      "term": "linalg",
+      "expansion": "linjär algebra",
+      "lang": "sv",
+      "definition": "SF1672 Linjär algebra",
+      "added_by": "admin (accepted from student suggestion)",
+      "added_ts": "2026-05-05"
+    },
+    "termon": {
+      "term": "termon",
+      "expansion": "termodynamiken",
+      "lang": "sv",
+      "definition": "Kursen SI1121 Termodynamik",
+      "added_by": "admin (accepted from student suggestion)",
+      "added_ts": "2026-05-05"
+    },
+    "ga": {
+      "term": "GA",
+      "expansion": "grundutbildningsansvarig",
+      "lang": "sv",
+      "definition": "",
+      "added_by": "admin (accepted from student suggestion)",
+      "added_ts": "2026-05-05"
+    },
+    "svl": {
+      "term": "SVL",
+      "expansion": "studievägledare",
+      "lang": "sv",
+      "definition": "",
+      "added_by": "admin (accepted from student suggestion)",
+      "added_ts": "2026-05-05"
+    },
+    "kex": {
+      "term": "KEX",
+      "expansion": "kandidatexamensarbete",
+      "lang": "sv",
+      "definition": "kurs för kandidatexamensarbete, för CTFYS SA114X eller EF112X",
+      "added_by": "admin (accepted from student suggestion)",
+      "added_ts": "2026-05-05"
     }
   }
 }

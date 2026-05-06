@@ -18,7 +18,9 @@ import json
 import logging
 import os
 import secrets
+import subprocess
 import threading
+import time
 from pathlib import Path
 
 import click
@@ -48,6 +50,15 @@ log = logging.getLogger("student_bot.web")
 
 WEB_PKG_DIR = Path(__file__).resolve().parent
 STATIC_DIR = WEB_PKG_DIR / "static"
+HOST_METRICS_FILE = Path("data/host_metrics.json")
+HOST_METRICS_START_CMD = "uv run student-bot-host-metrics"
+HOST_METRICS_STOP_CMD = "pkill -f student-bot-host-metrics"
+
+
+def _perf_panel_enabled(cfg: Config) -> bool:
+    # Backward-compatible guard: older config schema instances may not carry
+    # this attribute yet in mixed-image/dev-mount setups.
+    return bool(getattr(cfg.web, "performance_panel_enabled", False))
 
 
 # --- request schemas ---
@@ -163,7 +174,36 @@ def create_app(cfg: Config | None = None) -> FastAPI:
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "auth_enabled": cfg.web.auth_enabled}
+        return {
+            "status": "ok",
+            "auth_enabled": cfg.web.auth_enabled,
+            "performance_panel_enabled": _perf_panel_enabled(cfg),
+        }
+
+    @app.get("/api/system-load")
+    def system_load(request: Request):
+        require_access(request, cfg)
+        if not _perf_panel_enabled(cfg):
+            return {"performance_panel_enabled": False}
+        return {
+            "performance_panel_enabled": True,
+            "system_load": _system_load_snapshot(),
+            "host_system_load": _host_load_snapshot(cfg),
+        }
+
+    @app.on_event("startup")
+    def startup_notice():
+        if not _perf_panel_enabled(cfg):
+            return
+        log.info("performance panel enabled; start host metrics collector on host.")
+        log.info("command: %s", HOST_METRICS_START_CMD)
+
+    @app.on_event("shutdown")
+    def shutdown_notice():
+        if not _perf_panel_enabled(cfg):
+            return
+        log.info("web app stopping; stop host metrics collector if still running.")
+        log.info("command: %s", HOST_METRICS_STOP_CMD)
 
     @app.post("/api/session")
     def session_set(request: Request, payload: SessionRequest):
@@ -301,7 +341,11 @@ def _stream_answer(
             return
 
         # Persist to memory and DB after the stream finishes.
-        if result.answered or result.meta_fallback:
+        if (
+            result.answered
+            or result.meta_fallback
+            or result.gate.reason == "programme_clarification"
+        ):
             memory.append(web_user_id, "default", "user", payload.question)
             memory.append(web_user_id, "default", "assistant", result.answer)
 
@@ -341,7 +385,22 @@ def _stream_answer(
             "confidence": confidence_badge(result.lang, result.gate.top1),
             "confidence_level": _conf_class(result.gate.top1),
             "latency_ms": result.latency_ms,
+            "source_urls": result.source_urls,
+            "stale_cache_days": result.stale_cache_days,
+            "performance_panel_enabled": _perf_panel_enabled(cfg),
         }
+        if _perf_panel_enabled(cfg):
+            meta.update(
+                {
+                    "context_tokens_est": result.context_tokens_est,
+                    "context_tokens_limit": result.context_tokens_limit,
+                    "gen_tokens_est": result.gen_tokens_est,
+                    "ttft_ms": result.ttft_ms,
+                    "gen_tps": result.gen_tps,
+                    "system_load": _system_load_snapshot(),
+                    "host_system_load": _host_load_snapshot(cfg),
+                }
+            )
         yield _sse("meta", json.dumps(meta))
 
     return gen()
@@ -363,6 +422,87 @@ def _conf_class(top1: float) -> str:
     if top1 >= 0.5:
         return "medium"
     return "low"
+
+
+def _gpu_load_snapshot() -> dict[str, float] | None:
+    # Optional: best-effort NVIDIA telemetry when available.
+    try:
+        out = subprocess.check_output(
+            [
+                "nvidia-smi",
+                "--query-gpu=utilization.gpu,memory.used,memory.total",
+                "--format=csv,noheader,nounits",
+            ],
+            stderr=subprocess.DEVNULL,
+            timeout=1.0,
+            text=True,
+        ).strip()
+        if not out:
+            return None
+        first = out.splitlines()[0]
+        util_s, mem_used_s, mem_total_s = [p.strip() for p in first.split(",")[:3]]
+        mem_used = float(mem_used_s)
+        mem_total = float(mem_total_s)
+        mem_pct = (mem_used / mem_total * 100.0) if mem_total > 0 else 0.0
+        return {"util_pct": float(util_s), "mem_pct": mem_pct}
+    except Exception:
+        return None
+
+
+def _system_load_snapshot() -> dict:
+    now = int(time.time() * 1000)
+    cpu_pct: float | None = None
+    mem_pct: float | None = None
+
+    try:
+        load1 = os.getloadavg()[0]
+        cpu_count = max(1, os.cpu_count() or 1)
+        cpu_pct = max(0.0, min(100.0, (load1 / cpu_count) * 100.0))
+    except Exception:
+        cpu_pct = None
+
+    # Linux container path.
+    try:
+        meminfo = {}
+        with open("/proc/meminfo", encoding="utf-8") as f:
+            for line in f:
+                k, _, v = line.partition(":")
+                meminfo[k.strip()] = v.strip()
+        total = float(meminfo.get("MemTotal", "0 kB").split()[0] or 0.0)
+        avail = float(meminfo.get("MemAvailable", "0 kB").split()[0] or 0.0)
+        if total > 0:
+            mem_pct = max(0.0, min(100.0, ((total - avail) / total) * 100.0))
+    except Exception:
+        mem_pct = None
+
+    return {
+        "ts_ms": now,
+        "cpu_pct": cpu_pct,
+        "mem_pct": mem_pct,
+        "gpu": _gpu_load_snapshot(),
+    }
+
+
+def _host_load_snapshot(cfg: Config) -> dict | None:
+    path = cfg.absolute(HOST_METRICS_FILE)
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return None
+        ts = int(data.get("ts_ms", 0))
+        # Ignore stale host samples (>10s old).
+        if ts and int(time.time() * 1000) - ts > 10_000:
+            return None
+        return {
+            "ts_ms": ts,
+            "cpu_pct": data.get("cpu_pct"),
+            "mem_pct": data.get("mem_pct"),
+            "gpu": data.get("gpu"),
+        }
+    except Exception:
+        return None
 
 
 # --- about + stats pages (server-rendered) ---
@@ -401,8 +541,8 @@ _HEADER_HTML = """\
 # Loaded into <head> on every server-rendered page, before notice.js, so
 # data-i18n attributes are translated before any other scripts run.
 _NOTICE_SCRIPT = (
-    '<script src="/static/i18n.js?v=14"></script>'
-    '<script src="/static/notice.js?v=14" defer></script>'
+    '<script src="/static/i18n.js?v=22"></script>'
+    '<script src="/static/notice.js?v=22" defer></script>'
 )
 
 
@@ -413,7 +553,7 @@ def _about_page(cfg: Config) -> HTMLResponse:
     cl_html = f' (<a href="{link}">{link}</a>)' if link else ""
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="/static/style.css?v=14">{_NOTICE_SCRIPT}</head>
+<link rel="stylesheet" href="/static/style.css?v=22">{_NOTICE_SCRIPT}</head>
 <body>{_HEADER_HTML.format(tagline_html="")}<main>{_NOTICE_HTML}<div class="card">
 <h2 data-i18n="about.h2.what"></h2>
 <p data-i18n="about.what.body"></p>
@@ -426,6 +566,14 @@ def _about_page(cfg: Config) -> HTMLResponse:
 <li data-i18n="about.tip4"></li>
 <li data-i18n="about.tip5"></li>
 </ol>
+<div class="github-link">
+  <a href="https://github.com/cohm/student-admin-bot" target="_blank" rel="noopener">
+    <svg class="github-mark" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M8 0C3.58 0 0 3.67 0 8.2c0 3.62 2.29 6.69 5.47 7.77.4.08.55-.18.55-.4 0-.2-.01-.86-.01-1.56-2.01.38-2.53-.5-2.69-.95-.09-.23-.48-.95-.82-1.14-.28-.16-.68-.56-.01-.57.63-.01 1.08.59 1.23.83.72 1.25 1.87.9 2.33.68.07-.54.28-.9.51-1.11-1.78-.21-3.64-.91-3.64-4.05 0-.9.31-1.64.82-2.22-.08-.21-.36-1.05.08-2.18 0 0 .67-.22 2.2.85A7.37 7.37 0 0 1 8 4.68c.68 0 1.36.1 2 .29 1.53-1.07 2.2-.85 2.2-.85.44 1.13.16 1.97.08 2.18.51.58.82 1.31.82 2.22 0 3.15-1.87 3.84-3.65 4.05.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .22.15.49.55.4A8.23 8.23 0 0 0 16 8.2C16 3.67 12.42 0 8 0z"/>
+    </svg>
+    github.com/cohm/student-admin-bot
+  </a>
+</div>
 <p><a href="/" data-i18n="about.back"></a></p>
 </div></main></body></html>
 """
@@ -444,7 +592,7 @@ def _glossary_page(cfg: Config) -> HTMLResponse:
     )
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="/static/style.css?v=14">{_NOTICE_SCRIPT}</head>
+<link rel="stylesheet" href="/static/style.css?v=22">{_NOTICE_SCRIPT}</head>
 <body>{_HEADER_HTML.format(tagline_html='<p class="tagline" data-i18n="glossary.tagline"></p>')}
 <main>{_NOTICE_HTML}<div class="card">
 <table border="1" cellpadding="6" cellspacing="0" style="width:100%; border-collapse: collapse;">
@@ -508,7 +656,7 @@ def _stats_page(cfg: Config, db: LogDB) -> HTMLResponse:
     )
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="/static/style.css?v=14">{_NOTICE_SCRIPT}</head>
+<link rel="stylesheet" href="/static/style.css?v=22">{_NOTICE_SCRIPT}</head>
 <body>{_HEADER_HTML.format(tagline_html="")}<main>{_NOTICE_HTML}<div class="card">
 <p data-i18n="stats.summary"
    data-logged="{overall["logged"]}"
@@ -536,6 +684,8 @@ def main(host: str | None, port: int | None, reload: bool):
     logging.basicConfig(
         level=logging.INFO, format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
     )
+    for noisy in ("httpx", "httpcore", "huggingface_hub", "sentence_transformers", "transformers"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
     cfg = get_config()
     bind_host = host or cfg.web.bind_host
     bind_port = port or cfg.web.port
