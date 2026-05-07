@@ -315,8 +315,9 @@ function decorateBot(botMsg, meta) {
   const { body, sources: allSources, tip } = splitMessage(raw);
   const serverSources = Array.isArray(meta.sources) ? meta.sources : [];
   const effectiveSources = allSources.length ? allSources : serverSources;
+  const bodyForCitations = (meta.numbered_body || "").trim() || body;
 
-  const { html: bodyHtml, citedSources } = renderBodyWithCitations(body, effectiveSources);
+  const { html: bodyHtml, citedSources } = renderBodyWithCitations(bodyForCitations, effectiveSources);
   let html = bodyHtml;
   // Show only sources that were actually cited inline.
   // This avoids surfacing unrelated retrieved chunks as references.
@@ -464,6 +465,10 @@ function inlineCitationTitle(text) {
 // left in the body text as-is so un-grounded claims stay visible.
 function renderBodyWithCitations(body, allSources) {
   const lookup = buildCitationLookup(allSources);
+  const byNumber = new Map();
+  for (const s of allSources) {
+    if (Number.isFinite(s?.n)) byNumber.set(Number(s.n), s);
+  }
   const cited = [];                  // sources in citation order, renumbered
   const numberFor = new Map();       // serverN -> newNumber
 
@@ -471,6 +476,13 @@ function renderBodyWithCitations(body, allSources) {
   // we swap it for the final anchor link in a second pass.
   const numbered = body.replace(/\[([^\[\]]+?)\]/g, (full, content) => {
     const trimmed = content.trim();
+    // If server already numbered inline citations as [N], preserve N.
+    const nRaw = Number.parseInt(trimmed, 10);
+    if (/^\d+$/.test(trimmed) && Number.isFinite(nRaw) && byNumber.has(nRaw)) {
+      const src = byNumber.get(nRaw);
+      if (!cited.some((x) => x.n === src.n)) cited.push(src);
+      return `CIT${nRaw}MARK`;
+    }
     const src = lookup[trimmed]
       || lookup[trimmed.replace(/\s+·\s+/, " — ")]
       || lookup[trimmed.replace(/\s+—\s+/, " · ")]
@@ -493,10 +505,11 @@ function renderBodyWithCitations(body, allSources) {
 }
 
 // Strip the " — Section" suffix and trailing ", s. N" page from a
-// server-formatted label so we can render compact "Title" + page.
+// server-formatted label so we can render "Title — Section, s. N".
 function parseSourceLabel(label) {
   let title = label;
   let page = null;
+  let section = "";
   const pageMatch = title.match(/,\s*(?:s|p)\.\s*(\d+)\s*$/);
   if (pageMatch) {
     page = pageMatch[1];
@@ -504,22 +517,24 @@ function parseSourceLabel(label) {
   }
   const sectionIdx = title.indexOf(" — ");
   if (sectionIdx > -1) {
+    section = title.slice(sectionIdx + 3).trim();
     title = title.slice(0, sectionIdx).trim();
   }
-  return { title, page };
+  return { title, section, page };
 }
 
 function renderSources(sources, lang) {
   const pageLabel = lang === "en" ? "p." : "s.";
   let out = '<div class="sources">';
   for (const s of sources) {
-    const { title, page } = parseSourceLabel(s.label);
+    const { title, section, page } = parseSourceLabel(s.label);
     const titleHtml = escapeHtml(title);
     const link = s.url
       ? `<a href="${escapeAttr(s.url)}" target="_blank" rel="noopener">${titleHtml}</a>`
       : titleHtml;
+    const sectionHtml = section ? ` — ${escapeHtml(section)}` : "";
     const pageHtml = page ? `, ${pageLabel} ${escapeHtml(page)}` : "";
-    out += `<div class="source-item" id="cite-${s.n}"><span class="source-num">[${s.n}]</span> ${link}${pageHtml}</div>`;
+    out += `<div class="source-item" id="cite-${s.n}"><span class="source-num">[${s.n}]</span> ${link}${sectionHtml}${pageHtml}</div>`;
   }
   out += "</div>";
   return out;

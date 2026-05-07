@@ -400,6 +400,7 @@ def _stream_answer(
             "lang": result.lang,
             "gate": result.gate.reason,
             "answered": result.answered,
+            "numbered_body": result.numbered_body,
             "confidence": confidence_badge(result.lang, result.gate.top1),
             "confidence_level": _conf_class(result.gate.top1),
             "latency_ms": result.latency_ms,
