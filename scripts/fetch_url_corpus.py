@@ -67,13 +67,18 @@ def _load_manifest(path: Path, cfg: Config) -> list[UrlSeed]:
         if not isinstance(e, dict) or not e.get("url"):
             continue
         md = int(e.get("max_depth", cfg.url_ingest.default_max_depth))
+        include_raw = e.get("include_patterns")
+        exclude_raw = e.get("exclude_patterns")
+        include_list = include_raw if isinstance(include_raw, list) else []
+        exclude_list = exclude_raw if isinstance(exclude_raw, list) else []
+
         out.append(
             UrlSeed(
                 url=_canonicalize_url(str(e["url"])),
                 follow_links=bool(e.get("follow_links", False)),
                 max_depth=max(0, md),
-                include_patterns=[str(x) for x in e.get("include_patterns", [])] or None,
-                exclude_patterns=[str(x) for x in e.get("exclude_patterns", [])] or None,
+                include_patterns=[str(x) for x in include_list] or None,
+                exclude_patterns=[str(x) for x in exclude_list] or None,
                 type_hint=str(e.get("type_hint", "auto")).lower(),
                 doc_title_override=str(e.get("doc_title_override", "")).strip(),
             )
@@ -238,14 +243,19 @@ def main(limit_seeds: int | None) -> None:
 
         while q and processed < cfg.url_ingest.max_pages_per_seed:
             url, depth = q.popleft()
+            is_seed = depth == 0
             url = _canonicalize_url(url)
             if url in seen:
                 continue
             seen.add(url)
 
             if not _host_allowed(urlsplit(url).netloc, cfg.url_ingest.domains_allowlist):
+                skipped += 1
                 continue
-            if not _matches_policy(url, seed):
+            # Apply include/exclude policy only to discovered links.
+            # The seed URL itself should always be attempted.
+            if (not is_seed) and (not _matches_policy(url, seed)):
+                skipped += 1
                 continue
 
             try:

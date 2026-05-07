@@ -136,7 +136,7 @@ dynamic_web:
 
 # URL/PDF corpus ingestion from a manifest.
 url_ingest:
-  enabled: false
+  enabled: yes
   domains_allowlist:
     - www.kth.se
     - kth.se
@@ -144,6 +144,6 @@ url_ingest:
   max_bytes: 2000000
   max_pages_per_seed: 12
   default_max_depth: 1
-  manifest_file: data/url_manifest.yaml
+  manifest_file: data/url_manifest_KTH.yaml
   output_dir: docs/corpus/web_import
   source_map_file: data/url_source_map.json

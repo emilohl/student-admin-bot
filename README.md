@@ -529,6 +529,15 @@ Manifest entries in `data/url_manifest.yaml` support per-URL policies:
 - `type_hint` (`auto`/`html`/`pdf`)
 - `doc_title_override`
 
+Defaults when omitted (per entry):
+
+- `follow_links`: `false`
+- `max_depth`: `url_ingest.default_max_depth` (default `1`) (used only when `follow_links: true`)
+- `include_patterns`: none (include all paths)
+- `exclude_patterns`: none
+- `type_hint`: `auto` (treat as PDF when content-type is PDF or URL ends with `.pdf`)
+- `doc_title_override`: empty (use page `<title>`/`<h1>` for HTML, first header line for PDF)
+
 Imported pages are written to `docs/corpus/web_import/...` as `.md`. The source
 map (`data/url_source_map.json`) stores canonical original URLs so citations can
 link users to externally accessible sources.
