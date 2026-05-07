@@ -9,9 +9,12 @@ Citations are the bot's primary defence against blind trust:
 
 from __future__ import annotations
 
+import json
 import random
 import re
-from urllib.parse import quote
+from functools import lru_cache
+from pathlib import Path
+from urllib.parse import quote, urlparse
 
 from student_bot.bot.retrieval import RetrievedChunk
 from student_bot.config import Config
@@ -56,6 +59,50 @@ def _dedupe_keep_order(items: list[tuple]) -> list[tuple]:
     return out
 
 
+@lru_cache(maxsize=8)
+def _load_source_map(path_str: str, mtime_ns: int) -> dict[str, dict]:
+    # mtime_ns participates in the cache key so edits are picked up without
+    # a restart.
+    try:
+        raw = json.loads(Path(path_str).read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, dict] = {}
+    for rel, meta in raw.items():
+        if isinstance(rel, str) and isinstance(meta, dict):
+            out[rel] = meta
+    return out
+
+
+def _source_map(cfg: Config) -> dict[str, dict]:
+    path = cfg.absolute(Path(cfg.url_ingest.source_map_file))
+    if not path.exists():
+        return {}
+    return _load_source_map(str(path), path.stat().st_mtime_ns)
+
+
+def format_source_title(cfg: Config, c: RetrievedChunk) -> str:
+    """Human-friendly source title. For web-imported docs prefer
+    '<host>: <page title>' from url_source_map metadata."""
+    rel = (c.rel_source or "").strip()
+    title = (c.doc_title or "").strip()
+    if not rel.startswith("web_import/"):
+        return title
+
+    meta = _source_map(cfg).get(rel, {})
+    pretty = str(meta.get("title", "")).strip()
+    source_url = (c.source_url or str(meta.get("canonical_url", "")) or str(meta.get("source_url", ""))).strip()
+    host = ""
+    if source_url.startswith("https://") or source_url.startswith("http://"):
+        host = urlparse(source_url).netloc
+
+    if pretty:
+        return f"{host}: {pretty}" if host else pretty
+    return title
+
+
 def format_sources_block(
     cfg: Config,
     chunks: list[RetrievedChunk],
@@ -80,6 +127,7 @@ def format_sources_block(
     for i, row in enumerate(rows, 1):
         title, section, page = row
         chunk = chunk_by_row[row]
+        title = format_source_title(cfg, chunk)
         url = build_doc_url(chunk.rel_source, page, base, source_url=chunk.source_url)
         page_suffix = f", s. {page}" if page else ""
         section_suffix = f" — {section}" if section else ""
@@ -257,7 +305,7 @@ def format_for_mattermost(cfg, result) -> tuple[str, list[dict] | None]:
         url = build_doc_url(c.rel_source, c.page_start, base, source_url=c.source_url)
         page_suffix = f", s. {c.page_start}" if c.page_start else ""
         section_suffix = f" — {c.section_path}" if c.section_path else ""
-        field_title = f"{c.doc_title}{section_suffix}{page_suffix}"
+        field_title = f"{format_source_title(cfg, c)}{section_suffix}{page_suffix}"
         if url:
             link_label = "Visa dokument" if lang == "sv" else "Open document"
             field_value = f"[{link_label}]({url})"
@@ -282,6 +330,7 @@ def format_for_mattermost(cfg, result) -> tuple[str, list[dict] | None]:
 
 __all__ = [
     "build_doc_url",
+    "format_source_title",
     "format_sources_block",
     "apply_citation_numbering",
     "literacy_footer",

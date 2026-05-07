@@ -313,13 +313,19 @@ function decorateBot(botMsg, meta) {
   // in order of first appearance.
   const raw = botMsg.body.textContent;
   const { body, sources: allSources, tip } = splitMessage(raw);
+  const serverSources = Array.isArray(meta.sources) ? meta.sources : [];
+  const effectiveSources = allSources.length ? allSources : serverSources;
 
-  const { html: bodyHtml, citedSources } = renderBodyWithCitations(body, allSources);
+  const { html: bodyHtml, citedSources } = renderBodyWithCitations(body, effectiveSources);
   let html = bodyHtml;
   // Show only sources that were actually cited inline.
   // This avoids surfacing unrelated retrieved chunks as references.
   if (citedSources.length) {
     html += renderSources(citedSources, meta.lang || "sv");
+  } else if (serverSources.length) {
+    // Fallback: if inline citation matching fails, still show the
+    // authoritative server-provided references.
+    html += renderSources(serverSources, meta.lang || "sv");
   }
   if (tip) html += renderTip(tip);
   botMsg.body.innerHTML = html;
@@ -385,7 +391,7 @@ function splitMessage(text) {
     const lines = srcMatch[2].split("\n").map(s => s.trim()).filter(Boolean);
     for (const line of lines) {
       // "1. [label](url)" or "1. label"
-      const m = line.match(/^(\d+)\.\s+(?:\[(.+?)\]\((\S+?)\)|(.+))$/);
+      const m = line.match(/^(\d+)\.\s+(?:\[(.+?)\]\((.+)\)|(.+))$/);
       if (m) {
         sources.push({
           n: parseInt(m[1], 10),
@@ -533,15 +539,78 @@ function escapeAttr(s) {
 }
 
 function renderMarkdown(text) {
-  // very small markdown subset: **bold**, _italic_, links, line breaks.
-  const esc = (s) => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
-  let out = esc(text);
-  out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g,
-    (_, lbl, href) => `<a href="${href}" target="_blank" rel="noopener">${lbl}</a>`);
-  out = out.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-  out = out.replace(/_([^_]+)_/g, "<em>$1</em>");
-  out = out.replace(/\n/g, "<br>");
-  return out;
+  // Small markdown subset used in chat:
+  // - paragraphs + hard line breaks
+  // - unordered + ordered lists
+  // - **bold**, _italic_, links
+  //
+  // Intentionally *not* a full markdown parser; keep deterministic and safe.
+  const esc = (s) => (s || "").replace(/[&<>]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;"}[c]));
+
+  const renderInline = (s) => {
+    let out = esc(s);
+    out = out.replace(
+      /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g,
+      (_, lbl, href) => `<a href="${href}" target="_blank" rel="noopener">${lbl}</a>`
+    );
+    out = out.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    out = out.replace(/_([^_]+)_/g, "<em>$1</em>");
+    return out;
+  };
+
+  const lines = (text || "").split("\n");
+  let html = "";
+  let para = [];
+  let listKind = ""; // "", "ul", "ol"
+  let listItems = [];
+
+  const flushPara = () => {
+    if (!para.length) return;
+    html += `<p>${para.map(renderInline).join("<br>")}</p>`;
+    para = [];
+  };
+
+  const flushList = () => {
+    if (!listKind || !listItems.length) {
+      listKind = "";
+      listItems = [];
+      return;
+    }
+    const itemsHtml = listItems.map((it) => `<li>${renderInline(it)}</li>`).join("");
+    html += `<${listKind}>${itemsHtml}</${listKind}>`;
+    listKind = "";
+    listItems = [];
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.replace(/\s+$/, ""); // trim end only
+    const ul = line.match(/^\s*[*-]\s+(.+)$/);
+    const ol = line.match(/^\s*(\d+)\.\s+(.+)$/);
+
+    if (ul || ol) {
+      flushPara();
+      const kind = ul ? "ul" : "ol";
+      if (listKind && listKind !== kind) flushList();
+      listKind = kind;
+      listItems.push((ul ? ul[1] : ol[2]) || "");
+      continue;
+    }
+
+    // Blank line ends current block(s).
+    if (!line.trim()) {
+      flushPara();
+      flushList();
+      continue;
+    }
+
+    // Non-list line: if we were in a list, end it and start a paragraph.
+    if (listKind) flushList();
+    para.push(line);
+  }
+
+  flushPara();
+  flushList();
+  return html;
 }
 
 // Skip onboarding if name already set.

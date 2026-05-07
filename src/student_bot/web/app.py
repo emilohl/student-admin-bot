@@ -36,7 +36,7 @@ from pydantic import BaseModel
 from rich.logging import RichHandler
 from starlette.middleware.sessions import SessionMiddleware
 
-from student_bot.bot.citations import confidence_badge
+from student_bot.bot.citations import build_doc_url, confidence_badge, format_source_title
 from student_bot.bot.memory import ConversationMemory
 from student_bot.bot.pipeline import answer
 from student_bot.bot.topics import classify
@@ -377,6 +377,24 @@ def _stream_answer(
             except Exception:
                 log.exception("topic classify failed")
 
+        # Structured source metadata for the web client. This avoids relying
+        # on markdown tail parsing for citation mapping/rendering.
+        sources: list[dict] = []
+        seen: set[tuple] = set()
+        for c in result.cited_chunks:
+            key = (c.doc_title, c.section_path or None, c.page_start)
+            if key in seen:
+                continue
+            seen.add(key)
+            title = format_source_title(cfg, c)
+            page_suffix = f", s. {c.page_start}" if c.page_start else ""
+            section_suffix = f" — {c.section_path}" if c.section_path else ""
+            label = f"{title}{section_suffix}{page_suffix}"
+            url = build_doc_url(
+                c.rel_source, c.page_start, cfg.web.doc_base_url, source_url=c.source_url
+            )
+            sources.append({"n": len(sources) + 1, "label": label, "url": url})
+
         meta = {
             "qa_id": qa_id,
             "lang": result.lang,
@@ -386,6 +404,7 @@ def _stream_answer(
             "confidence_level": _conf_class(result.gate.top1),
             "latency_ms": result.latency_ms,
             "source_urls": result.source_urls,
+            "sources": sources,
             "stale_cache_days": result.stale_cache_days,
             "performance_panel_enabled": _perf_panel_enabled(cfg),
         }
@@ -686,6 +705,18 @@ def main(host: str | None, port: int | None, reload: bool):
     )
     for noisy in ("httpx", "httpcore", "huggingface_hub", "sentence_transformers", "transformers"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
+
+    # Uvicorn access logs get noisy when the performance panel is enabled:
+    # the browser polls /api/system-load at 1 Hz. Suppress just that endpoint
+    # unless explicitly disabled by env.
+    if os.environ.get("WEB_SUPPRESS_SYSTEM_LOAD_ACCESS_LOG", "1") != "0":
+        class _SuppressSystemLoadAccessLog(logging.Filter):
+            def filter(self, record: logging.LogRecord) -> bool:  # noqa: A003 (filter is stdlib name)
+                msg = record.getMessage()
+                return "GET /api/system-load " not in msg
+
+        logging.getLogger("uvicorn.access").addFilter(_SuppressSystemLoadAccessLog())
+
     cfg = get_config()
     bind_host = host or cfg.web.bind_host
     bind_port = port or cfg.web.port
