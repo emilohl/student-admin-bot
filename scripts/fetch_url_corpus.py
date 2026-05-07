@@ -21,12 +21,16 @@ from urllib.request import Request, urlopen
 import click
 import pymupdf4llm
 import yaml
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString, Tag
 
 from student_bot.config import Config, get_config
 
 
 _HTML_ACCEPT = "text/html,application/xhtml+xml,application/pdf;q=0.9,*/*;q=0.1"
+_NOISY_LINK_TEXT_RE = re.compile(
+    r"\b(kontakt|it-support|sök|search|till sidans topp|cookie|integritet|privacy)\b",
+    re.I,
+)
 
 
 @dataclass
@@ -114,7 +118,35 @@ def _fetch(url: str, cfg: Config) -> tuple[str, bytes, str]:
     return final_url, payload, content_type
 
 
-def _extract_html_markdown(payload: bytes, base_url: str) -> tuple[str, str, list[str]]:
+def _node_text_with_markdown_links(node: Tag, base_url: str, cfg: Config) -> str:
+    parts: list[str] = []
+
+    def walk(curr: Tag) -> None:
+        for child in curr.children:
+            if isinstance(child, NavigableString):
+                parts.append(str(child))
+                continue
+            if not isinstance(child, Tag):
+                continue
+            if child.name == "a" and child.get("href"):
+                href = str(child.get("href") or "").strip()
+                label = child.get_text(" ", strip=True)
+                if not label:
+                    continue
+                canonical = _canonicalize_url(urljoin(base_url, href))
+                blocked = _blocked_link_reason(cfg, canonical)
+                if blocked or not _related_link_allowed(cfg, urlsplit(canonical).netloc):
+                    parts.append(label)
+                else:
+                    parts.append(f"[{label}]({canonical})")
+            else:
+                walk(child)
+
+    walk(node)
+    return re.sub(r"\s+", " ", "".join(parts)).strip()
+
+
+def _extract_html_markdown(payload: bytes, base_url: str, cfg: Config) -> tuple[str, str, list[str]]:
     soup = BeautifulSoup(payload, "lxml")
     for t in soup(["script", "style", "noscript", "form", "header", "footer", "nav"]):
         t.decompose()
@@ -127,7 +159,7 @@ def _extract_html_markdown(payload: bytes, base_url: str) -> tuple[str, str, lis
 
     lines: list[str] = []
     for node in soup.select("h1,h2,h3,p,li,dt,dd"):
-        txt = node.get_text(" ", strip=True)
+        txt = _node_text_with_markdown_links(node, base_url, cfg)
         if not txt:
             continue
         if node.name in ("h1", "h2", "h3"):
@@ -145,6 +177,9 @@ def _extract_html_markdown(payload: bytes, base_url: str) -> tuple[str, str, lis
     for a in soup.find_all("a", href=True):
         href = a.get("href") or ""
         if not href:
+            continue
+        text = (a.get_text(" ", strip=True) or "").strip()
+        if text and _NOISY_LINK_TEXT_RE.search(text):
             continue
         links.append(_canonicalize_url(urljoin(base_url, href)))
 
@@ -184,6 +219,7 @@ def _render_md(
     title: str,
     content_type: str,
     body_md: str,
+    vetted_links: list[str] | None = None,
 ) -> str:
     front = [
         "---",
@@ -195,7 +231,70 @@ def _render_md(
         "---",
         "",
     ]
-    return "\n".join(front) + body_md.strip() + "\n"
+    out = "\n".join(front) + body_md.strip()
+    if vetted_links:
+        out += "\n\n## Related links\n"
+        out += "\n".join(f"- {u}" for u in vetted_links)
+    return out.strip() + "\n"
+
+
+def _blocked_link_reason(cfg: Config, canonical_url: str) -> str | None:
+    host = urlsplit(canonical_url).netloc
+    if _host_allowed(host, cfg.url_ingest.domain_global_link_blocklist):
+        return f"host:{host.lower()}"
+    for pat in cfg.url_ingest.global_link_blocklist_url_patterns:
+        if re.search(pat, canonical_url):
+            return f"pattern:{pat}"
+    return None
+
+
+def _related_link_allowed(cfg: Config, host: str) -> bool:
+    if _host_allowed(host, cfg.url_ingest.domains_ingest_allowlist):
+        return True
+    return _host_allowed(host, cfg.url_ingest.domains_related_links_allowlist)
+
+
+def _record_filtered_link(
+    report: dict[str, Any],
+    reason: str,
+    url: str,
+    source_rel: str,
+    *,
+    sample_cap: int = 20,
+) -> None:
+    report["total_filtered"] = int(report.get("total_filtered", 0)) + 1
+    bucket = report.setdefault("reasons", {}).setdefault(reason, {"count": 0, "samples": []})
+    bucket["count"] = int(bucket.get("count", 0)) + 1
+    if len(bucket["samples"]) < sample_cap:
+        bucket["samples"].append({"url": url, "source": source_rel})
+
+
+def _vetted_links_for_doc(
+    cfg: Config,
+    links: list[str],
+    *,
+    source_rel: str,
+    filtered_report: dict[str, Any] | None = None,
+) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for u in links:
+        c = _canonicalize_url(u)
+        blocked_reason = _blocked_link_reason(cfg, c)
+        if blocked_reason:
+            if filtered_report is not None:
+                _record_filtered_link(filtered_report, blocked_reason, c, source_rel)
+            continue
+        host = urlsplit(c).netloc
+        if not _related_link_allowed(cfg, host):
+            continue
+        if c in seen:
+            continue
+        seen.add(c)
+        out.append(c)
+        if len(out) >= max(0, cfg.url_ingest.max_links_per_doc):
+            break
+    return out
 
 
 def _write_source_map(path: Path, mapping: dict[str, dict[str, Any]]) -> None:
@@ -203,9 +302,27 @@ def _write_source_map(path: Path, mapping: dict[str, dict[str, Any]]) -> None:
     path.write_text(json.dumps(mapping, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def _word_count(text: str) -> int:
+    return len(re.findall(r"\S+", text))
+
+
+def _record_skip_reason(
+    stats: dict[str, dict[str, Any]],
+    reason: str,
+    url: str,
+    *,
+    sample_cap: int = 5,
+) -> None:
+    bucket = stats.setdefault(reason, {"count": 0, "samples": []})
+    bucket["count"] = int(bucket.get("count", 0)) + 1
+    if len(bucket["samples"]) < sample_cap:
+        bucket["samples"].append(url)
+
+
 @click.command()
 @click.option("--limit-seeds", type=int, default=None, help="Process at most N manifest entries.")
 def main(limit_seeds: int | None) -> None:
+    run_started = time.time()
     cfg = get_config()
     if not cfg.url_ingest.enabled:
         raise click.ClickException("url_ingest.enabled is false in config.yaml")
@@ -229,13 +346,27 @@ def main(limit_seeds: int | None) -> None:
     output_dir_abs.mkdir(parents=True, exist_ok=True)
 
     source_map: dict[str, dict[str, Any]] = {}
+    filtered_links_report: dict[str, Any] = {"total_filtered": 0, "reasons": {}}
     written = 0
     skipped = 0
+    explicit_seed_count = len(seeds)
+    discovered_total = 0
+    words_total = 0
+    links_extracted_total = 0
+    links_kept_total = 0
+    skip_reasons: dict[str, dict[str, Any]] = {}
 
     for seed in seeds:
-        if not _host_allowed(urlsplit(seed.url).netloc, cfg.url_ingest.domains_allowlist):
+        seed_blocked_reason = _blocked_link_reason(cfg, seed.url)
+        if seed_blocked_reason:
+            click.echo(f"skip globally blocked seed: {seed.url} ({seed_blocked_reason})")
+            skipped += 1
+            _record_skip_reason(skip_reasons, f"globally_blocked_seed:{seed_blocked_reason}", seed.url)
+            continue
+        if not _host_allowed(urlsplit(seed.url).netloc, cfg.url_ingest.domains_ingest_allowlist):
             click.echo(f"skip disallowed host: {seed.url}")
             skipped += 1
+            _record_skip_reason(skip_reasons, "disallowed_seed_host", seed.url)
             continue
         q: deque[tuple[str, int]] = deque([(seed.url, 0)])
         seen: set[str] = set()
@@ -243,19 +374,27 @@ def main(limit_seeds: int | None) -> None:
 
         while q and processed < cfg.url_ingest.max_pages_per_seed:
             url, depth = q.popleft()
+            discovered_total += 1
             is_seed = depth == 0
             url = _canonicalize_url(url)
             if url in seen:
                 continue
             seen.add(url)
 
-            if not _host_allowed(urlsplit(url).netloc, cfg.url_ingest.domains_allowlist):
+            blocked_reason = _blocked_link_reason(cfg, url)
+            if blocked_reason:
                 skipped += 1
+                _record_skip_reason(skip_reasons, f"globally_blocked_url:{blocked_reason}", url)
+                continue
+            if not _host_allowed(urlsplit(url).netloc, cfg.url_ingest.domains_ingest_allowlist):
+                skipped += 1
+                _record_skip_reason(skip_reasons, "disallowed_host", url)
                 continue
             # Apply include/exclude policy only to discovered links.
             # The seed URL itself should always be attempted.
             if (not is_seed) and (not _matches_policy(url, seed)):
                 skipped += 1
+                _record_skip_reason(skip_reasons, "manifest_policy_filtered", url)
                 continue
 
             try:
@@ -263,11 +402,15 @@ def main(limit_seeds: int | None) -> None:
             except Exception as e:
                 click.echo(f"fetch failed: {url} ({e})")
                 skipped += 1
+                _record_skip_reason(skip_reasons, "fetch_failed", url)
                 continue
 
-            if not _host_allowed(urlsplit(final_url).netloc, cfg.url_ingest.domains_allowlist):
+            if not _host_allowed(
+                urlsplit(final_url).netloc, cfg.url_ingest.domains_ingest_allowlist
+            ):
                 click.echo(f"skip redirect outside allowlist: {url} -> {final_url}")
                 skipped += 1
+                _record_skip_reason(skip_reasons, "redirect_outside_allowlist", final_url)
                 continue
 
             hint_pdf = seed.type_hint == "pdf" or final_url.lower().endswith(".pdf")
@@ -279,12 +422,25 @@ def main(limit_seeds: int | None) -> None:
                 body_md, title = _extract_pdf_markdown(payload)
                 content_kind = "application/pdf"
             else:
-                body_md, title, links = _extract_html_markdown(payload, final_url)
+                body_md, title, links = _extract_html_markdown(payload, final_url, cfg)
                 content_kind = "text/html"
             if seed.doc_title_override:
                 title = seed.doc_title_override
 
             rel_source = _rel_source_for_url(final_url, output_rel)
+            vetted_links: list[str] = []
+            if cfg.url_ingest.include_vetted_links_in_markdown and links:
+                vetted_links = _vetted_links_for_doc(
+                    cfg,
+                    links,
+                    source_rel=rel_source,
+                    filtered_report=filtered_links_report,
+                )
+
+            words_total += _word_count(body_md)
+            links_extracted_total += len(links)
+            links_kept_total += len(vetted_links)
+
             out_path = docs_root / rel_source
             out_path.parent.mkdir(parents=True, exist_ok=True)
             out_path.write_text(
@@ -295,6 +451,7 @@ def main(limit_seeds: int | None) -> None:
                     title=title,
                     content_type=content_kind,
                     body_md=body_md,
+                    vetted_links=vetted_links,
                 ),
                 encoding="utf-8",
             )
@@ -315,8 +472,37 @@ def main(limit_seeds: int | None) -> None:
 
     source_map_path = cfg.absolute(Path(cfg.url_ingest.source_map_file))
     _write_source_map(source_map_path, source_map)
+    filtered_report_path = cfg.absolute(Path(cfg.url_ingest.filtered_links_report_file))
+    _write_source_map(filtered_report_path, filtered_links_report)
     click.echo(f"Wrote markdown pages: {written}, skipped: {skipped}")
     click.echo(f"Wrote source map: {source_map_path}")
+    if cfg.url_ingest.include_vetted_links_in_markdown:
+        click.echo(f"Wrote filtered link report: {filtered_report_path}")
+    elapsed_s = max(0.0, time.time() - run_started)
+    avg_words = (words_total / written) if written else 0.0
+    avg_links_extracted = (links_extracted_total / written) if written else 0.0
+    avg_links_kept = (links_kept_total / written) if written else 0.0
+    click.echo("Run summary:")
+    click.echo(f"  Seeds listed: {explicit_seed_count}")
+    click.echo(f"  URLs discovered (seed + followed): {discovered_total}")
+    click.echo(f"  Pages written: {written}")
+    click.echo(f"  Pages skipped: {skipped}")
+    click.echo(f"  Duration: {elapsed_s:.2f}s")
+    click.echo(f"  Words total: {words_total} (avg/page: {avg_words:.1f})")
+    click.echo(
+        f"  Links extracted total: {links_extracted_total} (avg/page: {avg_links_extracted:.1f})"
+    )
+    if cfg.url_ingest.include_vetted_links_in_markdown:
+        click.echo(f"  Vetted links kept total: {links_kept_total} (avg/page: {avg_links_kept:.1f})")
+    if skip_reasons:
+        click.echo("  Skip reasons:")
+        for reason in sorted(skip_reasons):
+            data = skip_reasons[reason]
+            samples = ", ".join(data.get("samples", []))
+            if samples:
+                click.echo(f"    - {reason}: {data['count']} (samples: {samples})")
+            else:
+                click.echo(f"    - {reason}: {data['count']}")
 
 
 if __name__ == "__main__":

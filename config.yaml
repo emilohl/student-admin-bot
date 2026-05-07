@@ -137,7 +137,7 @@ dynamic_web:
 # URL/PDF corpus ingestion from a manifest.
 url_ingest:
   enabled: yes
-  domains_allowlist:
+  domains_ingest_allowlist:
     - www.kth.se
     - kth.se
   timeout_seconds: 8.0
@@ -147,3 +147,12 @@ url_ingest:
   manifest_file: data/url_manifest_KTH.yaml
   output_dir: docs/corpus/web_import
   source_map_file: data/url_source_map.json
+  include_vetted_links_in_markdown: true
+  max_links_per_doc: 100
+  domains_related_links_allowlist:
+    - www.antagning.se
+    - www.student.ladok.se
+  domain_global_link_blocklist:
+    - canvas.kth.se
+  global_link_blocklist_url_patterns: []
+  filtered_links_report_file: data/url_filtered_links_report.json

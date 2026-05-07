@@ -516,10 +516,13 @@ uv run python -m scripts.reindex
 
 Config (`config.yaml` → `url_ingest`) controls:
 
-- domain allowlist (`domains_allowlist`)
+- domain allowlist for ingest/crawl (`domains_ingest_allowlist`)
 - per-seed crawl caps (`max_pages_per_seed`, `default_max_depth`)
 - fetch limits (`timeout_seconds`, `max_bytes`)
 - paths (`manifest_file`, `output_dir`, `source_map_file`)
+- optional vetted-link export (`include_vetted_links_in_markdown`, `max_links_per_doc`)
+- optional external link allowlist for `Related links` (`domains_related_links_allowlist`)
+- global link filtering/reporting (`domain_global_link_blocklist`, `global_link_blocklist_url_patterns`, `filtered_links_report_file`)
 
 Manifest entries in `data/url_manifest.yaml` support per-URL policies:
 
@@ -541,6 +544,22 @@ Defaults when omitted (per entry):
 Imported pages are written to `docs/corpus/web_import/...` as `.md`. The source
 map (`data/url_source_map.json`) stores canonical original URLs so citations can
 link users to externally accessible sources.
+
+If `include_vetted_links_in_markdown: true`, each imported HTML document gets a
+`Related links` section with deduplicated links that still pass the domain
+allowlist. This is useful for "read more" suggestions while keeping links
+constrained to trusted hosts.
+
+To include specific external domains in `Related links` **without ingesting
+them**, add them to `domains_related_links_allowlist`. Fetching/crawling is
+still gated by `domains_ingest_allowlist`, so external links can be surfaced
+but not imported.
+
+For links that should never be surfaced globally (for example
+`canvas.kth.se` pages that require login), add them once in
+`domain_global_link_blocklist` or `global_link_blocklist_url_patterns`.
+Filtered links are recorded to `filtered_links_report_file` with counts and
+sample source pages for auditing.
 
 ---
 

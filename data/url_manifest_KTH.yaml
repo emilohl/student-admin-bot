@@ -40,8 +40,8 @@ entries:
    doc_title_override: ""
 
  - url: https://www.kth.se/student/studier/kurs/kurs-och-examination
-   follow_links: false
-   max_depth: 1
+   follow_links: true
+   max_depth: 2
    include_patterns: []
    exclude_patterns: []
    type_hint: auto

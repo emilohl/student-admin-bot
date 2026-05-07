@@ -7,10 +7,13 @@ import yaml
 
 from scripts.fetch_url_corpus import (
     UrlSeed,
+    _blocked_link_reason,
     _canonicalize_url,
+    _extract_html_markdown,
     _host_allowed,
     _load_manifest,
     _matches_policy,
+    _related_link_allowed,
     _rel_source_for_url,
     _render_md,
 )
@@ -88,6 +91,59 @@ def test_render_md_contains_source_frontmatter():
     assert "source_url: https://www.kth.se/a" in md
     assert "canonical_url: https://www.kth.se/b" in md
     assert md.strip().endswith("# Body")
+
+
+def test_extract_html_markdown_keeps_vetted_links_inline():
+    cfg = get_config()
+    old_ingest = list(cfg.url_ingest.domains_ingest_allowlist)
+    old_related = list(cfg.url_ingest.domains_related_links_allowlist)
+    old_block = list(cfg.url_ingest.domain_global_link_blocklist)
+    cfg.url_ingest.domains_ingest_allowlist = ["kth.se"]
+    cfg.url_ingest.domains_related_links_allowlist = ["www.antagning.se"]
+    cfg.url_ingest.domain_global_link_blocklist = ["canvas.kth.se"]
+    try:
+        html = b"""
+        <html><head><title>T</title></head><body>
+        <p>Use <a href="https://www.student.ladok.se/">Ladok</a> and
+        <a href="https://www.antagning.se/se/start">Antagning</a>.
+        <a href="https://canvas.kth.se/courses/1">Canvas</a></p>
+        </body></html>
+        """
+        md, _title, _links = _extract_html_markdown(html, "https://www.kth.se/x", cfg)
+        assert "[Antagning](https://www.antagning.se/se/start)" in md
+        assert "Ladok" in md and "](https://www.student.ladok.se/)" not in md
+        assert "Canvas" in md and "](https://canvas.kth.se/courses/1)" not in md
+    finally:
+        cfg.url_ingest.domains_ingest_allowlist = old_ingest
+        cfg.url_ingest.domains_related_links_allowlist = old_related
+        cfg.url_ingest.domain_global_link_blocklist = old_block
+
+
+def test_blocked_link_reason_global_host_blocklist():
+    cfg = get_config()
+    old = list(cfg.url_ingest.domain_global_link_blocklist)
+    cfg.url_ingest.domain_global_link_blocklist = ["canvas.kth.se"]
+    try:
+        reason = _blocked_link_reason(cfg, "https://canvas.kth.se/courses/123")
+        assert reason == "host:canvas.kth.se"
+    finally:
+        cfg.url_ingest.domain_global_link_blocklist = old
+
+
+def test_related_link_allowlist_can_extend_beyond_ingest_hosts():
+    cfg = get_config()
+    old_ingest = list(cfg.url_ingest.domains_ingest_allowlist)
+    old_related = list(cfg.url_ingest.domains_related_links_allowlist)
+    cfg.url_ingest.domains_ingest_allowlist = ["kth.se"]
+    cfg.url_ingest.domains_related_links_allowlist = ["www.antagning.se", "www.student.ladok.se"]
+    try:
+        assert _related_link_allowed(cfg, "www.kth.se")
+        assert _related_link_allowed(cfg, "www.antagning.se")
+        assert _related_link_allowed(cfg, "www.student.ladok.se")
+        assert not _related_link_allowed(cfg, "example.org")
+    finally:
+        cfg.url_ingest.domains_ingest_allowlist = old_ingest
+        cfg.url_ingest.domains_related_links_allowlist = old_related
 
 
 def test_source_url_map_prefers_canonical_url(tmp_path: Path):

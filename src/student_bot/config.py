@@ -164,7 +164,10 @@ class DynamicWebConfig(BaseModel):
 
 class UrlIngestConfig(BaseModel):
     enabled: bool = False
-    domains_allowlist: list[str] = Field(default_factory=lambda: ["www.kth.se", "kth.se"])
+    # Domains that may be fetched/crawled into corpus files.
+    domains_ingest_allowlist: list[str] = Field(default_factory=lambda: ["www.kth.se", "kth.se"])
+    # Back-compat alias (legacy name). Migrated into domains_ingest_allowlist at load time.
+    domains_allowlist: list[str] = Field(default_factory=list)
     timeout_seconds: float = 8.0
     max_bytes: int = 2_000_000
     max_pages_per_seed: int = 12
@@ -172,6 +175,18 @@ class UrlIngestConfig(BaseModel):
     manifest_file: str = "data/url_manifest.yaml"
     output_dir: str = "docs/corpus/web_import"
     source_map_file: str = "data/url_source_map.json"
+    include_vetted_links_in_markdown: bool = False
+    max_links_per_doc: int = 20
+    # Extra domains allowed in "Related links" output without ingesting them.
+    domains_related_links_allowlist: list[str] = Field(default_factory=list)
+    # Back-compat alias (legacy name). Migrated into domains_related_links_allowlist at load time.
+    related_links_allowlist: list[str] = Field(default_factory=list)
+    # Domains blocked globally (for seed/fetch and related links).
+    domain_global_link_blocklist: list[str] = Field(default_factory=lambda: ["canvas.kth.se"])
+    # Back-compat alias (legacy name). Migrated into domain_global_link_blocklist at load time.
+    global_link_blocklist_hosts: list[str] = Field(default_factory=list)
+    global_link_blocklist_url_patterns: list[str] = Field(default_factory=list)
+    filtered_links_report_file: str = "data/url_filtered_links_report.json"
 
 
 class MattermostSecrets(BaseModel):
@@ -220,6 +235,23 @@ def get_config() -> Config:
 
     config_path = Path(os.environ.get("CONFIG_FILE") or (PROJECT_ROOT / "config.yaml"))
     raw = _load_yaml(config_path)
+    url_ingest = raw.get("url_ingest")
+    if isinstance(url_ingest, dict):
+        if (
+            "domains_ingest_allowlist" not in url_ingest
+            and isinstance(url_ingest.get("domains_allowlist"), list)
+        ):
+            url_ingest["domains_ingest_allowlist"] = url_ingest["domains_allowlist"]
+        if (
+            "domains_related_links_allowlist" not in url_ingest
+            and isinstance(url_ingest.get("related_links_allowlist"), list)
+        ):
+            url_ingest["domains_related_links_allowlist"] = url_ingest["related_links_allowlist"]
+        if (
+            "domain_global_link_blocklist" not in url_ingest
+            and isinstance(url_ingest.get("global_link_blocklist_hosts"), list)
+        ):
+            url_ingest["domain_global_link_blocklist"] = url_ingest["global_link_blocklist_hosts"]
 
     cfg = Config(**raw)
 
