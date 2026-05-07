@@ -146,7 +146,9 @@ def _node_text_with_markdown_links(node: Tag, base_url: str, cfg: Config) -> str
     return re.sub(r"\s+", " ", "".join(parts)).strip()
 
 
-def _extract_html_markdown(payload: bytes, base_url: str, cfg: Config) -> tuple[str, str, list[str]]:
+def _extract_html_markdown(
+    payload: bytes, base_url: str, cfg: Config
+) -> tuple[str, str, list[str]]:
     soup = BeautifulSoup(payload, "lxml")
     for t in soup(["script", "style", "noscript", "form", "header", "footer", "nav"]):
         t.decompose()
@@ -361,7 +363,9 @@ def main(limit_seeds: int | None) -> None:
         if seed_blocked_reason:
             click.echo(f"skip globally blocked seed: {seed.url} ({seed_blocked_reason})")
             skipped += 1
-            _record_skip_reason(skip_reasons, f"globally_blocked_seed:{seed_blocked_reason}", seed.url)
+            _record_skip_reason(
+                skip_reasons, f"globally_blocked_seed:{seed_blocked_reason}", seed.url
+            )
             continue
         if not _host_allowed(urlsplit(seed.url).netloc, cfg.url_ingest.domains_ingest_allowlist):
             click.echo(f"skip disallowed host: {seed.url}")
@@ -493,7 +497,9 @@ def main(limit_seeds: int | None) -> None:
         f"  Links extracted total: {links_extracted_total} (avg/page: {avg_links_extracted:.1f})"
     )
     if cfg.url_ingest.include_vetted_links_in_markdown:
-        click.echo(f"  Vetted links kept total: {links_kept_total} (avg/page: {avg_links_kept:.1f})")
+        click.echo(
+            f"  Vetted links kept total: {links_kept_total} (avg/page: {avg_links_kept:.1f})"
+        )
     if skip_reasons:
         click.echo("  Skip reasons:")
         for reason in sorted(skip_reasons):

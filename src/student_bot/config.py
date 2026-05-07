@@ -237,19 +237,16 @@ def get_config() -> Config:
     raw = _load_yaml(config_path)
     url_ingest = raw.get("url_ingest")
     if isinstance(url_ingest, dict):
-        if (
-            "domains_ingest_allowlist" not in url_ingest
-            and isinstance(url_ingest.get("domains_allowlist"), list)
+        if "domains_ingest_allowlist" not in url_ingest and isinstance(
+            url_ingest.get("domains_allowlist"), list
         ):
             url_ingest["domains_ingest_allowlist"] = url_ingest["domains_allowlist"]
-        if (
-            "domains_related_links_allowlist" not in url_ingest
-            and isinstance(url_ingest.get("related_links_allowlist"), list)
+        if "domains_related_links_allowlist" not in url_ingest and isinstance(
+            url_ingest.get("related_links_allowlist"), list
         ):
             url_ingest["domains_related_links_allowlist"] = url_ingest["related_links_allowlist"]
-        if (
-            "domain_global_link_blocklist" not in url_ingest
-            and isinstance(url_ingest.get("global_link_blocklist_hosts"), list)
+        if "domain_global_link_blocklist" not in url_ingest and isinstance(
+            url_ingest.get("global_link_blocklist_hosts"), list
         ):
             url_ingest["domain_global_link_blocklist"] = url_ingest["global_link_blocklist_hosts"]
 
