@@ -314,7 +314,8 @@ function decorateBot(botMsg, meta) {
   const raw = botMsg.body.textContent;
   const { body, sources: allSources, tip } = splitMessage(raw);
   const serverSources = Array.isArray(meta.sources) ? meta.sources : [];
-  const effectiveSources = allSources.length ? allSources : serverSources;
+  const sourceCandidates = Array.isArray(meta.source_candidates) ? meta.source_candidates : [];
+  const effectiveSources = mergeSources(allSources, serverSources, sourceCandidates);
   const bodyForCitations = (meta.numbered_body || "").trim() || body;
 
   const { html: bodyHtml, citedSources } = renderBodyWithCitations(bodyForCitations, effectiveSources);
@@ -356,6 +357,22 @@ function decorateBot(botMsg, meta) {
     actions.appendChild(down);
     botMsg.wrap.appendChild(actions);
   }
+}
+
+function mergeSources(...lists) {
+  const out = [];
+  const seen = new Set();
+  for (const list of lists) {
+    if (!Array.isArray(list)) continue;
+    for (const s of list) {
+      if (!s || typeof s.label !== "string") continue;
+      const key = `${s.n ?? ""}|${s.label}|${s.url ?? ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(s);
+    }
+  }
+  return out;
 }
 
 function confidenceTooltip(level) {
@@ -466,11 +483,17 @@ function inlineCitationTitle(text) {
 function renderBodyWithCitations(body, allSources) {
   const lookup = buildCitationLookup(allSources);
   const byNumber = new Map();
+  let maxKnownN = 0;
   for (const s of allSources) {
-    if (Number.isFinite(s?.n)) byNumber.set(Number(s.n), s);
+    if (Number.isFinite(s?.n)) {
+      const n = Number(s.n);
+      byNumber.set(n, s);
+      if (n > maxKnownN) maxKnownN = n;
+    }
   }
   const cited = [];                  // sources in citation order, renumbered
   const numberFor = new Map();       // serverN -> newNumber
+  const syntheticByLabel = new Map(); // inline label -> synthetic source number
 
   // Sentinel `CIT<n>MARK` survives the markdown pass below intact, and
   // we swap it for the final anchor link in a second pass.
@@ -487,7 +510,19 @@ function renderBodyWithCitations(body, allSources) {
       || lookup[trimmed.replace(/\s+·\s+/, " — ")]
       || lookup[trimmed.replace(/\s+—\s+/, " · ")]
       || lookup[inlineCitationTitle(trimmed)];
-    if (!src) return full;
+    if (!src) {
+      // Last-resort fallback: if it looks like an inline source marker,
+      // still number it and include it in the references list.
+      const looksLikeCitation = trimmed.includes(" · ") || trimmed.includes(" — ");
+      if (!looksLikeCitation) return full;
+      let syntheticN = syntheticByLabel.get(trimmed);
+      if (!syntheticN) {
+        syntheticN = maxKnownN + syntheticByLabel.size + 1;
+        syntheticByLabel.set(trimmed, syntheticN);
+        cited.push({ n: syntheticN, label: trimmed, url: "" });
+      }
+      return `CIT${syntheticN}MARK`;
+    }
     let n = numberFor.get(src.n);
     if (!n) {
       n = cited.length + 1;

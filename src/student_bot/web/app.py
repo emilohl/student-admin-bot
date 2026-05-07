@@ -395,6 +395,33 @@ def _stream_answer(
             )
             sources.append({"n": len(sources) + 1, "label": label, "url": url})
 
+        # Include broader retrieval candidates so the web client can still
+        # resolve inline raw citations like "[docslug · section]" when they
+        # coexist with server-numbered "[N]" markers in the same answer.
+        source_candidates: list[dict] = []
+        seen_candidates: set[tuple] = set()
+        for c in result.retrieval.reranked:
+            key = (c.doc_title, c.section_path or None, c.page_start)
+            if key in seen_candidates:
+                continue
+            seen_candidates.add(key)
+            page_suffix = f", s. {c.page_start}" if c.page_start else ""
+            section_suffix = f" — {c.section_path}" if c.section_path else ""
+            label = f"{c.doc_title}{section_suffix}{page_suffix}"
+            url = build_doc_url(
+                c.rel_source, c.page_start, cfg.web.doc_base_url, source_url=c.source_url
+            )
+            source_candidates.append(
+                {
+                    # Non-numeric id on purpose: keeps these out of the
+                    # authoritative [N] map (which comes from `sources` above)
+                    # while still allowing lookup by label text.
+                    "n": f"cand:{len(source_candidates) + 1}",
+                    "label": label,
+                    "url": url,
+                }
+            )
+
         meta = {
             "qa_id": qa_id,
             "lang": result.lang,
@@ -406,6 +433,7 @@ def _stream_answer(
             "latency_ms": result.latency_ms,
             "source_urls": result.source_urls,
             "sources": sources,
+            "source_candidates": source_candidates,
             "stale_cache_days": result.stale_cache_days,
             "performance_panel_enabled": _perf_panel_enabled(cfg),
         }
