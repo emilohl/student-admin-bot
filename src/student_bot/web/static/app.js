@@ -211,7 +211,7 @@ function applyMergedSystemLoad(containerLoad, hostLoad) {
   const cMem = formatPct(containerLoad?.mem_pct);
   const hMem = formatPct(hostLoad?.mem_pct);
   perfSystemEl.innerHTML = (
-    `<span class="host">Host</span> / <span class="cont">Container</span> · ` +
+    `<span class="host">Host</span> / <span class="cont">Cont.</span> · ` +
     `CPU: <span class="host">${hCpu}</span> / <span class="cont">${cCpu}</span> · ` +
     `RAM: <span class="host">${hMem}</span> / <span class="cont">${cMem}</span>`
   );
