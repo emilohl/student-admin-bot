@@ -472,6 +472,35 @@ function inlineCitationTitle(text) {
   return (idx > -1 ? text.slice(0, idx) : text).trim();
 }
 
+function normalizeCitationText(s) {
+  return (s || "")
+    .toLowerCase()
+    .replace(/^www\.kth\.se:\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function sourceTitleFromLabel(label) {
+  const noPage = (label || "").replace(/,\s*(?:s|p)\.\s*\d+\s*$/, "").trim();
+  const sep = noPage.indexOf(" — ");
+  return (sep > -1 ? noPage.slice(0, sep) : noPage).trim();
+}
+
+function approximateSourceMatch(allSources, inlineTitle) {
+  const want = normalizeCitationText(inlineTitle);
+  if (!want) return null;
+  const candidates = [];
+  for (const s of allSources) {
+    const have = normalizeCitationText(sourceTitleFromLabel(s?.label || ""));
+    if (!have) continue;
+    if (have === want || have.includes(want) || want.includes(have)) {
+      candidates.push(s);
+    }
+  }
+  if (candidates.length === 1) return candidates[0];
+  return null;
+}
+
 // Walk the body's inline citations in order:
 //   1. assign new sequential numbers to each unique matched source
 //      ([1] = first cited, [2] = next new one, ...),
@@ -509,7 +538,8 @@ function renderBodyWithCitations(body, allSources) {
     const src = lookup[trimmed]
       || lookup[trimmed.replace(/\s+·\s+/, " — ")]
       || lookup[trimmed.replace(/\s+—\s+/, " · ")]
-      || lookup[inlineCitationTitle(trimmed)];
+      || lookup[inlineCitationTitle(trimmed)]
+      || approximateSourceMatch(allSources, inlineCitationTitle(trimmed));
     if (!src) {
       // Last-resort fallback: if it looks like an inline source marker,
       // still number it and include it in the references list.
