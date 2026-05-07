@@ -20,13 +20,20 @@ from student_bot.config import Config
 _INLINE_CITATION_RE = re.compile(r"\[([^\[\]]+?)\]")
 
 
-def build_doc_url(rel_source: str, page_start: int | None, base_url: str) -> str:
+def build_doc_url(
+    rel_source: str,
+    page_start: int | None,
+    base_url: str,
+    source_url: str = "",
+) -> str:
     """Return a URL the user can click to read the source.
 
     `base_url` is something like "" (no link), "/docs" (web app file mount),
     or "https://kth.example.org/docs" if hosted externally. PDFs get
     `#page=N` so the browser jumps to the cited page.
     """
+    if source_url.startswith("https://") or source_url.startswith("http://"):
+        return source_url
     if rel_source.startswith("https://") or rel_source.startswith("http://"):
         return rel_source
     if not base_url:
@@ -72,7 +79,8 @@ def format_sources_block(
     lines = [f"\n\n**{label}:**"]
     for i, row in enumerate(rows, 1):
         title, section, page = row
-        url = build_doc_url(chunk_by_row[row].rel_source, page, base)
+        chunk = chunk_by_row[row]
+        url = build_doc_url(chunk.rel_source, page, base, source_url=chunk.source_url)
         page_suffix = f", s. {page}" if page else ""
         section_suffix = f" — {section}" if section else ""
         text = f"{title}{section_suffix}{page_suffix}"
@@ -246,7 +254,7 @@ def format_for_mattermost(cfg, result) -> tuple[str, list[dict] | None]:
         if key in seen:
             continue
         seen.add(key)
-        url = build_doc_url(c.rel_source, c.page_start, base)
+        url = build_doc_url(c.rel_source, c.page_start, base, source_url=c.source_url)
         page_suffix = f", s. {c.page_start}" if c.page_start else ""
         section_suffix = f" — {c.section_path}" if c.section_path else ""
         field_title = f"{c.doc_title}{section_suffix}{page_suffix}"

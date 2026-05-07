@@ -133,3 +133,17 @@ dynamic_web:
   program_aliases_file: data/program_aliases.json
   program_aliases_ttl_hours: 24
   program_aliases: {}
+
+# URL/PDF corpus ingestion from a manifest.
+url_ingest:
+  enabled: false
+  domains_allowlist:
+    - www.kth.se
+    - kth.se
+  timeout_seconds: 8.0
+  max_bytes: 2000000
+  max_pages_per_seed: 12
+  default_max_depth: 1
+  manifest_file: data/url_manifest.yaml
+  output_dir: docs/corpus/web_import
+  source_map_file: data/url_source_map.json

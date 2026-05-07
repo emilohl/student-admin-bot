@@ -162,6 +162,18 @@ class DynamicWebConfig(BaseModel):
     program_aliases: dict[str, str] = Field(default_factory=dict)
 
 
+class UrlIngestConfig(BaseModel):
+    enabled: bool = False
+    domains_allowlist: list[str] = Field(default_factory=lambda: ["www.kth.se", "kth.se"])
+    timeout_seconds: float = 8.0
+    max_bytes: int = 2_000_000
+    max_pages_per_seed: int = 12
+    default_max_depth: int = 1
+    manifest_file: str = "data/url_manifest.yaml"
+    output_dir: str = "docs/corpus/web_import"
+    source_map_file: str = "data/url_source_map.json"
+
+
 class MattermostSecrets(BaseModel):
     url: str
     port: int = 443
@@ -186,6 +198,7 @@ class Config(BaseModel):
     topics: TopicsConfig = Field(default_factory=TopicsConfig)
     jargon: JargonConfig = Field(default_factory=JargonConfig)
     dynamic_web: DynamicWebConfig = Field(default_factory=DynamicWebConfig)
+    url_ingest: UrlIngestConfig = Field(default_factory=UrlIngestConfig)
 
     # Secrets injected from env (only required when actually used).
     user_id_hash_salt: str | None = None

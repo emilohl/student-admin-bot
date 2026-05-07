@@ -504,6 +504,35 @@ Hard constraints:
 - HTML is sanitized (scripts/styles/nav/forms removed) before entering context.
 - The model still receives fetched text as untrusted data, not instructions.
 
+### URL/PDF corpus import from manifest
+
+For durable ingest (instead of answer-time fetch), you can import URL/PDF
+sources into markdown files under the corpus and reindex them:
+
+```bash
+uv run student-bot-fetch-url-corpus     # reads data/url_manifest.yaml
+uv run python -m scripts.reindex
+```
+
+Config (`config.yaml` → `url_ingest`) controls:
+
+- domain allowlist (`domains_allowlist`)
+- per-seed crawl caps (`max_pages_per_seed`, `default_max_depth`)
+- fetch limits (`timeout_seconds`, `max_bytes`)
+- paths (`manifest_file`, `output_dir`, `source_map_file`)
+
+Manifest entries in `data/url_manifest.yaml` support per-URL policies:
+
+- `url`
+- `follow_links` + `max_depth`
+- `include_patterns` / `exclude_patterns` (path regex)
+- `type_hint` (`auto`/`html`/`pdf`)
+- `doc_title_override`
+
+Imported pages are written to `docs/corpus/web_import/...` as `.md`. The source
+map (`data/url_source_map.json`) stores canonical original URLs so citations can
+link users to externally accessible sources.
+
 ---
 
 ## Threshold tuning
