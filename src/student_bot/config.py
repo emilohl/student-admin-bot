@@ -113,6 +113,9 @@ class GuardrailsConfig(BaseModel):
 class WebConfig(BaseModel):
     bind_host: str = "127.0.0.1"
     port: int = 8000
+    # Optional URL prefix when serving behind a reverse proxy path, e.g.
+    # "/betabot". Empty means app is served from site root.
+    base_path: str = ""
     # URL prefix where the web app exposes the corpus as static files.
     # Citations link to "<doc_base_url>/<rel_source>#page=N". Leave empty to
     # render plain-text citations without links.
@@ -276,6 +279,8 @@ def get_config() -> Config:
         cfg.web.bind_host = h
     if p := os.environ.get("WEB_PORT"):
         cfg.web.port = int(p)
+    if bp := os.environ.get("WEB_BASE_PATH"):
+        cfg.web.base_path = bp
     if a := os.environ.get("WEB_AUTH_ENABLED"):
         cfg.web.auth_enabled = a.lower() in ("1", "true", "yes", "on")
 

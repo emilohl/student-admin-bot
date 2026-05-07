@@ -93,7 +93,9 @@ def format_source_title(cfg: Config, c: RetrievedChunk) -> str:
 
     meta = _source_map(cfg).get(rel, {})
     pretty = str(meta.get("title", "")).strip()
-    source_url = (c.source_url or str(meta.get("canonical_url", "")) or str(meta.get("source_url", ""))).strip()
+    source_url = (
+        c.source_url or str(meta.get("canonical_url", "")) or str(meta.get("source_url", ""))
+    ).strip()
     host = ""
     if source_url.startswith("https://") or source_url.startswith("http://"):
         host = urlparse(source_url).netloc

@@ -35,7 +35,7 @@ el("#start").addEventListener("click", () => {
   localStorage.setItem("name", state.name);
   localStorage.setItem("opt_out", state.optOut ? "1" : "0");
   // Tell the server about the name + opt-out preference.
-  fetch("/api/session", {
+  fetch("api/session", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -48,7 +48,7 @@ el("#start").addEventListener("click", () => {
 });
 
 el("#reset").addEventListener("click", async () => {
-  await fetch("/api/reset", {
+  await fetch("api/reset", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -84,7 +84,7 @@ composer.addEventListener("submit", async (e) => {
   let buf = "";
   let finalMeta = null;
   try {
-    const resp = await fetch("/api/chat", {
+    const resp = await fetch("api/chat", {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -220,7 +220,7 @@ function applyMergedSystemLoad(containerLoad, hostLoad) {
 async function refreshSystemLoad() {
   if (!perfEnabled) return;
   try {
-    const resp = await fetch("/api/system-load", { credentials: "include" });
+    const resp = await fetch("api/system-load", { credentials: "include" });
     if (!resp.ok) return;
     const data = await resp.json();
     if (Object.prototype.hasOwnProperty.call(data, "performance_panel_enabled")) {
@@ -239,7 +239,7 @@ setInterval(() => {
 
 async function initPerf() {
   try {
-    const resp = await fetch("/api/health", { credentials: "include" });
+    const resp = await fetch("api/health", { credentials: "include" });
     if (!resp.ok) return;
     const data = await resp.json();
     setPerfEnabled(!!data.performance_panel_enabled);
@@ -341,7 +341,7 @@ function decorateBot(botMsg, meta) {
     const down = document.createElement("button");
     down.className = "down"; down.textContent = "👎";
     const send = (sentiment, btn) => {
-      fetch("/api/feedback", {
+      fetch("api/feedback", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

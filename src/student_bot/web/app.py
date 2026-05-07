@@ -61,6 +61,26 @@ def _perf_panel_enabled(cfg: Config) -> bool:
     return bool(getattr(cfg.web, "performance_panel_enabled", False))
 
 
+def _normalize_base_path(base_path: str) -> str:
+    bp = (base_path or "").strip()
+    if not bp:
+        return ""
+    if not bp.startswith("/"):
+        bp = "/" + bp
+    return bp.rstrip("/")
+
+
+def _join_base(base_path: str, path: str) -> str:
+    if not path:
+        return base_path or ""
+    if path.startswith("http://") or path.startswith("https://"):
+        return path
+    p = path if path.startswith("/") else "/" + path
+    if not base_path:
+        return p
+    return f"{base_path}{p}"
+
+
 # --- request schemas ---
 
 
@@ -101,6 +121,10 @@ def create_app(cfg: Config | None = None) -> FastAPI:
     app = FastAPI(title="student-bot")
     memory = ConversationMemory(cfg)
     db = LogDB(cfg)
+    base_path = _normalize_base_path(getattr(cfg.web, "base_path", ""))
+
+    if cfg.web.doc_base_url:
+        cfg.web.doc_base_url = _join_base(base_path, cfg.web.doc_base_url)
 
     session_secret = os.environ.get("WEB_SESSION_SECRET") or secrets.token_hex(16)
     app.add_middleware(
@@ -118,33 +142,35 @@ def create_app(cfg: Config | None = None) -> FastAPI:
             StaticFiles(directory=str(docs_dir), follow_symlink=True),
             name="docs",
         )
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    app.mount(
+        _join_base(base_path, "/static"), StaticFiles(directory=str(STATIC_DIR)), name="static"
+    )
 
     # --- pages ---
 
-    @app.get("/", response_class=HTMLResponse)
+    @app.get(_join_base(base_path, "/"), response_class=HTMLResponse)
     def index(request: Request):
         require_access(request, cfg)
         if name := request.query_params.get("name"):
             request.session["name"] = name
         return FileResponse(STATIC_DIR / "index.html")
 
-    @app.get("/about", response_class=HTMLResponse)
+    @app.get(_join_base(base_path, "/about"), response_class=HTMLResponse)
     def about(request: Request):
         require_access(request, cfg)
-        return _about_page(cfg)
+        return _about_page(cfg, base_path)
 
-    @app.get("/stats", response_class=HTMLResponse)
+    @app.get(_join_base(base_path, "/stats"), response_class=HTMLResponse)
     def stats(request: Request):
         require_access(request, cfg)
-        return _stats_page(cfg, db)
+        return _stats_page(cfg, db, base_path)
 
-    @app.get("/glossary", response_class=HTMLResponse)
+    @app.get(_join_base(base_path, "/glossary"), response_class=HTMLResponse)
     def glossary(request: Request):
         require_access(request, cfg)
-        return _glossary_page(cfg)
+        return _glossary_page(cfg, base_path)
 
-    @app.post("/api/jargon/suggest")
+    @app.post(_join_base(base_path, "/api/jargon/suggest"))
     def jargon_suggest(request: Request, payload: JargonSuggestRequest):
         ctx = require_access(request, cfg)
         term = payload.term.strip()
@@ -172,7 +198,7 @@ def create_app(cfg: Config | None = None) -> FastAPI:
 
     # --- API ---
 
-    @app.get("/api/health")
+    @app.get(_join_base(base_path, "/api/health"))
     def health():
         return {
             "status": "ok",
@@ -180,7 +206,7 @@ def create_app(cfg: Config | None = None) -> FastAPI:
             "performance_panel_enabled": _perf_panel_enabled(cfg),
         }
 
-    @app.get("/api/system-load")
+    @app.get(_join_base(base_path, "/api/system-load"))
     def system_load(request: Request):
         require_access(request, cfg)
         if not _perf_panel_enabled(cfg):
@@ -205,7 +231,7 @@ def create_app(cfg: Config | None = None) -> FastAPI:
         log.info("web app stopping; stop host metrics collector if still running.")
         log.info("command: %s", HOST_METRICS_STOP_CMD)
 
-    @app.post("/api/session")
+    @app.post(_join_base(base_path, "/api/session"))
     def session_set(request: Request, payload: SessionRequest):
         require_access(request, cfg)
         if payload.name:
@@ -217,14 +243,14 @@ def create_app(cfg: Config | None = None) -> FastAPI:
             db.mark_disclosed(web_user_id)
         return {"ok": True}
 
-    @app.post("/api/reset")
+    @app.post(_join_base(base_path, "/api/reset"))
     def reset(request: Request, payload: ResetRequest):
         require_access(request, cfg)
         web_user_id = _web_user_id_from_request(request, payload.session_id)
         memory.clear(web_user_id, "default")
         return {"ok": True}
 
-    @app.post("/api/chat")
+    @app.post(_join_base(base_path, "/api/chat"))
     def chat(request: Request, payload: ChatRequest):
         ctx = require_access(request, cfg)
         web_user_id = _web_user_id(payload, ctx.user)
@@ -239,7 +265,7 @@ def create_app(cfg: Config | None = None) -> FastAPI:
             headers={"X-Accel-Buffering": "no"},
         )
 
-    @app.post("/api/feedback")
+    @app.post(_join_base(base_path, "/api/feedback"))
     def feedback(request: Request, payload: FeedbackRequest):
         ctx = require_access(request, cfg)
         if payload.sentiment not in ("positive", "negative"):
@@ -573,11 +599,11 @@ _NOTICE_HTML = """\
 _HEADER_HTML = """\
 <header>
   <div class="brand">
-    <img src="/static/KTH_logo_RGB_bla.svg" alt="KTH" class="logo logo-kth">
+    <img src="{static_prefix}/KTH_logo_RGB_bla.svg" alt="KTH" class="logo logo-kth">
     <div class="brand-text">
       <h1 data-i18n="brand.name"></h1>{tagline_html}
     </div>
-    <img src="/static/FrakturF2020.svg" alt="Fysiksektionen" class="logo logo-fyssek">
+    <img src="{static_prefix}/FrakturF2020.svg" alt="Fysiksektionen" class="logo logo-fyssek">
   </div>
   <div class="lang-switch" role="group" aria-label="Language">
     <button type="button" data-lang="sv">SV</button>
@@ -589,20 +615,22 @@ _HEADER_HTML = """\
 # Loaded into <head> on every server-rendered page, before notice.js, so
 # data-i18n attributes are translated before any other scripts run.
 _NOTICE_SCRIPT = (
-    '<script src="/static/i18n.js?v=22"></script>'
-    '<script src="/static/notice.js?v=22" defer></script>'
+    '<script src="{static_prefix}/i18n.js?v=22"></script>'
+    '<script src="{static_prefix}/notice.js?v=22" defer></script>'
 )
 
 
-def _about_page(cfg: Config) -> HTMLResponse:
+def _about_page(cfg: Config, base_path: str = "") -> HTMLResponse:
     link = cfg.fallback.counselor_link
+    static_prefix = _join_base(base_path, "/static")
+    home = _join_base(base_path, "/") or "/"
     # Counselor link is config-driven, not language-bound, so we render it
     # server-side and append it after the translatable tip text.
     cl_html = f' (<a href="{link}">{link}</a>)' if link else ""
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="/static/style.css?v=22">{_NOTICE_SCRIPT}</head>
-<body>{_HEADER_HTML.format(tagline_html="")}<main>{_NOTICE_HTML}<div class="card">
+<link rel="stylesheet" href="{static_prefix}/style.css?v=22">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix)}<main>{_NOTICE_HTML}<div class="card">
 <h2 data-i18n="about.h2.what"></h2>
 <p data-i18n="about.what.body"></p>
 
@@ -622,14 +650,17 @@ def _about_page(cfg: Config) -> HTMLResponse:
     github.com/cohm/student-admin-bot
   </a>
 </div>
-<p><a href="/" data-i18n="about.back"></a></p>
+<p><a href="{home}" data-i18n="about.back"></a></p>
 </div></main></body></html>
 """
     return HTMLResponse(body)
 
 
-def _glossary_page(cfg: Config) -> HTMLResponse:
+def _glossary_page(cfg: Config, base_path: str = "") -> HTMLResponse:
     j = Jargon.from_config(cfg)
+    static_prefix = _join_base(base_path, "/static")
+    home = _join_base(base_path, "/") or "/"
+    jargon_api = _join_base(base_path, "/api/jargon/suggest")
     rows = (
         "".join(
             f"<tr><td><code>{_h(e.term)}</code></td><td>{_h(e.expansion)}</td>"
@@ -640,8 +671,8 @@ def _glossary_page(cfg: Config) -> HTMLResponse:
     )
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="/static/style.css?v=22">{_NOTICE_SCRIPT}</head>
-<body>{_HEADER_HTML.format(tagline_html='<p class="tagline" data-i18n="glossary.tagline"></p>')}
+<link rel="stylesheet" href="{static_prefix}/style.css?v=22">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<body>{_HEADER_HTML.format(tagline_html='<p class="tagline" data-i18n="glossary.tagline"></p>', static_prefix=static_prefix)}
 <main>{_NOTICE_HTML}<div class="card">
 <table border="1" cellpadding="6" cellspacing="0" style="width:100%; border-collapse: collapse;">
 <thead><tr><th data-i18n="glossary.th.term"></th><th data-i18n="glossary.th.meaning"></th><th data-i18n="glossary.th.def"></th><th data-i18n="glossary.th.lang"></th></tr></thead>
@@ -658,7 +689,7 @@ def _glossary_page(cfg: Config) -> HTMLResponse:
   <button type="submit" data-i18n="glossary.suggest.submit"></button>
   <span id="jargon-status" class="status"></span>
 </form>
-<p style="margin-top: 16px"><a href="/" data-i18n="glossary.back"></a></p>
+<p style="margin-top: 16px"><a href="{home}" data-i18n="glossary.back"></a></p>
 </div></main>
 <script>
 async function submitJargon(e) {{
@@ -666,7 +697,7 @@ async function submitJargon(e) {{
   const f = e.target;
   const status = document.getElementById('jargon-status');
   status.textContent = window.t ? window.t('glossary.status.sending') : 'skickar…';
-  const r = await fetch('/api/jargon/suggest', {{
+  const r = await fetch('{jargon_api}', {{
     method: 'POST',
     headers: {{ 'Content-Type': 'application/json' }},
     body: JSON.stringify({{
@@ -690,9 +721,11 @@ def _h(s: str) -> str:
     return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def _stats_page(cfg: Config, db: LogDB) -> HTMLResponse:
+def _stats_page(cfg: Config, db: LogDB, base_path: str = "") -> HTMLResponse:
     overall = db.overall_counts()
     by_topic = db.stats_by_topic()
+    static_prefix = _join_base(base_path, "/static")
+    home = _join_base(base_path, "/") or "/"
     rows = (
         "".join(
             f"<tr><td>{r['topic']}</td><td>{r['n']}</td><td>{r['answered']}</td>"
@@ -704,8 +737,8 @@ def _stats_page(cfg: Config, db: LogDB) -> HTMLResponse:
     )
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="/static/style.css?v=22">{_NOTICE_SCRIPT}</head>
-<body>{_HEADER_HTML.format(tagline_html="")}<main>{_NOTICE_HTML}<div class="card">
+<link rel="stylesheet" href="{static_prefix}/style.css?v=22">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix)}<main>{_NOTICE_HTML}<div class="card">
 <p data-i18n="stats.summary"
    data-logged="{overall["logged"]}"
    data-answered="{overall["answered"]}"
@@ -715,7 +748,7 @@ def _stats_page(cfg: Config, db: LogDB) -> HTMLResponse:
 <thead><tr><th data-i18n="stats.th.topic"></th><th data-i18n="stats.th.n"></th><th data-i18n="stats.th.answered"></th>
 <th data-i18n="stats.th.avgms"></th><th>👍</th><th>👎</th></tr></thead>
 <tbody>{rows}</tbody></table>
-<p><a href="/" data-i18n="stats.back"></a></p>
+<p><a href="{home}" data-i18n="stats.back"></a></p>
 </div></main></body></html>
 """
     return HTMLResponse(body)
@@ -739,6 +772,7 @@ def main(host: str | None, port: int | None, reload: bool):
     # the browser polls /api/system-load at 1 Hz. Suppress just that endpoint
     # unless explicitly disabled by env.
     if os.environ.get("WEB_SUPPRESS_SYSTEM_LOAD_ACCESS_LOG", "1") != "0":
+
         class _SuppressSystemLoadAccessLog(logging.Filter):
             def filter(self, record: logging.LogRecord) -> bool:  # noqa: A003 (filter is stdlib name)
                 msg = record.getMessage()
