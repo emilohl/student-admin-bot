@@ -105,6 +105,55 @@ def format_source_title(cfg: Config, c: RetrievedChunk) -> str:
     return title
 
 
+def _http_chunk(c: RetrievedChunk) -> bool:
+    u = (c.source_url or c.rel_source or "").strip()
+    return u.startswith("http://") or u.startswith("https://")
+
+
+def format_source_short_title(cfg: Config, c: RetrievedChunk) -> str:
+    """Compact title for long KTH web programme headings (footer / SSE meta).
+
+    Prefer "PROG · last title clause" so repeated document boilerplate is not
+    re-listed on every reference row."""
+    base = format_source_title(cfg, c)
+    if not _http_chunk(c):
+        return base
+    t = (c.doc_title or base or "").strip()
+    if not t:
+        return base
+    if "|" in t:
+        t = t.split("|", 1)[0].strip()
+    u = (c.source_url or c.rel_source or "").strip()
+    code = None
+    m = re.search(r"\(([A-Z]{5})\)", t)
+    if m:
+        code = m.group(1)
+    if not code and "/program/" in u:
+        m2 = re.search(r"/program/([A-Z]{5})/", u)
+        if m2:
+            code = m2.group(1)
+    tail = t.rsplit(",", 1)[-1].strip() if "," in t else t
+    if code and tail and tail != t:
+        return f"{code} · {tail}"
+    if len(t) > 72 and tail:
+        return tail
+    return base
+
+
+def format_source_display_label(cfg: Config, c: RetrievedChunk) -> str:
+    """Single-line label for Sources blocks, web UI, and Mattermost fields."""
+    primary = format_source_short_title(cfg, c)
+    if getattr(c, "is_stale", False):
+        primary = f"{primary} (cache)"
+    section_part = (c.section_path or "").strip()
+    if section_part and section_part.lower() not in primary.lower():
+        section_suffix = f" — {section_part}"
+    else:
+        section_suffix = ""
+    page_suffix = f", s. {c.page_start}" if c.page_start else ""
+    return f"{primary}{section_suffix}{page_suffix}"
+
+
 def format_sources_block(
     cfg: Config,
     chunks: list[RetrievedChunk],
@@ -127,13 +176,9 @@ def format_sources_block(
     label = "Källor" if lang == "sv" else "Sources"
     lines = [f"\n\n**{label}:**"]
     for i, row in enumerate(rows, 1):
-        title, section, page = row
         chunk = chunk_by_row[row]
-        title = format_source_title(cfg, chunk)
-        url = build_doc_url(chunk.rel_source, page, base, source_url=chunk.source_url)
-        page_suffix = f", s. {page}" if page else ""
-        section_suffix = f" — {section}" if section else ""
-        text = f"{title}{section_suffix}{page_suffix}"
+        text = format_source_display_label(cfg, chunk)
+        url = build_doc_url(chunk.rel_source, chunk.page_start, base, source_url=chunk.source_url)
         lines.append(f"{i}. [{text}]({url})" if url else f"{i}. {text}")
     return "\n".join(lines)
 
@@ -305,9 +350,7 @@ def format_for_mattermost(cfg, result) -> tuple[str, list[dict] | None]:
             continue
         seen.add(key)
         url = build_doc_url(c.rel_source, c.page_start, base, source_url=c.source_url)
-        page_suffix = f", s. {c.page_start}" if c.page_start else ""
-        section_suffix = f" — {c.section_path}" if c.section_path else ""
-        field_title = f"{format_source_title(cfg, c)}{section_suffix}{page_suffix}"
+        field_title = format_source_display_label(cfg, c)
         if url:
             link_label = "Visa dokument" if lang == "sv" else "Open document"
             field_value = f"[{link_label}]({url})"
@@ -333,6 +376,8 @@ def format_for_mattermost(cfg, result) -> tuple[str, list[dict] | None]:
 __all__ = [
     "build_doc_url",
     "format_source_title",
+    "format_source_short_title",
+    "format_source_display_label",
     "format_sources_block",
     "apply_citation_numbering",
     "literacy_footer",

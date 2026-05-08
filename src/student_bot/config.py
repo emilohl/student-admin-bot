@@ -146,13 +146,13 @@ class JargonConfig(BaseModel):
 class DynamicWebConfig(BaseModel):
     enabled: bool = False
     timeout_seconds: float = 6.0
-    max_pages_per_query: int = 6
+    max_pages_per_query: int = 12
     cache_ttl_days: int = 7
     # Regexes matched against URL path only (no scheme/host/query).
     allowed_patterns: list[str] = Field(
         default_factory=lambda: [
             r"^/student/kurser/kurs/[A-Z0-9]+/?$",
-            r"^/student/kurser/program/[A-Z0-9]+(?:/[0-9]{5}(?:/arskurs[0-9]+)?)?/?$",
+            r"^/student/kurser/program/[A-Z0-9]+(?:/[0-9]{5}(?:/(?:arskurs[0-9]+|mal|omfattning|behorighet|genomforande|kurslista|inriktningar))?)?/?$",
         ]
     )
     user_agent: str = "student-bot/0.1 (+https://github.com/cohm/student-admin-bot)"

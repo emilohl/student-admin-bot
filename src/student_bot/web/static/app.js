@@ -319,11 +319,18 @@ function decorateBot(botMsg, meta) {
   const bodyForCitations = (meta.numbered_body || "").trim() || body;
 
   const { html: bodyHtml, citedSources } = renderBodyWithCitations(bodyForCitations, effectiveSources);
+  const citedSourcesWithUrls = mergeSourceUrlsHeuristic(
+    mergeCitedUrlsFromServerMeta(
+      backfillMissingSourceUrls(citedSources, effectiveSources),
+      serverSources
+    ),
+    meta.source_urls
+  );
   let html = bodyHtml;
   // Show only sources that were actually cited inline.
   // This avoids surfacing unrelated retrieved chunks as references.
-  if (citedSources.length) {
-    html += renderSources(citedSources, meta.lang || "sv");
+  if (citedSourcesWithUrls.length) {
+    html += renderSources(citedSourcesWithUrls, meta.lang || "sv");
   } else if (serverSources.length) {
     // Fallback: if inline citation matching fails, still show the
     // authoritative server-provided references.
@@ -509,16 +516,29 @@ function approximateSourceMatch(allSources, inlineTitle) {
 //   3. return only the cited sources (not the full top-K from retrieval).
 // Citations the LLM emitted that don't match any retrieved source are
 // left in the body text as-is so un-grounded claims stay visible.
+/** True if `n` is a finite numeric source index (coerces string "1" from JSON). */
+function isNumericSourceN(n) {
+  if (n === null || n === undefined || n === "") return false;
+  const v = Number(n);
+  return Number.isFinite(v);
+}
+
+function normalizeHttpUrl(u) {
+  if (u == null || u === "") return "";
+  const s = String(u).trim();
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  return "";
+}
+
 function renderBodyWithCitations(body, allSources) {
   const lookup = buildCitationLookup(allSources);
   const byNumber = new Map();
   let maxKnownN = 0;
   for (const s of allSources) {
-    if (Number.isFinite(s?.n)) {
-      const n = Number(s.n);
-      byNumber.set(n, s);
-      if (n > maxKnownN) maxKnownN = n;
-    }
+    if (!s || !isNumericSourceN(s.n)) continue;
+    const n = Number(s.n);
+    byNumber.set(n, s);
+    if (n > maxKnownN) maxKnownN = n;
   }
   const cited = [];                  // sources in citation order, renumbered
   const numberFor = new Map();       // serverN -> newNumber
@@ -532,8 +552,13 @@ function renderBodyWithCitations(body, allSources) {
     const nRaw = Number.parseInt(trimmed, 10);
     if (/^\d+$/.test(trimmed) && Number.isFinite(nRaw) && byNumber.has(nRaw)) {
       const src = byNumber.get(nRaw);
-      if (!cited.some((x) => x.n === src.n)) cited.push(src);
-      return `CIT${nRaw}MARK`;
+      let n = numberFor.get(nRaw);
+      if (!n) {
+        n = cited.length + 1;
+        numberFor.set(nRaw, n);
+        cited.push({ ...src, n });
+      }
+      return `CIT${n}MARK`;
     }
     const src = lookup[trimmed]
       || lookup[trimmed.replace(/\s+·\s+/, " — ")]
@@ -553,10 +578,14 @@ function renderBodyWithCitations(body, allSources) {
       }
       return `CIT${syntheticN}MARK`;
     }
-    let n = numberFor.get(src.n);
+    const srcNum = Number(src.n);
+    const nk = Number.isFinite(srcNum)
+      ? srcNum
+      : `L:${normalizeSourceLabel(src.label || "")}`;
+    let n = numberFor.get(nk);
     if (!n) {
       n = cited.length + 1;
-      numberFor.set(src.n, n);
+      numberFor.set(nk, n);
       cited.push({ ...src, n });
     }
     return `CIT${n}MARK`;
@@ -594,15 +623,105 @@ function renderSources(sources, lang) {
   for (const s of sources) {
     const { title, section, page } = parseSourceLabel(s.label);
     const titleHtml = escapeHtml(title);
-    const link = s.url
-      ? `<a href="${escapeAttr(s.url)}" target="_blank" rel="noopener">${titleHtml}</a>`
-      : titleHtml;
     const sectionHtml = section ? ` — ${escapeHtml(section)}` : "";
     const pageHtml = page ? `, ${pageLabel} ${escapeHtml(page)}` : "";
-    out += `<div class="source-item" id="cite-${s.n}"><span class="source-num">[${s.n}]</span> ${link}${sectionHtml}${pageHtml}</div>`;
+    const core = `${titleHtml}${sectionHtml}${pageHtml}`;
+    const href = normalizeHttpUrl(s.url);
+    const linkBlock = href
+      ? `<a href="${escapeAttr(href)}" target="_blank" rel="noopener">${core}</a>`
+      : core;
+    out += `<div class="source-item" id="cite-${s.n}"><span class="source-num">[${s.n}]</span> ${linkBlock}</div>`;
   }
   out += "</div>";
   return out;
+}
+
+function normalizeSourceLabel(label) {
+  return (label || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/\s+·\s+/g, " — ")
+    .trim();
+}
+
+function backfillMissingSourceUrls(citedSources, allSources) {
+  if (!Array.isArray(citedSources) || !Array.isArray(allSources)) return citedSources || [];
+  const byNum = new Map();
+  const byLabel = new Map();
+  const byTitle = new Map();
+  for (const s of allSources) {
+    const u = normalizeHttpUrl(s?.url);
+    if (!s || !u) continue;
+    if (isNumericSourceN(s.n)) byNum.set(Number(s.n), u);
+    const key = normalizeSourceLabel(s.label);
+    if (key && !byLabel.has(key)) byLabel.set(key, u);
+    const titleKey = normalizeCitationText(sourceTitleFromLabel(s.label));
+    if (titleKey && !byTitle.has(titleKey)) byTitle.set(titleKey, u);
+  }
+  return citedSources.map((s) => {
+    if (!s || normalizeHttpUrl(s.url)) return s;
+    let url = "";
+    if (isNumericSourceN(s.n)) url = byNum.get(Number(s.n)) || "";
+    if (!url) url = byLabel.get(normalizeSourceLabel(s.label)) || "";
+    if (!url) {
+      const titleKey = normalizeCitationText(inlineCitationTitle(s.label || ""));
+      url = byTitle.get(titleKey) || "";
+    }
+    return url ? { ...s, url } : s;
+  });
+}
+
+/** Attach URLs from the SSE `sources` list (authoritative) when citation rows lack them. */
+function mergeCitedUrlsFromServerMeta(citedSources, serverSources) {
+  if (!Array.isArray(citedSources) || !citedSources.length) return citedSources || [];
+  if (!Array.isArray(serverSources) || !serverSources.length) return citedSources;
+  const byMetaN = new Map();
+  const byNormLabel = new Map();
+  for (const s of serverSources) {
+    if (!s) continue;
+    const u = normalizeHttpUrl(s.url);
+    if (!u) continue;
+    if (isNumericSourceN(s.n)) byMetaN.set(Number(s.n), u);
+    if (typeof s.label === "string") {
+      const k = normalizeSourceLabel(s.label);
+      if (k && !byNormLabel.has(k)) byNormLabel.set(k, u);
+    }
+  }
+  return citedSources.map((c, i) => {
+    if (!c) return c;
+    if (normalizeHttpUrl(c.url)) return c;
+    let url = "";
+    if (isNumericSourceN(c.n)) url = byMetaN.get(Number(c.n)) || "";
+    if (!url) url = byNormLabel.get(normalizeSourceLabel(c.label || "")) || "";
+    if (!url && citedSources.length === 1) {
+      const first = normalizeHttpUrl(serverSources[0]?.url);
+      if (first) url = first;
+    }
+    if (!url && serverSources[i]) url = normalizeHttpUrl(serverSources[i].url) || "";
+    return url ? { ...c, url } : c;
+  });
+}
+
+/** Last resort: `meta.source_urls` from dynamic-web turns (program code in label → path). */
+function mergeSourceUrlsHeuristic(citedSources, sourceUrls) {
+  if (!Array.isArray(citedSources) || !citedSources.length) return citedSources || [];
+  const urls = [...new Set((sourceUrls || []).map(normalizeHttpUrl).filter(Boolean))];
+  if (!urls.length) return citedSources;
+  return citedSources.map((c) => {
+    if (!c || normalizeHttpUrl(c.url)) return c;
+    let url = "";
+    if (urls.length === 1) {
+      url = urls[0];
+    } else {
+      const label = c.label || "";
+      const m = label.match(/\b([A-Z]{5})\b/);
+      if (m) {
+        const code = m[1];
+        url = urls.find((u) => u.toUpperCase().includes(`/${code}/`)) || "";
+      }
+    }
+    return url ? { ...c, url } : c;
+  });
 }
 
 function renderTip(tip) {

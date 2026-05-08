@@ -250,3 +250,45 @@ def test_sanitize_includes_table_rows():
     html = "<html><body><table><tr><th>Kod</th><th>Namn</th></tr><tr><td>XX1001</td><td>Foo</td></tr></table></body></html>"
     _, body = wr._sanitize_to_text(html)
     assert "XX1001" in body and "Foo" in body
+
+
+def test_programme_store_groups_obligatory_and_elective_buckets():
+    """Utbildningsplan JSON uses Valvillkor (O, VV, …); keep headings in plaintext."""
+    payload = {
+        "curriculums": [
+            {
+                "studyYears": [
+                    {
+                        "yearNumber": 2,
+                        "freeTexts": [],
+                        "courses": [
+                            {
+                                "kod": "EH1110",
+                                "benamning": "Obligatorisk testkurs",
+                                "Valvillkor": "O",
+                                "omfattning": {"number": 7.5, "formattedWithUnit": "7,5 hp"},
+                            },
+                            {
+                                "kod": "DD1320",
+                                "benamning": "Valbar testkurs",
+                                "Valvillkor": "VV",
+                                "omfattning": {"number": 6.0, "formattedWithUnit": "6,0 hp"},
+                            },
+                        ],
+                    }
+                ]
+            }
+        ]
+    }
+    enc = quote(json.dumps(payload, separators=(",", ":")))
+    html = (
+        "<html><body><h1>Stub</h1>"
+        f'<script>window.__compressedApplicationStore__="{enc}";</script></body></html>'
+    )
+    url = "https://www.kth.se/student/kurser/program/FAKE1/20252/arskurs2"
+    merged = wr._programme_page_text_with_store(html, "", url)
+    assert "Obligatoriska kurser" in merged
+    assert "Valbara kurslistor" in merged and "villkorligt valbara" in merged
+    assert "EH1110" in merged and "DD1320" in merged
+    assert merged.index("EH1110") < merged.index("DD1320")
+    assert "7,5 hp" in merged and "6,0 hp" in merged

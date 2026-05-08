@@ -120,12 +120,12 @@ jargon:
 dynamic_web:
   enabled: true
   timeout_seconds: 6.0
-  max_pages_per_query: 6
+  max_pages_per_query: 12
   cache_ttl_days: 7
   # Matched against URL path only (host is hardcoded to www.kth.se).
   allowed_patterns:
     - "^/student/kurser/kurs/[A-Z0-9]+/?$"
-    - "^/student/kurser/program/[A-Z0-9]+(?:/[0-9]{5}(?:/arskurs[0-9]+)?)?/?$"
+    - "^/student/kurser/program/[A-Z0-9]+(?:/[0-9]{5}(?:/(?:arskurs[0-9]+|mal|omfattning|behorighet|genomforande|kurslista|inriktningar))?)?/?$"
   user_agent: "student-bot/0.1 (+https://github.com/cohm/student-admin-bot)"
   max_bytes: 1500000
   max_links_followed: 24

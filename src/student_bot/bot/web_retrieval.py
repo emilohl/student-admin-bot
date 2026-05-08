@@ -6,6 +6,7 @@ import re
 import time
 import unicodedata
 from typing import Any
+from collections import defaultdict
 from dataclasses import dataclass, field
 from html import unescape
 from pathlib import Path
@@ -35,6 +36,10 @@ _PROGRAM_CODE_RE = re.compile(r"\b([A-Z]{5})\b")
 _PROGRAM_LIST_EN = "https://www.kth.se/student/kurser/kurser-inom-program?l=en"
 _PROGRAM_LIST_SV = "https://www.kth.se/student/kurser/kurser-inom-program"
 _PROGRAM_URL_CODE_RE = re.compile(r"/student/kurser/program/([A-Z]{5})(?:/|$)")
+_PROGRAM_TERM_RE = re.compile(
+    r"^/student/kurser/program/([A-Z]{5})/(\d{5})(?:/(arskurs[1-9]))?/?$",
+    re.I,
+)
 # Match a course code as the whole token (embedded JSON strings, no \\b quirks).
 _STRICT_COURSE_TOKEN = re.compile(
     r"^(?:"
@@ -49,6 +54,46 @@ _STRICT_COURSE_TOKEN = re.compile(
 _MAX_STORE_WALK_NODES = 50_000
 _MAX_STORE_COURSE_LINES = 150
 _MAX_DYNAMIC_WEB_CHUNK_CHARS = 36_000
+_PROGRAM_SIDEBAR_SLUGS = (
+    "mal",
+    "omfattning",
+    "behorighet",
+    "genomforande",
+    "kurslista",
+    "inriktningar",
+)
+
+# Human-readable sidebar labels for programme study-plan URLs (path segment after
+# /program/<CODE>/<TERM>/...).
+_PROGRAM_URL_SECTION_LABELS_SV: dict[str, str] = {
+    "mal": "Utbildningens mål",
+    "omfattning": "Utbildningens omfattning och innehåll",
+    "behorighet": "Behörighet och urval",
+    "genomforande": "Utbildningens genomförande",
+    "kurslista": "Bilaga 1: Kurslista",
+    "inriktningar": "Bilaga 2: Inriktningar",
+}
+
+
+def _program_page_section_label(url: str) -> str:
+    """Derive a short section name from /student/kurser/program/... URLs."""
+    path = urlsplit(url).path.strip("/")
+    if not path:
+        return ""
+    parts = path.split("/")
+    try:
+        pidx = parts.index("program")
+    except ValueError:
+        return ""
+    rest = parts[pidx + 1 :]
+    if len(rest) < 3:
+        return ""
+    slug = rest[2].strip().lower()
+    if slug.startswith("arskurs"):
+        digits = slug[7:]
+        if digits.isdigit():
+            return f"Årskurs {digits}"
+    return _PROGRAM_URL_SECTION_LABELS_SV.get(slug, "")
 
 _GENERIC_ALIAS_TOKENS = {
     "program",
@@ -94,9 +139,44 @@ class ProgrammeRootResolution:
     clarification_en: str = ""
 
 
+def _parse_programme_year_level(q: str) -> int | None:
+    """Parse asked study-year level (årskurs) from SV/EN phrasing."""
+    if not q:
+        return None
+
+    m = re.search(r"\b(?:årskurs|arskurs|år|ar|year)\s*([1-9])\b", q, re.I)
+    if m:
+        return int(m.group(1))
+
+    ordinal_map = {
+        "första året": 1,
+        "forsta aret": 1,
+        "andra året": 2,
+        "andra aret": 2,
+        "tredje året": 3,
+        "tredje aret": 3,
+        "fjärde året": 4,
+        "fjarde aret": 4,
+        "femte året": 5,
+        "femte aret": 5,
+        "first year": 1,
+        "second year": 2,
+        "third year": 3,
+        "fourth year": 4,
+        "fifth year": 5,
+    }
+    qn = _norm(q)
+    for phrase, level in ordinal_map.items():
+        if phrase in qn:
+            return level
+    return None
+
+
 def program_study_intent_question(q: str) -> bool:
     lower = (q or "").lower()
-    return "program" in lower or "utbildningsplan" in lower or "study plan" in lower
+    if "program" in lower or "utbildningsplan" in lower or "study plan" in lower:
+        return True
+    return _parse_programme_year_level(q or "") is not None
 
 
 def parse_program_admission_hints(q: str) -> AdmissionHints:
@@ -331,9 +411,15 @@ def _extract_targets_with_cfg(question: str, cfg: Config) -> list[str]:
     for code in _COURSE_CODE_RE.findall(question.upper()):
         urls.append(f"https://{_KTH_HOST}/student/kurser/kurs/{code}")
 
-    # Only treat as program lookup when the query mentions "program" or "utbildningsplan".
+    # Program lookup is triggered by explicit program intent words OR explicit
+    # study-year phrasing (e.g. "år 2", "second year").
     lower = question.lower()
-    if "program" in lower or "utbildningsplan" in lower or "study plan" in lower:
+    if (
+        "program" in lower
+        or "utbildningsplan" in lower
+        or "study plan" in lower
+        or _parse_programme_year_level(question) is not None
+    ):
         aliases = _get_program_aliases(cfg)
         known_codes = {v for v in aliases.values() if re.fullmatch(r"[A-Z]{5}", v)}
         # Only accept explicit program codes when the user wrote them in code form
@@ -456,11 +542,91 @@ def _truncate_web_chunk_text(text: str) -> str:
     return text[:_MAX_DYNAMIC_WEB_CHUNK_CHARS].rstrip() + "\n…"
 
 
-def _course_list_plaintext_from_store(store: dict | None) -> str:
-    """Best-effort course rows from KTH's embedded programme JSON (SPA shell)."""
-    if not store:
-        return ""
+# KTH utbildningsplan: course.Valvillkor / electiveCondition codes.
+# VV = "valbara kurslistor" (often called villkorligt valbara/valfria; ~conditionally elective).
+_VALVILLKOR_LABEL_SV: dict[str, str] = {
+    "O": "Obligatoriska kurser (O)",
+    "V": "Valfria kurser (V)",
+    "VV": "Valbara kurslistor — villkorligt valbara (VV)",
+    "K": "Konditionsvalfria kurser (K)",
+    "KV": "Konditionsvalfria kurser (KV)",
+    "VK": "Valbara kurslistor — villkorligt valbara (VK)",
+}
+_VALVILLKOR_SORT_ORDER: tuple[str, ...] = ("O", "K", "KV", "VV", "VK", "V")
 
+
+def _program_page_year_from_url(url: str) -> int | None:
+    """Parse /arskursN from a programme page URL, if present."""
+    path = urlsplit(url).path
+    m = re.search(r"/arskurs([1-9])(?:/|$)", path, re.I)
+    return int(m.group(1)) if m else None
+
+
+def _sort_valvillkor_keys(keys: list[str]) -> list[str]:
+    def sort_key(k: str) -> tuple[int, str]:
+        try:
+            return (_VALVILLKOR_SORT_ORDER.index(k), k)
+        except ValueError:
+            return (len(_VALVILLKOR_SORT_ORDER), k)
+
+    return sorted(set(keys), key=sort_key)
+
+
+def _format_hp_sv_number(n: float) -> str:
+    """Swedish-style hp string, e.g. 4 -> «4,0 hp», 7.5 -> «7,5 hp»."""
+    return f"{float(n):.1f}".replace(".", ",") + " hp"
+
+
+def _credits_suffix_sv(c: dict) -> str:
+    """Return « (7,5 hp)» from omfattning / credits fields, or ``\"\"`` if unknown."""
+    blocks: list[dict] = [c]
+    inner = c.get("course")
+    if isinstance(inner, dict):
+        blocks.append(inner)
+    for block in blocks:
+        o = block.get("omfattning")
+        if isinstance(o, dict):
+            fu = o.get("formattedWithUnit")
+            if isinstance(fu, str) and fu.strip():
+                return f" ({fu.strip()})"
+            num_o = o.get("number")
+            if isinstance(num_o, (int, float)) and float(num_o) > 0:
+                return f" ({_format_hp_sv_number(float(num_o))})"
+        fc = block.get("formattedCredits")
+        if isinstance(fc, str) and fc.strip():
+            return f" ({fc.strip()})"
+        cr = block.get("credits")
+        if isinstance(cr, (int, float)) and float(cr) > 0:
+            return f" ({_format_hp_sv_number(float(cr))})"
+    return ""
+
+
+def _markdown_course_line_from_curriculum_row(c: dict) -> str | None:
+    """One bullet line from a curriculums[].studyYears[].courses[] row."""
+    raw = c.get("kod") or c.get("courseCode") or c.get("code")
+    if not isinstance(raw, str):
+        return None
+    cc = raw.strip().upper()
+    if not _STRICT_COURSE_TOKEN.fullmatch(cc):
+        return None
+    name = (
+        c.get("benamning")
+        or c.get("titleSv")
+        or c.get("title_sv")
+        or c.get("title")
+        or c.get("shortTitleSv")
+        or c.get("nameSv")
+        or c.get("name")
+    )
+    name_s = name.strip() if isinstance(name, str) else ""
+    hp = _credits_suffix_sv(c)
+    if name_s:
+        return f"- **{cc}** — {name_s}{hp}"
+    return f"- **{cc}**{hp}"
+
+
+def _course_list_flat_fallback_from_store(store: dict) -> str:
+    """Legacy walk: any course-shaped dicts anywhere in the JSON tree."""
     seen: set[str] = set()
     lines: list[str] = []
     nodes = 0
@@ -484,9 +650,13 @@ def _course_list_plaintext_from_store(store: dict | None) -> str:
                         or o.get("shortTitleSv")
                         or o.get("nameSv")
                         or o.get("name")
+                        or o.get("benamning")
                     )
                     name_s = name.strip() if isinstance(name, str) else ""
-                    lines.append(f"- **{cc}** — {name_s}" if name_s else f"- **{cc}**")
+                    hp = _credits_suffix_sv(o)
+                    lines.append(
+                        f"- **{cc}** — {name_s}{hp}" if name_s else f"- **{cc}**{hp}"
+                    )
                     seen.add(cc)
             for v in o.values():
                 walk(v)
@@ -513,10 +683,90 @@ def _course_list_plaintext_from_store(store: dict | None) -> str:
     return header + "\n".join(lines)
 
 
-def _programme_page_text_with_store(html: str, visible_body: str) -> str:
+def _course_list_plaintext_from_store(store: dict | None, *, focus_year: int | None = None) -> str:
+    """Course rows from KTH's __compressedApplicationStore__ (SPA programme pages).
+
+    When the store follows the standard ``curriculums[0].studyYears`` shape, keep
+    **Obligatoriska / valbara kurslistor (VV) / valfria** (Valvillkor) headings so
+    the model can distinguish compulsory, conditionally elective pools, and free
+    electives. Otherwise fall back to a flat walk.
+    """
+    if not store:
+        return ""
+
+    lines: list[str] = []
+    line_budget = _MAX_STORE_COURSE_LINES
+    curriculums = store.get("curriculums")
+    if isinstance(curriculums, list) and curriculums:
+        cy0 = curriculums[0]
+        if isinstance(cy0, dict):
+            study_years = cy0.get("studyYears") or []
+            if isinstance(study_years, list) and study_years:
+                lines.append("## Kurser (KTH utbildningsplan)")
+                lines.append(
+                    "_Koder i utbildningsplanen (fältet Valvillkor): "
+                    "**O** = obligatoriska kurser; "
+                    "**V** = valfria kurser; "
+                    "**VV** = valbara kurslistor (villkorligt valbara / villkorligt valfria; "
+                    "eng. ungefär «conditionally elective» — val inom godkända listor enligt planen). "
+                    "Andra koder (t.ex. K) beskrivs i respektive rubrik._"
+                )
+                years_sorted = sorted(
+                    [y for y in study_years if isinstance(y, dict)],
+                    key=lambda y: int(y.get("yearNumber") or 0),
+                )
+                truncated = False
+                for y in years_sorted:
+                    yn = y.get("yearNumber")
+                    if not isinstance(yn, int):
+                        continue
+                    if focus_year is not None and yn != focus_year:
+                        continue
+                    lines.append(f"### Årskurs {yn}")
+                    for ft in y.get("freeTexts") or []:
+                        if isinstance(ft, dict):
+                            tx = ft.get("Text")
+                            if isinstance(tx, str) and tx.strip():
+                                lines.append(f"_Notis:_ {tx.strip()}")
+                    buckets: dict[str, list[dict]] = defaultdict(list)
+                    for c in y.get("courses") or []:
+                        if not isinstance(c, dict):
+                            continue
+                        raw_vv = c.get("Valvillkor") or c.get("valvillkor") or "?"
+                        vv = raw_vv.strip() if isinstance(raw_vv, str) else "?"
+                        if not vv:
+                            vv = "?"
+                        buckets[vv].append(c)
+                    for vv in _sort_valvillkor_keys(list(buckets.keys())):
+                        label = _VALVILLKOR_LABEL_SV.get(vv, f"Kurser (valvillkor {vv})")
+                        lines.append(f"#### {label}")
+                        for c in sorted(buckets[vv], key=lambda x: str(x.get("kod") or "")):
+                            if line_budget <= 0:
+                                truncated = True
+                                break
+                            row = _markdown_course_line_from_curriculum_row(c)
+                            if not row:
+                                continue
+                            lines.append(row)
+                            line_budget -= 1
+                        if line_budget <= 0:
+                            truncated = True
+                            break
+                    if line_budget <= 0:
+                        break
+                if len(lines) > 2:
+                    if truncated:
+                        lines.append("\n_… avkortad: max antal kursrader._")
+                    return "\n".join(lines).strip()
+
+    return _course_list_flat_fallback_from_store(store)
+
+
+def _programme_page_text_with_store(html: str, visible_body: str, page_url: str = "") -> str:
     """Append course lines from __compressedApplicationStore__ when DOM text is thin."""
     store = _compressed_application_store(html)
-    appendix = _course_list_plaintext_from_store(store)
+    focus_year = _program_page_year_from_url(page_url) if page_url else None
+    appendix = _course_list_plaintext_from_store(store, focus_year=focus_year)
     if not appendix:
         return visible_body
     base = visible_body.strip()
@@ -644,23 +894,25 @@ def _select_programme_urls(
     program_code: str,
     sorted_terms_desc: list[str],
     hints: AdmissionHints,
+    year_level: int | None = None,
 ) -> ProgrammeRootResolution:
     """Pick concrete /program/<code>/<term> URLs or ask for clarification."""
     root = _canonicalize(f"https://{_KTH_HOST}/student/kurser/program/{program_code}")
     terms = sorted_terms_desc
+    year_suffix = f"/arskurs{year_level}" if year_level else ""
 
     if not terms:
-        return ProgrammeRootResolution(queue_urls=[root])
+        return ProgrammeRootResolution(queue_urls=[f"{root}{year_suffix}"])
 
     if hints.exact_term and hints.exact_term in terms:
-        return ProgrammeRootResolution(queue_urls=[f"{root}/{hints.exact_term}"])
+        return ProgrammeRootResolution(queue_urls=[f"{root}/{hints.exact_term}{year_suffix}"])
 
     cands = list(terms)
     if hints.year_prefix:
         cands = [t for t in terms if t.startswith(hints.year_prefix)]
     elif hints.exact_term is None:
         if len(terms) == 1:
-            return ProgrammeRootResolution(queue_urls=[f"{root}/{terms[0]}"])
+            return ProgrammeRootResolution(queue_urls=[f"{root}/{terms[0]}{year_suffix}"])
         return ProgrammeRootResolution(
             queue_urls=[],
             clarification_sv=_clarify_program_terms_sv(program_code, terms),
@@ -668,7 +920,7 @@ def _select_programme_urls(
         )
 
     if len(cands) == 1:
-        return ProgrammeRootResolution(queue_urls=[f"{root}/{cands[0]}"])
+        return ProgrammeRootResolution(queue_urls=[f"{root}/{cands[0]}{year_suffix}"])
     if not cands:
         return ProgrammeRootResolution(
             queue_urls=[],
@@ -696,6 +948,7 @@ def _resolve_program_root_targets(
     cfg: Config,
     programme_root_url: str,
     hints: AdmissionHints,
+    year_level: int | None = None,
 ) -> ProgrammeRootResolution:
     code = _program_segment_code(programme_root_url)
     if not code:
@@ -715,7 +968,7 @@ def _resolve_program_root_targets(
         if re.fullmatch(r"[A-Z]{5}", mc):
             code = mc
 
-    resolved = _select_programme_urls(code, terms, hints)
+    resolved = _select_programme_urls(code, terms, hints, year_level=year_level)
     log.info(
         "dynamic-web: programme %s terms=%s hints=%s -> %s",
         code,
@@ -735,6 +988,21 @@ def _dedupe_urls(urls: list[str]) -> list[str]:
             seen.add(c)
             out.append(c)
     return out
+
+
+def _programme_term_bundle_urls(url: str) -> list[str]:
+    """For /program/<CODE>/<TERM>(/arskursN), return a stable study-plan bundle:
+    base term page + year pages + common sidebar pages."""
+    path = urlsplit(_canonicalize(url)).path
+    m = _PROGRAM_TERM_RE.fullmatch(path)
+    if not m:
+        return [_canonicalize(url)]
+    code, term, _year = m.group(1).upper(), m.group(2), m.group(3)
+    base = _canonicalize(f"https://{_KTH_HOST}/student/kurser/program/{code}/{term}")
+    out: list[str] = [base]
+    out.extend([f"{base}/arskurs{n}" for n in range(1, 6)])
+    out.extend([f"{base}/{slug}" for slug in _PROGRAM_SIDEBAR_SLUGS])
+    return _dedupe_urls(out)
 
 
 def corpus_programme_substrings_for_query(q: str) -> frozenset[str] | None:
@@ -767,15 +1035,17 @@ def maybe_fetch_dynamic_web(
     course_urls = [t for t in targets if "/student/kurser/kurs/" in t]
     prog_roots = [t for t in targets if _is_program_root_only_url(t)]
     hints = parse_program_admission_hints(question)
+    year_level = _parse_programme_year_level(question)
 
     queue: list[str] = list(course_urls)
     for root in prog_roots:
-        res = _resolve_program_root_targets(cfg, root, hints)
+        res = _resolve_program_root_targets(cfg, root, hints, year_level=year_level)
         if res.clarification_sv:
             return WebFetchResult(
                 clarification=(res.clarification_sv, res.clarification_en),
             )
-        queue.extend(res.queue_urls)
+        for u in res.queue_urls:
+            queue.extend(_programme_term_bundle_urls(u))
 
     queue = _dedupe_urls(queue)
     if not queue:
@@ -808,7 +1078,7 @@ def maybe_fetch_dynamic_web(
                 log.info("dynamic-web: fetch redirected %s -> %s", target, final_url)
             title, content = _sanitize_to_text(html)
             if "/student/kurser/program/" in final_url:
-                content = _programme_page_text_with_store(html, content)
+                content = _programme_page_text_with_store(html, content, final_url)
             content = _truncate_web_chunk_text(content)
             # Validate program fetches: if a requested program code maps to a page
             # whose visible heading mentions another code, treat it as mismatch.
@@ -824,6 +1094,7 @@ def maybe_fetch_dynamic_web(
             cache.put(CachedPage(url=final_url, title=title, content=content, fetched_at=now))
             log.info("dynamic-web: cached %s", final_url)
             source_urls.append(final_url)
+            section = _program_page_section_label(final_url)
             chunks.append(
                 RetrievedChunk(
                     chunk_id=f"web:{final_url}",
@@ -832,7 +1103,7 @@ def maybe_fetch_dynamic_web(
                     doc_title=title,
                     doc_type="html",
                     language="sv",
-                    section_path="KTH web",
+                    section_path=section,
                     chunk_index=0,
                     chroma_distance=0.0,
                     rerank_score=3.5,
@@ -867,6 +1138,7 @@ def maybe_fetch_dynamic_web(
             stale_days = max(stale_days, age)
             log.info("dynamic-web: using cached page %s (age=%sd)", cached.url, age)
             source_urls.append(cached.url)
+            section = _program_page_section_label(cached.url)
             chunks.append(
                 RetrievedChunk(
                     chunk_id=f"web:{cached.url}",
@@ -875,7 +1147,7 @@ def maybe_fetch_dynamic_web(
                     doc_title=cached.title,
                     doc_type="html",
                     language="sv",
-                    section_path="KTH web (cached)",
+                    section_path=section,
                     chunk_index=0,
                     chroma_distance=0.0,
                     rerank_score=2.5,

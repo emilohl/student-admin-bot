@@ -36,7 +36,11 @@ from pydantic import BaseModel
 from rich.logging import RichHandler
 from starlette.middleware.sessions import SessionMiddleware
 
-from student_bot.bot.citations import build_doc_url, confidence_badge, format_source_title
+from student_bot.bot.citations import (
+    build_doc_url,
+    confidence_badge,
+    format_source_display_label,
+)
 from student_bot.bot.memory import ConversationMemory
 from student_bot.bot.pipeline import answer
 from student_bot.bot.topics import classify
@@ -79,6 +83,24 @@ def _join_base(base_path: str, path: str) -> str:
     if not base_path:
         return p
     return f"{base_path}{p}"
+
+
+def _source_http_url(
+    rel_source: str,
+    page_start: int | None,
+    doc_base_url: str,
+    *,
+    source_url: str = "",
+) -> str:
+    """URL for the web UI / SSE `sources` list. Never drop obvious http(s) links."""
+    u = build_doc_url(rel_source, page_start, doc_base_url, source_url=source_url)
+    if u:
+        return u
+    for raw in (source_url or "", rel_source or ""):
+        s = (raw or "").strip()
+        if s.startswith("https://") or s.startswith("http://"):
+            return s
+    return ""
 
 
 # --- request schemas ---
@@ -412,12 +434,12 @@ def _stream_answer(
             if key in seen:
                 continue
             seen.add(key)
-            title = format_source_title(cfg, c)
-            page_suffix = f", s. {c.page_start}" if c.page_start else ""
-            section_suffix = f" — {c.section_path}" if c.section_path else ""
-            label = f"{title}{section_suffix}{page_suffix}"
-            url = build_doc_url(
-                c.rel_source, c.page_start, cfg.web.doc_base_url, source_url=c.source_url
+            label = format_source_display_label(cfg, c)
+            url = _source_http_url(
+                c.rel_source,
+                c.page_start,
+                cfg.web.doc_base_url,
+                source_url=c.source_url,
             )
             sources.append({"n": len(sources) + 1, "label": label, "url": url})
 
@@ -431,11 +453,12 @@ def _stream_answer(
             if key in seen_candidates:
                 continue
             seen_candidates.add(key)
-            page_suffix = f", s. {c.page_start}" if c.page_start else ""
-            section_suffix = f" — {c.section_path}" if c.section_path else ""
-            label = f"{c.doc_title}{section_suffix}{page_suffix}"
-            url = build_doc_url(
-                c.rel_source, c.page_start, cfg.web.doc_base_url, source_url=c.source_url
+            label = format_source_display_label(cfg, c)
+            url = _source_http_url(
+                c.rel_source,
+                c.page_start,
+                cfg.web.doc_base_url,
+                source_url=c.source_url,
             )
             source_candidates.append(
                 {

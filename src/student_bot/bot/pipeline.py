@@ -11,6 +11,7 @@ CLI:
 from __future__ import annotations
 
 import logging
+import re
 import sys
 import time
 from collections import deque
@@ -52,6 +53,8 @@ log = logging.getLogger("student_bot")
 
 
 _jargon_cache: dict[int, Jargon] = {}
+_COURSE_CODE_TOKEN_RE = re.compile(r"^(?:[A-Z]{2}[0-9]{4}|[A-Z]{2}[0-9]{3}[A-Z])$")
+_PROGRAM_CODE_TOKEN_RE = re.compile(r"^[A-Z]{5}$")
 
 
 def _jargon(cfg: Config) -> Jargon | None:
@@ -62,6 +65,52 @@ def _jargon(cfg: Config) -> Jargon | None:
         j = Jargon.from_config(cfg)
         _jargon_cache[id(cfg)] = j
     return j
+
+
+def _history_lang(history: list[dict]) -> str | None:
+    for turn in reversed(history):
+        content = (turn.get("content") or "").strip()
+        if not content:
+            continue
+        # Skip ultra-short/noisy turns to avoid inheriting from fragments.
+        if len(content) < 6:
+            continue
+        return detect(content)
+    return None
+
+
+def _is_lang_ambiguous_input(question: str) -> bool:
+    q = (question or "").strip()
+    if not q:
+        return True
+
+    tokens = re.findall(r"[A-Za-zÅÄÖåäö0-9]+", q)
+    if not tokens:
+        return True
+
+    code_like = sum(
+        1
+        for t in tokens
+        if _COURSE_CODE_TOKEN_RE.fullmatch(t.upper())
+        or _PROGRAM_CODE_TOKEN_RE.fullmatch(t.upper())
+    )
+    alpha_words = re.findall(r"[A-Za-zÅÄÖåäö]+", q)
+    lower_words = [w for w in alpha_words if not w.isupper()]
+    meaningful_words = [w for w in lower_words if len(w) >= 3]
+
+    if not meaningful_words:
+        return True
+    if code_like and len(meaningful_words) <= 2:
+        return True
+    return False
+
+
+def _select_turn_lang(question: str, history: list[dict]) -> str:
+    detected = detect(question)
+    if not _is_lang_ambiguous_input(question):
+        return detected
+    inherited = _history_lang(history)
+    return inherited or detected
 
 
 @dataclass
@@ -208,7 +257,7 @@ def answer(
     t0 = time.monotonic()
 
     # --- guardrails: input length cap and per-user rate limit ---
-    lang = detect(question)
+    lang = _select_turn_lang(question, history)
     if cfg.guardrails.input_max_chars and len(question) > cfg.guardrails.input_max_chars:
         msg = _too_long_message(cfg, lang)
         if on_token:
@@ -451,14 +500,14 @@ def answer(
             on_token(body)
 
     # Replace inline [Title · Section] citations with [N] numbering and
-    # trim the Sources block to only those actually cited (or fall back
-    # to all retrieved when the model cited nothing). Done server-side
+    # build the Sources block from cited rows only (no silent dump of the
+    # full reranked list). Done server-side
     # so Mattermost / CLI / web all get the same compact reference list.
-    sources_chunks = retrieval.reranked
     numbered_body = body
+    sources_chunks: list = []
     if retrieval.reranked:
         numbered_body, cited = apply_citation_numbering(body, retrieval.reranked)
-        sources_chunks = cited or retrieval.reranked
+        sources_chunks = cited
 
     # Build everything that comes after the body: confidence badge,
     # sources block, literacy tip. Same content for the streaming tail
