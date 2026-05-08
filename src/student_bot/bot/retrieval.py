@@ -87,6 +87,7 @@ def retrieve(
                 chunk_index=int(meta.get("chunk_index", 0)),
                 chroma_distance=float(d),
                 page_start=page,
+                source_url=meta.get("source_url", ""),
             )
         )
 

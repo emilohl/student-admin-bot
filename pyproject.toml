@@ -65,6 +65,7 @@ student-bot-audit-codes = "scripts.audit_course_code_patterns:main"
 student-bot-host-metrics = "scripts.host_metrics_collector:main"
 student-bot-up = "scripts.up:main"
 student-bot-down = "scripts.down:main"
+student-bot-fetch-url-corpus = "scripts.fetch_url_corpus:main"
 
 [build-system]
 requires = ["hatchling"]

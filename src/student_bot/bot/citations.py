@@ -9,9 +9,12 @@ Citations are the bot's primary defence against blind trust:
 
 from __future__ import annotations
 
+import json
 import random
 import re
-from urllib.parse import quote
+from functools import lru_cache
+from pathlib import Path
+from urllib.parse import quote, urlparse
 
 from student_bot.bot.retrieval import RetrievedChunk
 from student_bot.config import Config
@@ -20,13 +23,20 @@ from student_bot.config import Config
 _INLINE_CITATION_RE = re.compile(r"\[([^\[\]]+?)\]")
 
 
-def build_doc_url(rel_source: str, page_start: int | None, base_url: str) -> str:
+def build_doc_url(
+    rel_source: str,
+    page_start: int | None,
+    base_url: str,
+    source_url: str = "",
+) -> str:
     """Return a URL the user can click to read the source.
 
     `base_url` is something like "" (no link), "/docs" (web app file mount),
     or "https://kth.example.org/docs" if hosted externally. PDFs get
     `#page=N` so the browser jumps to the cited page.
     """
+    if source_url.startswith("https://") or source_url.startswith("http://"):
+        return source_url
     if rel_source.startswith("https://") or rel_source.startswith("http://"):
         return rel_source
     if not base_url:
@@ -47,6 +57,101 @@ def _dedupe_keep_order(items: list[tuple]) -> list[tuple]:
         seen.add(it)
         out.append(it)
     return out
+
+
+@lru_cache(maxsize=8)
+def _load_source_map(path_str: str, mtime_ns: int) -> dict[str, dict]:
+    # mtime_ns participates in the cache key so edits are picked up without
+    # a restart.
+    try:
+        raw = json.loads(Path(path_str).read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, dict] = {}
+    for rel, meta in raw.items():
+        if isinstance(rel, str) and isinstance(meta, dict):
+            out[rel] = meta
+    return out
+
+
+def _source_map(cfg: Config) -> dict[str, dict]:
+    path = cfg.absolute(Path(cfg.url_ingest.source_map_file))
+    if not path.exists():
+        return {}
+    return _load_source_map(str(path), path.stat().st_mtime_ns)
+
+
+def format_source_title(cfg: Config, c: RetrievedChunk) -> str:
+    """Human-friendly source title. For web-imported docs prefer
+    '<host>: <page title>' from url_source_map metadata."""
+    rel = (c.rel_source or "").strip()
+    title = (c.doc_title or "").strip()
+    if not rel.startswith("web_import/"):
+        return title
+
+    meta = _source_map(cfg).get(rel, {})
+    pretty = str(meta.get("title", "")).strip()
+    source_url = (
+        c.source_url or str(meta.get("canonical_url", "")) or str(meta.get("source_url", ""))
+    ).strip()
+    host = ""
+    if source_url.startswith("https://") or source_url.startswith("http://"):
+        host = urlparse(source_url).netloc
+
+    if pretty:
+        return f"{host}: {pretty}" if host else pretty
+    return title
+
+
+def _http_chunk(c: RetrievedChunk) -> bool:
+    u = (c.source_url or c.rel_source or "").strip()
+    return u.startswith("http://") or u.startswith("https://")
+
+
+def format_source_short_title(cfg: Config, c: RetrievedChunk) -> str:
+    """Compact title for long KTH web programme headings (footer / SSE meta).
+
+    Prefer "PROG · last title clause" so repeated document boilerplate is not
+    re-listed on every reference row."""
+    base = format_source_title(cfg, c)
+    if not _http_chunk(c):
+        return base
+    t = (c.doc_title or base or "").strip()
+    if not t:
+        return base
+    if "|" in t:
+        t = t.split("|", 1)[0].strip()
+    u = (c.source_url or c.rel_source or "").strip()
+    code = None
+    m = re.search(r"\(([A-Z]{5})\)", t)
+    if m:
+        code = m.group(1)
+    if not code and "/program/" in u:
+        m2 = re.search(r"/program/([A-Z]{5})/", u)
+        if m2:
+            code = m2.group(1)
+    tail = t.rsplit(",", 1)[-1].strip() if "," in t else t
+    if code and tail and tail != t:
+        return f"{code} · {tail}"
+    if len(t) > 72 and tail:
+        return tail
+    return base
+
+
+def format_source_display_label(cfg: Config, c: RetrievedChunk) -> str:
+    """Single-line label for Sources blocks, web UI, and Mattermost fields."""
+    primary = format_source_short_title(cfg, c)
+    if getattr(c, "is_stale", False):
+        primary = f"{primary} (cache)"
+    section_part = (c.section_path or "").strip()
+    if section_part and section_part.lower() not in primary.lower():
+        section_suffix = f" — {section_part}"
+    else:
+        section_suffix = ""
+    page_suffix = f", s. {c.page_start}" if c.page_start else ""
+    return f"{primary}{section_suffix}{page_suffix}"
 
 
 def format_sources_block(
@@ -71,11 +176,9 @@ def format_sources_block(
     label = "Källor" if lang == "sv" else "Sources"
     lines = [f"\n\n**{label}:**"]
     for i, row in enumerate(rows, 1):
-        title, section, page = row
-        url = build_doc_url(chunk_by_row[row].rel_source, page, base)
-        page_suffix = f", s. {page}" if page else ""
-        section_suffix = f" — {section}" if section else ""
-        text = f"{title}{section_suffix}{page_suffix}"
+        chunk = chunk_by_row[row]
+        text = format_source_display_label(cfg, chunk)
+        url = build_doc_url(chunk.rel_source, chunk.page_start, base, source_url=chunk.source_url)
         lines.append(f"{i}. [{text}]({url})" if url else f"{i}. {text}")
     return "\n".join(lines)
 
@@ -246,10 +349,8 @@ def format_for_mattermost(cfg, result) -> tuple[str, list[dict] | None]:
         if key in seen:
             continue
         seen.add(key)
-        url = build_doc_url(c.rel_source, c.page_start, base)
-        page_suffix = f", s. {c.page_start}" if c.page_start else ""
-        section_suffix = f" — {c.section_path}" if c.section_path else ""
-        field_title = f"{c.doc_title}{section_suffix}{page_suffix}"
+        url = build_doc_url(c.rel_source, c.page_start, base, source_url=c.source_url)
+        field_title = format_source_display_label(cfg, c)
         if url:
             link_label = "Visa dokument" if lang == "sv" else "Open document"
             field_value = f"[{link_label}]({url})"
@@ -274,6 +375,9 @@ def format_for_mattermost(cfg, result) -> tuple[str, list[dict] | None]:
 
 __all__ = [
     "build_doc_url",
+    "format_source_title",
+    "format_source_short_title",
+    "format_source_display_label",
     "format_sources_block",
     "apply_citation_numbering",
     "literacy_footer",

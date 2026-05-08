@@ -37,8 +37,9 @@ services:
       STUDENT_BOT_ROOT: /app
       WEB_BIND_HOST: "0.0.0.0"
       WEB_AUTH_ENABLED: "true"
+      WEB_BASE_PATH: "/betabot"
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

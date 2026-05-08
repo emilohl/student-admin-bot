@@ -120,12 +120,12 @@ jargon:
 dynamic_web:
   enabled: true
   timeout_seconds: 6.0
-  max_pages_per_query: 6
+  max_pages_per_query: 12
   cache_ttl_days: 7
   # Matched against URL path only (host is hardcoded to www.kth.se).
   allowed_patterns:
     - "^/student/kurser/kurs/[A-Z0-9]+/?$"
-    - "^/student/kurser/program/[A-Z0-9]+(?:/[0-9]{5}(?:/arskurs[0-9]+)?)?/?$"
+    - "^/student/kurser/program/[A-Z0-9]+(?:/[0-9]{5}(?:/(?:arskurs[0-9]+|mal|omfattning|behorighet|genomforande|kurslista|inriktningar))?)?/?$"
   user_agent: "student-bot/0.1 (+https://github.com/cohm/student-admin-bot)"
   max_bytes: 1500000
   max_links_followed: 24
@@ -133,3 +133,26 @@ dynamic_web:
   program_aliases_file: data/program_aliases.json
   program_aliases_ttl_hours: 24
   program_aliases: {}
+
+# URL/PDF corpus ingestion from a manifest.
+url_ingest:
+  enabled: yes
+  domains_ingest_allowlist:
+    - www.kth.se
+    - kth.se
+  timeout_seconds: 8.0
+  max_bytes: 2000000
+  max_pages_per_seed: 12
+  default_max_depth: 1
+  manifest_file: data/url_manifest_KTH.yaml
+  output_dir: docs/corpus/web_import
+  source_map_file: data/url_source_map.json
+  include_vetted_links_in_markdown: true
+  max_links_per_doc: 100
+  domains_related_links_allowlist:
+    - www.antagning.se
+    - www.student.ladok.se
+  domain_global_link_blocklist:
+    - canvas.kth.se
+  global_link_blocklist_url_patterns: []
+  filtered_links_report_file: data/url_filtered_links_report.json

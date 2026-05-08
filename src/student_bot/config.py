@@ -113,6 +113,9 @@ class GuardrailsConfig(BaseModel):
 class WebConfig(BaseModel):
     bind_host: str = "127.0.0.1"
     port: int = 8000
+    # Optional URL prefix when serving behind a reverse proxy path, e.g.
+    # "/betabot". Empty means app is served from site root.
+    base_path: str = ""
     # URL prefix where the web app exposes the corpus as static files.
     # Citations link to "<doc_base_url>/<rel_source>#page=N". Leave empty to
     # render plain-text citations without links.
@@ -143,13 +146,13 @@ class JargonConfig(BaseModel):
 class DynamicWebConfig(BaseModel):
     enabled: bool = False
     timeout_seconds: float = 6.0
-    max_pages_per_query: int = 6
+    max_pages_per_query: int = 12
     cache_ttl_days: int = 7
     # Regexes matched against URL path only (no scheme/host/query).
     allowed_patterns: list[str] = Field(
         default_factory=lambda: [
             r"^/student/kurser/kurs/[A-Z0-9]+/?$",
-            r"^/student/kurser/program/[A-Z0-9]+(?:/[0-9]{5}(?:/arskurs[0-9]+)?)?/?$",
+            r"^/student/kurser/program/[A-Z0-9]+(?:/[0-9]{5}(?:/(?:arskurs[0-9]+|mal|omfattning|behorighet|genomforande|kurslista|inriktningar))?)?/?$",
         ]
     )
     user_agent: str = "student-bot/0.1 (+https://github.com/cohm/student-admin-bot)"
@@ -160,6 +163,33 @@ class DynamicWebConfig(BaseModel):
     program_aliases_ttl_hours: int = 24
     # Optional manual overrides/additions: alias -> five-letter program code.
     program_aliases: dict[str, str] = Field(default_factory=dict)
+
+
+class UrlIngestConfig(BaseModel):
+    enabled: bool = False
+    # Domains that may be fetched/crawled into corpus files.
+    domains_ingest_allowlist: list[str] = Field(default_factory=lambda: ["www.kth.se", "kth.se"])
+    # Back-compat alias (legacy name). Migrated into domains_ingest_allowlist at load time.
+    domains_allowlist: list[str] = Field(default_factory=list)
+    timeout_seconds: float = 8.0
+    max_bytes: int = 2_000_000
+    max_pages_per_seed: int = 12
+    default_max_depth: int = 1
+    manifest_file: str = "data/url_manifest.yaml"
+    output_dir: str = "docs/corpus/web_import"
+    source_map_file: str = "data/url_source_map.json"
+    include_vetted_links_in_markdown: bool = False
+    max_links_per_doc: int = 20
+    # Extra domains allowed in "Related links" output without ingesting them.
+    domains_related_links_allowlist: list[str] = Field(default_factory=list)
+    # Back-compat alias (legacy name). Migrated into domains_related_links_allowlist at load time.
+    related_links_allowlist: list[str] = Field(default_factory=list)
+    # Domains blocked globally (for seed/fetch and related links).
+    domain_global_link_blocklist: list[str] = Field(default_factory=lambda: ["canvas.kth.se"])
+    # Back-compat alias (legacy name). Migrated into domain_global_link_blocklist at load time.
+    global_link_blocklist_hosts: list[str] = Field(default_factory=list)
+    global_link_blocklist_url_patterns: list[str] = Field(default_factory=list)
+    filtered_links_report_file: str = "data/url_filtered_links_report.json"
 
 
 class MattermostSecrets(BaseModel):
@@ -186,6 +216,7 @@ class Config(BaseModel):
     topics: TopicsConfig = Field(default_factory=TopicsConfig)
     jargon: JargonConfig = Field(default_factory=JargonConfig)
     dynamic_web: DynamicWebConfig = Field(default_factory=DynamicWebConfig)
+    url_ingest: UrlIngestConfig = Field(default_factory=UrlIngestConfig)
 
     # Secrets injected from env (only required when actually used).
     user_id_hash_salt: str | None = None
@@ -207,6 +238,20 @@ def get_config() -> Config:
 
     config_path = Path(os.environ.get("CONFIG_FILE") or (PROJECT_ROOT / "config.yaml"))
     raw = _load_yaml(config_path)
+    url_ingest = raw.get("url_ingest")
+    if isinstance(url_ingest, dict):
+        if "domains_ingest_allowlist" not in url_ingest and isinstance(
+            url_ingest.get("domains_allowlist"), list
+        ):
+            url_ingest["domains_ingest_allowlist"] = url_ingest["domains_allowlist"]
+        if "domains_related_links_allowlist" not in url_ingest and isinstance(
+            url_ingest.get("related_links_allowlist"), list
+        ):
+            url_ingest["domains_related_links_allowlist"] = url_ingest["related_links_allowlist"]
+        if "domain_global_link_blocklist" not in url_ingest and isinstance(
+            url_ingest.get("global_link_blocklist_hosts"), list
+        ):
+            url_ingest["domain_global_link_blocklist"] = url_ingest["global_link_blocklist_hosts"]
 
     cfg = Config(**raw)
 
@@ -234,6 +279,8 @@ def get_config() -> Config:
         cfg.web.bind_host = h
     if p := os.environ.get("WEB_PORT"):
         cfg.web.port = int(p)
+    if bp := os.environ.get("WEB_BASE_PATH"):
+        cfg.web.base_path = bp
     if a := os.environ.get("WEB_AUTH_ENABLED"):
         cfg.web.auth_enabled = a.lower() in ("1", "true", "yes", "on")
 

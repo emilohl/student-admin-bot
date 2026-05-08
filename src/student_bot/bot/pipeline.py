@@ -11,6 +11,7 @@ CLI:
 from __future__ import annotations
 
 import logging
+import re
 import sys
 import time
 from collections import deque
@@ -52,6 +53,8 @@ log = logging.getLogger("student_bot")
 
 
 _jargon_cache: dict[int, Jargon] = {}
+_COURSE_CODE_TOKEN_RE = re.compile(r"^(?:[A-Z]{2}[0-9]{4}|[A-Z]{2}[0-9]{3}[A-Z])$")
+_PROGRAM_CODE_TOKEN_RE = re.compile(r"^[A-Z]{5}$")
 
 
 def _jargon(cfg: Config) -> Jargon | None:
@@ -62,6 +65,51 @@ def _jargon(cfg: Config) -> Jargon | None:
         j = Jargon.from_config(cfg)
         _jargon_cache[id(cfg)] = j
     return j
+
+
+def _history_lang(history: list[dict]) -> str | None:
+    for turn in reversed(history):
+        content = (turn.get("content") or "").strip()
+        if not content:
+            continue
+        # Skip ultra-short/noisy turns to avoid inheriting from fragments.
+        if len(content) < 6:
+            continue
+        return detect(content)
+    return None
+
+
+def _is_lang_ambiguous_input(question: str) -> bool:
+    q = (question or "").strip()
+    if not q:
+        return True
+
+    tokens = re.findall(r"[A-Za-zÅÄÖåäö0-9]+", q)
+    if not tokens:
+        return True
+
+    code_like = sum(
+        1
+        for t in tokens
+        if _COURSE_CODE_TOKEN_RE.fullmatch(t.upper()) or _PROGRAM_CODE_TOKEN_RE.fullmatch(t.upper())
+    )
+    alpha_words = re.findall(r"[A-Za-zÅÄÖåäö]+", q)
+    lower_words = [w for w in alpha_words if not w.isupper()]
+    meaningful_words = [w for w in lower_words if len(w) >= 3]
+
+    if not meaningful_words:
+        return True
+    if code_like and len(meaningful_words) <= 2:
+        return True
+    return False
+
+
+def _select_turn_lang(question: str, history: list[dict]) -> str:
+    detected = detect(question)
+    if not _is_lang_ambiguous_input(question):
+        return detected
+    inherited = _history_lang(history)
+    return inherited or detected
 
 
 @dataclass
@@ -195,12 +243,21 @@ def _render(
     return "".join(parts).strip()
 
 
+def _emit_jargon_prefix(jargon_note: str, on_jargon_prefix, on_token) -> None:
+    payload = jargon_note + "\n\n"
+    if on_jargon_prefix:
+        on_jargon_prefix(payload)
+    elif on_token:
+        on_token(payload)
+
+
 def answer(
     question: str,
     history: list[dict] | None = None,
     cfg: Config | None = None,
     on_token=None,
     on_thinking=None,
+    on_jargon_prefix=None,
     rate_limit_key: str | None = None,
 ) -> AnswerResult:
     cfg = cfg or get_config()
@@ -208,7 +265,7 @@ def answer(
     t0 = time.monotonic()
 
     # --- guardrails: input length cap and per-user rate limit ---
-    lang = detect(question)
+    lang = _select_turn_lang(question, history)
     if cfg.guardrails.input_max_chars and len(question) > cfg.guardrails.input_max_chars:
         msg = _too_long_message(cfg, lang)
         if on_token:
@@ -281,6 +338,40 @@ def answer(
             expanded_question=expanded_q,
             jargon_hits=jargon_hits,
         )
+    if web_result and web_result.missing_kth_course:
+        msg = web_result.missing_kth_course[0] if lang == "sv" else web_result.missing_kth_course[1]
+        if on_token:
+            on_token(msg)
+        return AnswerResult(
+            question=question,
+            lang=lang,
+            answered=False,
+            answer=msg,
+            rendered=msg,
+            gate=GateDecision(False, "kth_course_not_found", 0.0, 0.0, 0),
+            retrieval=RetrievalResult(query=expanded_q),
+            latency_ms=int((time.monotonic() - t0) * 1000),
+            expanded_question=expanded_q,
+            jargon_hits=jargon_hits,
+        )
+    if web_result and web_result.missing_kth_program:
+        msg = (
+            web_result.missing_kth_program[0] if lang == "sv" else web_result.missing_kth_program[1]
+        )
+        if on_token:
+            on_token(msg)
+        return AnswerResult(
+            question=question,
+            lang=lang,
+            answered=False,
+            answer=msg,
+            rendered=msg,
+            gate=GateDecision(False, "kth_program_not_found", 0.0, 0.0, 0),
+            retrieval=RetrievalResult(query=expanded_q),
+            latency_ms=int((time.monotonic() - t0) * 1000),
+            expanded_question=expanded_q,
+            jargon_hits=jargon_hits,
+        )
     if web_result and web_result.chunks:
         retrieval = RetrievalResult(
             query=expanded_q, candidates=web_result.chunks, reranked=web_result.chunks
@@ -330,8 +421,8 @@ def answer(
         # unreachable we surface a service-unavailable error rather than
         # a refusal — refusing would mis-attribute an outage to scope.
         meta_messages = compose_meta_fallback_messages(cfg, lang, history_for_llm, expanded_q)
-        if on_token and jargon_note and cfg.jargon.show_transparency_note:
-            on_token(jargon_note + "\n\n")
+        if jargon_note and cfg.jargon.show_transparency_note:
+            _emit_jargon_prefix(jargon_note, on_jargon_prefix, on_token)
         body = ""
         meta_fallback = False
         llm_error = False
@@ -402,8 +493,8 @@ def answer(
     )
 
     # Emit the jargon note up-front so the user sees it before tokens stream.
-    if on_token and jargon_note and cfg.jargon.show_transparency_note:
-        on_token(jargon_note + "\n\n")
+    if jargon_note and cfg.jargon.show_transparency_note:
+        _emit_jargon_prefix(jargon_note, on_jargon_prefix, on_token)
 
     parts: list[str] = []
     ttft_ms: int | None = None
@@ -451,14 +542,14 @@ def answer(
             on_token(body)
 
     # Replace inline [Title · Section] citations with [N] numbering and
-    # trim the Sources block to only those actually cited (or fall back
-    # to all retrieved when the model cited nothing). Done server-side
+    # build the Sources block from cited rows only (no silent dump of the
+    # full reranked list). Done server-side
     # so Mattermost / CLI / web all get the same compact reference list.
-    sources_chunks = retrieval.reranked
     numbered_body = body
+    sources_chunks: list = []
     if retrieval.reranked:
         numbered_body, cited = apply_citation_numbering(body, retrieval.reranked)
-        sources_chunks = cited or retrieval.reranked
+        sources_chunks = cited
 
     # Build everything that comes after the body: confidence badge,
     # sources block, literacy tip. Same content for the streaming tail

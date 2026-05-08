@@ -10,7 +10,9 @@ just pass plain text.
 from __future__ import annotations
 
 from functools import lru_cache
+import json
 from typing import Iterable
+from pathlib import Path
 
 import chromadb
 import numpy as np
@@ -94,10 +96,29 @@ def existing_hashes(collection) -> dict[str, str]:
     return out
 
 
+def _source_url_map(cfg: Config) -> dict[str, str]:
+    path = cfg.absolute(Path(cfg.url_ingest.source_map_file))
+    if not path.exists():
+        return {}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    out: dict[str, str] = {}
+    if isinstance(raw, dict):
+        for rel, meta in raw.items():
+            if isinstance(meta, dict) and isinstance(meta.get("canonical_url"), str):
+                out[str(rel)] = str(meta["canonical_url"])
+            elif isinstance(meta, dict) and isinstance(meta.get("source_url"), str):
+                out[str(rel)] = str(meta["source_url"])
+    return out
+
+
 def upsert_chunks(cfg: Config, chunks: Iterable[Chunk], batch_size: int = 64) -> int:
     """Embed and upsert. Skips chunks whose content_hash already matches."""
     collection = get_chroma_collection(cfg)
     seen = existing_hashes(collection)
+    source_urls = _source_url_map(cfg)
 
     pending: list[Chunk] = []
     for c in chunks:
@@ -116,6 +137,7 @@ def upsert_chunks(cfg: Config, chunks: Iterable[Chunk], batch_size: int = 64) ->
             metadatas=[
                 {
                     "rel_source": c.rel_source,
+                    "source_url": source_urls.get(c.rel_source, c.metadata.get("source_url", "")),
                     "doc_title": c.doc_title,
                     "doc_type": c.doc_type,
                     "language": c.language,
