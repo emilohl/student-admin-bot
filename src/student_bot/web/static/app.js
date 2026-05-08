@@ -467,8 +467,8 @@ function buildCitationLookup(sources) {
   for (const s of sources) {
     const noPage = s.label.replace(/,\s*s\.\s*\d+\s*$/, "").trim();
     lookup[noPage] = s;
-    lookup[noPage.replace(/\s+—\s+/, " · ")] = s;
-    lookup[noPage.replace(/\s+·\s+/, " — ")] = s;
+    lookup[noPage.replace(/\s+—\s+/g, " · ")] = s;
+    lookup[noPage.replace(/\s+·\s+/g, " — ")] = s;
 
     const sep = noPage.indexOf(" — ");
     const title = sep > -1 ? noPage.slice(0, sep).trim() : noPage;
@@ -578,8 +578,8 @@ function renderBodyWithCitations(body, allSources) {
       return `CIT${n}MARK`;
     }
     const src = lookup[trimmed]
-      || lookup[trimmed.replace(/\s+·\s+/, " — ")]
-      || lookup[trimmed.replace(/\s+—\s+/, " · ")]
+      || lookup[trimmed.replace(/\s+·\s+/g, " — ")]
+      || lookup[trimmed.replace(/\s+—\s+/g, " · ")]
       || lookup[inlineCitationTitle(trimmed)]
       || approximateSourceMatch(allSources, inlineCitationTitle(trimmed));
     if (!src) {

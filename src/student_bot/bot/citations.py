@@ -240,7 +240,7 @@ def apply_citation_numbering(
     by_title: dict[str, list[int]] = {}
     for i, c in enumerate(rows):
         title = c.doc_title
-        section = c.section_path or ""
+        section = (c.section_path or "").strip()
         if section:
             by_full[f"{title} — {section}"] = i
             by_full[f"{title} · {section}"] = i
@@ -264,6 +264,15 @@ def apply_citation_numbering(
             idx = by_full.get(content.replace(" · ", " — "))
         if idx is None:
             idx = by_full.get(content.replace(" — ", " · "))
+        if idx is None:
+            # Longest-prefix match: handles `[Title · Section · Extra]` when
+            # the LLM appends invented segments to a registered Title+Section.
+            parts = re.split(r"\s+[·—]\s+", content)
+            for k in range(len(parts) - 1, 0, -1):
+                prefix = " · ".join(parts[:k])
+                idx = by_full.get(prefix) or by_full.get(prefix.replace(" · ", " — "))
+                if idx is not None:
+                    break
         if idx is None:
             # Title-only fallback when unambiguous.
             sep = content.find(" · ")
