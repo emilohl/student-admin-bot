@@ -4,12 +4,15 @@ import json
 from pathlib import Path
 from urllib.parse import quote
 
+import pytest
+
 import student_bot.bot.web_retrieval as wr
 from student_bot.bot.web_cache import WebCache
 from student_bot.bot.web_retrieval import (
     AdmissionHints,
     _canonicalize,
     _compiled_patterns,
+    _explicit_unknown_programme_codes,
     _extract_targets_with_cfg,
     _is_allowed_url,
     _select_programme_urls,
@@ -56,8 +59,51 @@ def test_cache_db_path_is_relative_to_project_root():
     assert cache._path == cfg.absolute(Path(cfg.dynamic_web.cache_db))
 
 
-def test_extract_targets_uses_five_letter_program_codes():
+def test_explicit_unknown_programme_codes_when_not_in_kth_snapshot(monkeypatch):
     cfg = get_config()
+    monkeypatch.setattr(
+        wr,
+        "_get_program_aliases",
+        lambda _cfg: {"civilingenjorsutbildning i medieteknik": "CMETE"},
+    )
+    q = "Finns det ett program som heter CFUSK?"
+    assert _explicit_unknown_programme_codes(q, cfg) == ["CFUSK"]
+
+
+def test_explicit_unknown_programme_codes_empty_when_code_known(monkeypatch):
+    cfg = get_config()
+    monkeypatch.setattr(
+        wr,
+        "_get_program_aliases",
+        lambda _cfg: {"civilingenjorsutbildning i medieteknik": "CMETE"},
+    )
+    q = "Finns programmet CMETE?"
+    assert _explicit_unknown_programme_codes(q, cfg) == []
+
+
+def test_explicit_unknown_programme_codes_requires_program_intent(monkeypatch):
+    cfg = get_config()
+    monkeypatch.setattr(wr, "_get_program_aliases", lambda _cfg: {"x": "CMETE"})
+    assert _explicit_unknown_programme_codes("Vad betyder förkortningen CFUSK?", cfg) == []
+
+
+def test_maybe_fetch_returns_missing_program_for_unknown_code(monkeypatch):
+    cfg = get_config()
+    if not cfg.dynamic_web.enabled:
+        pytest.skip("dynamic web disabled")
+    monkeypatch.setattr(
+        wr,
+        "_get_program_aliases",
+        lambda _cfg: {"civilingenjorsutbildning i medieteknik": "CMETE"},
+    )
+    r = wr.maybe_fetch_dynamic_web(cfg, "Finns det ett program som heter CFUSK?", "sv")
+    assert r is not None and r.missing_kth_program
+    assert "CFUSK" in (r.missing_kth_program[0] + r.missing_kth_program[1])
+
+
+def test_extract_targets_uses_five_letter_program_codes(monkeypatch):
+    cfg = get_config()
+    monkeypatch.setattr(wr, "_get_program_aliases", lambda _cfg: {"teknisk fysik": "CTFYS"})
     q = "show me the study plan for CTFYS"
     out = _extract_targets_with_cfg(q, cfg)
     assert "https://www.kth.se/student/kurser/program/CTFYS" in out
@@ -69,6 +115,34 @@ def test_extract_targets_resolves_program_alias(monkeypatch):
     q = "Hur ser utbildningsplanen ut for teknisk fysik?"
     out = _extract_targets_with_cfg(q, cfg)
     assert "https://www.kth.se/student/kurser/program/CTFYS" in out
+
+
+def test_parse_program_aliases_falls_back_to_compressed_store():
+    """KTH programme list pages can omit /program/ links; codes live in compressed store."""
+    payload = {
+        "programmes": [
+            [
+                "CING",
+                {
+                    "first": [
+                        {
+                            "programmeCode": "CTFYS",
+                            "title": "Civilingenjörsutbildning i teknisk fysik",
+                            "titleOtherLanguage": "Master of Science in Engineering Physics",
+                        }
+                    ]
+                },
+            ]
+        ]
+    }
+    from urllib.parse import quote
+
+    enc = quote(json.dumps(payload, separators=(",", ":")))
+    html = f"<html><head><title>Utbildningsplaner</title></head><body><script>window.__compressedApplicationStore__=\"{enc}\";</script></body></html>"
+    got = wr._parse_program_aliases_from_html(html)
+    assert got.get("civilingenjörsutbildning i teknisk fysik") == "CTFYS"
+    assert got.get("master of science in engineering physics") == "CTFYS"
+    assert got.get("ctfys") == "CTFYS"
 
 
 def test_extract_targets_ignores_term_codes_like_ht_yyyy():
@@ -92,6 +166,14 @@ def test_extract_targets_ignores_unknown_five_letter_token(monkeypatch):
     q = "Vad ar programkoden for FYSIK?"
     out = _extract_targets_with_cfg(q, cfg)
     assert "https://www.kth.se/student/kurser/program/FYSIK" not in out
+
+
+def test_extract_targets_skips_bare_program_code_when_alias_index_has_no_known_codes(monkeypatch):
+    cfg = get_config()
+    monkeypatch.setattr(wr, "_get_program_aliases", lambda _cfg: {"some phrase": "NOT5L"})
+    q = "Utbildningsplan för CMETE"
+    out = _extract_targets_with_cfg(q, cfg)
+    assert "https://www.kth.se/student/kurser/program/CMETE" in out
 
 
 def test_extract_targets_does_not_match_generic_masterprogram_alias(monkeypatch):
@@ -292,3 +374,22 @@ def test_programme_store_groups_obligatory_and_elective_buckets():
     assert "EH1110" in merged and "DD1320" in merged
     assert merged.index("EH1110") < merged.index("DD1320")
     assert "7,5 hp" in merged and "6,0 hp" in merged
+
+
+def test_kth_unknown_course_placeholder_detected():
+    assert wr._is_kth_placeholder_course_shell("undefined undefined undefined")
+    assert not wr._is_kth_placeholder_course_shell("SF1625 Envariabelanalys")
+    assert (
+        wr._kth_course_code_from_course_url("https://www.kth.se/student/kurser/kurs/SE1050")
+        == "SE1050"
+    )
+
+
+def test_kth_unknown_programme_title_shell_detected():
+    assert wr._programme_root_title_is_unknown_code_shell(
+        "CFUSK (CFUSK), Utbildningsplaner |\xa0KTH"
+    )
+    assert wr._programme_root_title_is_unknown_code_shell("XXXXX (XXXXX), Utbildningsplaner | KTH")
+    assert not wr._programme_root_title_is_unknown_code_shell(
+        "Civilingenjörsutbildning i medieteknik (CMETE), Utbildningsplaner |\xa0KTH"
+    )

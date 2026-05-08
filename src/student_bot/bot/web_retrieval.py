@@ -36,6 +36,7 @@ _PROGRAM_CODE_RE = re.compile(r"\b([A-Z]{5})\b")
 _PROGRAM_LIST_EN = "https://www.kth.se/student/kurser/kurser-inom-program?l=en"
 _PROGRAM_LIST_SV = "https://www.kth.se/student/kurser/kurser-inom-program"
 _PROGRAM_URL_CODE_RE = re.compile(r"/student/kurser/program/([A-Z]{5})(?:/|$)")
+_KTH_COURSE_PAGE_CODE_RE = re.compile(r"/student/kurser/kurs/([^/]+)", re.I)
 _PROGRAM_TERM_RE = re.compile(
     r"^/student/kurser/program/([A-Z]{5})/(\d{5})(?:/(arskurs[1-9]))?/?$",
     re.I,
@@ -137,6 +138,8 @@ class ProgrammeRootResolution:
     queue_urls: list[str]
     clarification_sv: str = ""
     clarification_en: str = ""
+    # KTH returns 200 + an empty-ish root when the programme code is not in their catalogue.
+    missing_program_codes: tuple[str, ...] = ()
 
 
 def _parse_programme_year_level(q: str) -> int | None:
@@ -295,6 +298,9 @@ class WebFetchResult:
     failure_url: str = ""
     # Bilingual clarification when cohort (programme period) can't be inferred.
     clarification: tuple[str, str] | None = None
+    # KTH may return 200 + empty SPA shell (h1 «undefined …») for non-existent codes.
+    missing_kth_course: tuple[str, str] | None = None
+    missing_kth_program: tuple[str, str] | None = None
 
 
 def _compiled_patterns(cfg: Config) -> list[re.Pattern[str]]:
@@ -302,6 +308,7 @@ def _compiled_patterns(cfg: Config) -> list[re.Pattern[str]]:
 
 
 def _canonicalize(url: str) -> str:
+    """Normalize KTH URLs — host/scheme, collapse path slashes, strip query and fragment."""
     s = urlsplit(url)
     path = re.sub(r"/{2,}", "/", s.path or "/")
     return urlunsplit((_KTH_SCHEME, _KTH_HOST, path.rstrip("/") or "/", "", ""))
@@ -311,6 +318,63 @@ def _norm(s: str) -> str:
     s = unicodedata.normalize("NFC", s or "").lower()
     s = re.sub(r"\s+", " ", s).strip()
     return s
+
+
+def _kth_course_code_from_course_url(url: str) -> str | None:
+    m = _KTH_COURSE_PAGE_CODE_RE.search(urlsplit(url).path)
+    if not m:
+        return None
+    code = m.group(1).strip().upper()
+    return code or None
+
+
+def _is_kth_placeholder_course_shell(title: str) -> bool:
+    """True when KTH returns the empty course SPA (h1 is repeated «undefined»)."""
+    raw = (title or "").strip()
+    if not raw:
+        return False
+    tokens = re.split(r"\s+", raw.lower())
+    return len(tokens) >= 3 and all(tok == "undefined" for tok in tokens)
+
+
+def _programme_root_title_is_unknown_code_shell(title: str) -> bool:
+    """True when the HTML `<title>` is only «CODE (CODE), Utbildningsplaner» (unknown programme).
+
+    KTH serves HTTP 200 for invented codes; the visible «utbildningsplan saknas» text is
+    client-rendered, but the document title stays in this stub form server-side.
+    """
+    if not title:
+        return False
+    head = title.replace("\xa0", " ").split("|", 1)[0].strip()
+    return bool(
+        re.fullmatch(r"([A-Za-z0-9]{3,10})\s*\(\1\)\s*,\s*Utbildningsplaner", head, flags=re.I)
+    )
+
+
+def _bilingual_missing_kth_course_message(codes: list[str]) -> tuple[str, str]:
+    uniq = list(dict.fromkeys(codes))
+    tail = uniq[0] if len(uniq) == 1 else ", ".join(uniq)
+    return (
+        f"KTH:s kurssidor listar ingen kurs med koden {tail} — sidan är bara en tom "
+        "mall, så kurskoden finns troligen inte. Kontrollera stavningen på kth.se eller "
+        "antagning.se. Vid behov, kontakta studievägledningen.",
+        f"KTH's course pages do not list code(s) {tail} — the response is only an empty "
+        "template, so the code likely does not exist. Double-check spelling on kth.se or "
+        "antagning.se; contact study counseling if needed.",
+    )
+
+
+def _bilingual_missing_kth_program_message(codes: list[str]) -> tuple[str, str]:
+    uniq = list(dict.fromkeys(codes))
+    tail = uniq[0] if len(uniq) == 1 else ", ".join(uniq)
+    return (
+        f"KTH:s programkatalog listar ingen utbildning med koden {tail} — sidan är bara "
+        "en tom stub (inga antagningsomgångar i KTH:s data). Kontrollera koden på "
+        "https://www.kth.se/student/kurser/kurser-inom-program eller antagning.se.",
+        f"KTH's programme catalogue has no programme with code {tail} — the page is only "
+        "an empty stub (no admission rounds in KTH's data). Verify the code on "
+        "https://www.kth.se/student/kurser/kurser-inom-program?l=en or universityadmissions.se.",
+    )
 
 
 def _is_allowed_url(url: str, cfg: Config, patterns: list[re.Pattern[str]]) -> bool:
@@ -339,7 +403,64 @@ def _parse_program_aliases_from_html(html: str) -> dict[str, str]:
             if stripped:
                 aliases[stripped] = code
         aliases[code.lower()] = code
+    # Fallback: KTH may render the programme catalogue only via embedded JSON.
+    if not aliases:
+        aliases.update(_parse_program_aliases_from_store(html))
     return aliases
+
+
+def _parse_program_aliases_from_store(html: str) -> dict[str, str]:
+    """Extract programme (study-plan) codes from __compressedApplicationStore__.
+
+    KTH's /student/kurser/kurser-inom-program page is a SPA; the server-side HTML
+    may not contain `<a href="/student/kurser/program/...">` links anymore.
+    """
+    store = _compressed_application_store(html or "")
+    if not isinstance(store, dict):
+        return {}
+    programmes = store.get("programmes")
+    if not isinstance(programmes, list):
+        return {}
+
+    out: dict[str, str] = {}
+
+    def maybe_add(code: str | None, title: str | None) -> None:
+        if not isinstance(code, str) or not re.fullmatch(r"[A-Z]{5}", code):
+            return
+        if not isinstance(title, str) or not title.strip():
+            return
+        label = _norm(title)
+        if not label:
+            return
+        out[label] = code
+        stripped = _norm(re.sub(r"\s*\([A-Z]{5}\)\s*$", "", title, flags=re.I))
+        if stripped:
+            out[stripped] = code
+        out[code.lower()] = code
+
+    def walk(o: Any) -> None:
+        if isinstance(o, dict):
+            code = o.get("programmeCode") or o.get("code")
+            title = (
+                o.get("title")
+                or o.get("titleSv")
+                or o.get("title_sv")
+                or o.get("name")
+                or o.get("nameSv")
+                or o.get("name_sv")
+            )
+            maybe_add(str(code).strip().upper() if isinstance(code, str) else None, title)
+            # Also index other-language title when available (helps EN queries).
+            title_en = o.get("titleOtherLanguage") or o.get("titleEn") or o.get("title_en")
+            maybe_add(str(code).strip().upper() if isinstance(code, str) else None, title_en)
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+
+    walk(programmes)
+    return out
 
 
 def _fetch_program_aliases_page(url: str, cfg: Config) -> dict[str, str]:
@@ -426,8 +547,17 @@ def _extract_targets_with_cfg(question: str, cfg: Config) -> list[str]:
         # (uppercase token, e.g. CTFYS). Avoid interpreting lowercase words like
         # "fysik" as a code.
         for code in _PROGRAM_CODE_RE.findall(question):
-            # If we have an alias/code index, only accept known codes.
-            if known_codes and code not in known_codes:
+            # Fallback: when alias/code snapshot is empty (e.g. fetch outage), still
+            # probe explicit uppercase code tokens and validate by fetching KTH root.
+            if not known_codes:
+                log.warning(
+                    "dynamic-web: programme code list empty; "
+                    "probing bare token %s directly via KTH root page",
+                    code,
+                )
+                urls.append(f"https://{_KTH_HOST}/student/kurser/program/{code}")
+                continue
+            if code not in known_codes:
                 log.info("dynamic-web: ignoring unknown program-like token %s", code)
                 continue
             urls.append(f"https://{_KTH_HOST}/student/kurser/program/{code}")
@@ -960,7 +1090,12 @@ def _resolve_program_root_targets(
         log.warning("dynamic-web: programme root fetch failed for %s: %s", programme_root_url, e)
         return ProgrammeRootResolution(queue_urls=[_canonicalize(programme_root_url)])
 
+    title, _ = _sanitize_to_text(html)
     store = _compressed_application_store(html)
+    if _programme_root_title_is_unknown_code_shell(title):
+        log.info("dynamic-web: programme root appears to be unknown / missing for %s", code)
+        return ProgrammeRootResolution(queue_urls=[], missing_program_codes=(code,))
+
     terms = _normalized_programme_terms_from_store(store)
 
     if store and isinstance(store.get("programmeCode"), str):
@@ -1018,6 +1153,27 @@ def corpus_programme_substrings_for_query(q: str) -> frozenset[str] | None:
     return frozenset(out) if out else None
 
 
+def _explicit_unknown_programme_codes(question: str, cfg: Config) -> list[str]:
+    """5-letter programme-style tokens not present in the kurser-inom-program snapshot.
+
+    Unknown codes are not expanded into /program/<CODE> URLs; without this check the
+    pipeline would fall through to corpus RAG and emit a vague refusal.
+    """
+    if not program_study_intent_question(question):
+        return []
+    aliases = _get_program_aliases(cfg)
+    known_codes = {
+        str(v).upper() for v in aliases.values() if re.fullmatch(r"[A-Z]{5}", str(v).upper())
+    }
+    if not known_codes:
+        return []
+    out: list[str] = []
+    for code in _PROGRAM_CODE_RE.findall(question):
+        if code not in known_codes:
+            out.append(code)
+    return list(dict.fromkeys(out))
+
+
 def maybe_fetch_dynamic_web(
     cfg: Config,
     question: str,
@@ -1025,6 +1181,12 @@ def maybe_fetch_dynamic_web(
 ) -> WebFetchResult | None:
     if not cfg.dynamic_web.enabled:
         return None
+
+    unknown_codes = _explicit_unknown_programme_codes(question, cfg)
+    if unknown_codes:
+        return WebFetchResult(
+            missing_kth_program=_bilingual_missing_kth_program_message(unknown_codes),
+        )
 
     patterns = _compiled_patterns(cfg)
     targets = _extract_targets_with_cfg(question, cfg)
@@ -1040,6 +1202,12 @@ def maybe_fetch_dynamic_web(
     queue: list[str] = list(course_urls)
     for root in prog_roots:
         res = _resolve_program_root_targets(cfg, root, hints, year_level=year_level)
+        if res.missing_program_codes:
+            return WebFetchResult(
+                missing_kth_program=_bilingual_missing_kth_program_message(
+                    list(res.missing_program_codes),
+                ),
+            )
         if res.clarification_sv:
             return WebFetchResult(
                 clarification=(res.clarification_sv, res.clarification_en),
@@ -1059,6 +1227,7 @@ def maybe_fetch_dynamic_web(
     max_pages = max(1, min(cfg.dynamic_web.max_pages_per_query, cfg.dynamic_web.max_links_followed))
     queue = queue[: max_pages * 2]
     visited: set[str] = set()
+    invalid_course_codes: list[str] = []
 
     while queue and len(visited) < max_pages:
         target = queue.pop(0)
@@ -1077,6 +1246,15 @@ def maybe_fetch_dynamic_web(
             if final_url != target:
                 log.info("dynamic-web: fetch redirected %s -> %s", target, final_url)
             title, content = _sanitize_to_text(html)
+            if "/student/kurser/kurs/" in final_url and _is_kth_placeholder_course_shell(title):
+                code_hit = _kth_course_code_from_course_url(final_url)
+                if code_hit:
+                    invalid_course_codes.append(code_hit)
+                log.info(
+                    "dynamic-web: skipping KTH placeholder course page (unknown code) %s",
+                    final_url,
+                )
+                continue
             if "/student/kurser/program/" in final_url:
                 content = _programme_page_text_with_store(html, content, final_url)
             content = _truncate_web_chunk_text(content)
@@ -1158,6 +1336,10 @@ def maybe_fetch_dynamic_web(
             )
 
     if not chunks:
+        if invalid_course_codes:
+            return WebFetchResult(
+                missing_kth_course=_bilingual_missing_kth_course_message(invalid_course_codes)
+            )
         return None
     return WebFetchResult(
         chunks=chunks,

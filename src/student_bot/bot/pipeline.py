@@ -244,12 +244,21 @@ def _render(
     return "".join(parts).strip()
 
 
+def _emit_jargon_prefix(jargon_note: str, on_jargon_prefix, on_token) -> None:
+    payload = jargon_note + "\n\n"
+    if on_jargon_prefix:
+        on_jargon_prefix(payload)
+    elif on_token:
+        on_token(payload)
+
+
 def answer(
     question: str,
     history: list[dict] | None = None,
     cfg: Config | None = None,
     on_token=None,
     on_thinking=None,
+    on_jargon_prefix=None,
     rate_limit_key: str | None = None,
 ) -> AnswerResult:
     cfg = cfg or get_config()
@@ -330,6 +339,40 @@ def answer(
             expanded_question=expanded_q,
             jargon_hits=jargon_hits,
         )
+    if web_result and web_result.missing_kth_course:
+        msg = web_result.missing_kth_course[0] if lang == "sv" else web_result.missing_kth_course[1]
+        if on_token:
+            on_token(msg)
+        return AnswerResult(
+            question=question,
+            lang=lang,
+            answered=False,
+            answer=msg,
+            rendered=msg,
+            gate=GateDecision(False, "kth_course_not_found", 0.0, 0.0, 0),
+            retrieval=RetrievalResult(query=expanded_q),
+            latency_ms=int((time.monotonic() - t0) * 1000),
+            expanded_question=expanded_q,
+            jargon_hits=jargon_hits,
+        )
+    if web_result and web_result.missing_kth_program:
+        msg = (
+            web_result.missing_kth_program[0] if lang == "sv" else web_result.missing_kth_program[1]
+        )
+        if on_token:
+            on_token(msg)
+        return AnswerResult(
+            question=question,
+            lang=lang,
+            answered=False,
+            answer=msg,
+            rendered=msg,
+            gate=GateDecision(False, "kth_program_not_found", 0.0, 0.0, 0),
+            retrieval=RetrievalResult(query=expanded_q),
+            latency_ms=int((time.monotonic() - t0) * 1000),
+            expanded_question=expanded_q,
+            jargon_hits=jargon_hits,
+        )
     if web_result and web_result.chunks:
         retrieval = RetrievalResult(
             query=expanded_q, candidates=web_result.chunks, reranked=web_result.chunks
@@ -379,8 +422,8 @@ def answer(
         # unreachable we surface a service-unavailable error rather than
         # a refusal — refusing would mis-attribute an outage to scope.
         meta_messages = compose_meta_fallback_messages(cfg, lang, history_for_llm, expanded_q)
-        if on_token and jargon_note and cfg.jargon.show_transparency_note:
-            on_token(jargon_note + "\n\n")
+        if jargon_note and cfg.jargon.show_transparency_note:
+            _emit_jargon_prefix(jargon_note, on_jargon_prefix, on_token)
         body = ""
         meta_fallback = False
         llm_error = False
@@ -451,8 +494,8 @@ def answer(
     )
 
     # Emit the jargon note up-front so the user sees it before tokens stream.
-    if on_token and jargon_note and cfg.jargon.show_transparency_note:
-        on_token(jargon_note + "\n\n")
+    if jargon_note and cfg.jargon.show_transparency_note:
+        _emit_jargon_prefix(jargon_note, on_jargon_prefix, on_token)
 
     parts: list[str] = []
     ttft_ms: int | None = None

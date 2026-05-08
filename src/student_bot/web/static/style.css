@@ -134,13 +134,19 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .msg .body li { margin: 2px 0; }
 .msg.bot .body ul,
 .msg.bot .body ol { white-space: normal; }
+/* Jargon / transparency note streamed before answer tokens (SSE event `jargon`). */
+.msg .body .msg-prefix {
+  display: block;
+  margin-bottom: 8px;
+  white-space: pre-wrap;
+}
 /* Wrapper so the dots and the optional "<bot> funderar…" phase label
-   sit on one line in the bot bubble while waiting for the first token. */
+   sit on one line in the bot bubble while waiting for the first answer token. */
 .thinking-wrap { display: inline-flex; align-items: center; gap: 8px; }
 .thinking-label { font-size: 12px; color: var(--muted); font-style: italic; }
 .thinking-label[hidden] { display: none; }
 /* Animated three-dot indicator shown in the bot bubble while waiting for
-   the first streamed token. Cleared on first token. */
+   the first streamed answer token. Removed on first `token` event. */
 .thinking-dots { display: inline-flex; gap: 5px; padding: 4px 0; align-items: center; }
 .thinking-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: inline-block; animation: thinking-pulse 1.3s infinite ease-in-out; }
 .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }

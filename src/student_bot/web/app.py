@@ -352,6 +352,9 @@ def _stream_answer(
     def on_token(delta: str):
         queue.put_nowait(("token", delta))
 
+    def on_jargon_prefix(delta: str):
+        queue.put_nowait(("jargon", delta))
+
     def on_thinking(starting: bool):
         queue.put_nowait(("thinking", "start" if starting else "end"))
 
@@ -362,6 +365,7 @@ def _stream_answer(
                 history=history,
                 cfg=cfg,
                 on_token=on_token,
+                on_jargon_prefix=on_jargon_prefix,
                 on_thinking=on_thinking,
                 rate_limit_key=web_user_id,
             )
@@ -382,6 +386,8 @@ def _stream_answer(
                 break
             if kind == "thinking":
                 yield _sse("thinking", value)
+            elif kind == "jargon":
+                yield _sse("jargon", value)
             else:
                 yield _sse("token", value)
 

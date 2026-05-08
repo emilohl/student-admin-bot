@@ -112,12 +112,18 @@ composer.addEventListener("submit", async (e) => {
         const { event, data } = parseSSE(part);
         if (event === "token") {
           if (firstToken) {
-            // Replace the animated thinking indicator with real content.
-            botMsg.body.textContent = "";
+            const tw = botMsg.body.querySelector(".thinking-wrap");
+            if (tw) tw.remove();
             firstToken = false;
             firstTokenAt = performance.now();
           }
-          botMsg.body.textContent += data;
+          botMsg.body.appendChild(document.createTextNode(data));
+          messages.scrollTop = messages.scrollHeight;
+        } else if (event === "jargon") {
+          const prefixEl = botMsg.body.querySelector(".msg-prefix");
+          if (prefixEl) {
+            prefixEl.appendChild(document.createTextNode(data));
+          }
           messages.scrollTop = messages.scrollHeight;
         } else if (event === "thinking") {
           // Show "<bot> funderar…" beside the dots while the model is in
@@ -140,8 +146,12 @@ composer.addEventListener("submit", async (e) => {
       }
     }
   } catch (err) {
-    if (firstToken) botMsg.body.textContent = "";
-    botMsg.body.textContent += `\n[stream error: ${err.message}]`;
+    const tw = botMsg.body.querySelector(".thinking-wrap");
+    if (tw) tw.remove();
+    botMsg.body.appendChild(
+      document.createTextNode(`\n[stream error: ${err.message}]`)
+    );
+    firstToken = false;
   } finally {
     el("#send").disabled = false;
   }
@@ -275,16 +285,23 @@ function appendBot() {
   meta.textContent = botDisplayName();
   const body = document.createElement("div");
   body.className = "body";
-  // Animated three-dot indicator while we wait for the first token.
+  // Prefix (e.g. jargon transparency) streams before answer tokens without
+  // clearing the animated "thinking" dots — see SSE `jargon` vs `token`.
+  const prefix = document.createElement("div");
+  prefix.className = "msg-prefix";
+  // Animated three-dot indicator while we wait for the first answer token.
   // The label sits next to the dots and shows "<bot> funderar…" while
   // the model is in its <think>...</think> reasoning phase.
-  body.innerHTML =
-    '<div class="thinking-wrap" aria-live="polite">' +
-      '<span class="thinking-dots" aria-label="thinking">' +
-        '<span></span><span></span><span></span>' +
-      '</span>' +
-      '<span class="thinking-label" hidden></span>' +
-    '</div>';
+  const thinking = document.createElement("div");
+  thinking.className = "thinking-wrap";
+  thinking.setAttribute("aria-live", "polite");
+  thinking.innerHTML =
+    '<span class="thinking-dots" aria-label="thinking">' +
+      "<span></span><span></span><span></span>" +
+    "</span>" +
+    '<span class="thinking-label" hidden></span>';
+  body.appendChild(prefix);
+  body.appendChild(thinking);
   wrap.appendChild(meta);
   wrap.appendChild(body);
   messages.appendChild(wrap);
