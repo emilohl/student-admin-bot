@@ -138,7 +138,7 @@ def test_parse_program_aliases_falls_back_to_compressed_store():
     from urllib.parse import quote
 
     enc = quote(json.dumps(payload, separators=(",", ":")))
-    html = f"<html><head><title>Utbildningsplaner</title></head><body><script>window.__compressedApplicationStore__=\"{enc}\";</script></body></html>"
+    html = f'<html><head><title>Utbildningsplaner</title></head><body><script>window.__compressedApplicationStore__="{enc}";</script></body></html>'
     got = wr._parse_program_aliases_from_html(html)
     assert got.get("civilingenjörsutbildning i teknisk fysik") == "CTFYS"
     assert got.get("master of science in engineering physics") == "CTFYS"

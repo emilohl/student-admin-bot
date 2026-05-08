@@ -96,6 +96,7 @@ def _program_page_section_label(url: str) -> str:
             return f"Årskurs {digits}"
     return _PROGRAM_URL_SECTION_LABELS_SV.get(slug, "")
 
+
 _GENERIC_ALIAS_TOKENS = {
     "program",
     "programmet",
@@ -784,9 +785,7 @@ def _course_list_flat_fallback_from_store(store: dict) -> str:
                     )
                     name_s = name.strip() if isinstance(name, str) else ""
                     hp = _credits_suffix_sv(o)
-                    lines.append(
-                        f"- **{cc}** — {name_s}{hp}" if name_s else f"- **{cc}**{hp}"
-                    )
+                    lines.append(f"- **{cc}** — {name_s}{hp}" if name_s else f"- **{cc}**{hp}")
                     seen.add(cc)
             for v in o.values():
                 walk(v)

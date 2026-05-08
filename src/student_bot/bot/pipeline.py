@@ -91,8 +91,7 @@ def _is_lang_ambiguous_input(question: str) -> bool:
     code_like = sum(
         1
         for t in tokens
-        if _COURSE_CODE_TOKEN_RE.fullmatch(t.upper())
-        or _PROGRAM_CODE_TOKEN_RE.fullmatch(t.upper())
+        if _COURSE_CODE_TOKEN_RE.fullmatch(t.upper()) or _PROGRAM_CODE_TOKEN_RE.fullmatch(t.upper())
     )
     alpha_words = re.findall(r"[A-Za-zÅÄÖåäö]+", q)
     lower_words = [w for w in alpha_words if not w.isupper()]
