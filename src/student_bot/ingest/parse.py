@@ -112,8 +112,14 @@ def _parse_html(path: Path) -> tuple[str, list[int | None]]:
     return text, [None] * len(text.splitlines())
 
 
+_FRONTMATTER_RE = re.compile(r"\A---\r?\n.*?\r?\n---\r?\n", re.DOTALL)
+
+
 def _parse_markdown(path: Path) -> tuple[str, list[int | None]]:
     text = path.read_text(encoding="utf-8", errors="replace")
+    # Strip optional YAML frontmatter so author/updated metadata used by the
+    # web renderer doesn't get embedded into retrieval chunks.
+    text = _FRONTMATTER_RE.sub("", text, count=1)
     return text, [None] * len(text.splitlines())
 
 

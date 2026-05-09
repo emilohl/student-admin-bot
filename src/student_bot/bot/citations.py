@@ -21,6 +21,11 @@ from student_bot.config import Config
 
 
 _INLINE_CITATION_RE = re.compile(r"\[([^\[\]]+?)\]")
+# Allows one level of nested parens so `(FAQ · Section (KEX-jobb))` captures
+# the full inner text. Used as a fallback when the LLM wrote `(...)` instead
+# of `[...]` despite the prompt; matches are gated on confident lookups so we
+# don't rewrite ordinary parentheticals.
+_PARENS_CITATION_RE = re.compile(r"\(([^()]*(?:\([^()]*\)[^()]*)*)\)")
 
 
 def build_doc_url(
@@ -240,7 +245,7 @@ def apply_citation_numbering(
     by_title: dict[str, list[int]] = {}
     for i, c in enumerate(rows):
         title = c.doc_title
-        section = c.section_path or ""
+        section = (c.section_path or "").strip()
         if section:
             by_full[f"{title} — {section}"] = i
             by_full[f"{title} · {section}"] = i
@@ -257,25 +262,53 @@ def apply_citation_numbering(
             cited_indices.append(idx)
         return n
 
+    def _match(content: str, *, allow_title_only: bool) -> int | None:
+        idx = by_full.get(content)
+        if idx is not None:
+            return idx
+        idx = by_full.get(content.replace(" · ", " — "))
+        if idx is not None:
+            return idx
+        idx = by_full.get(content.replace(" — ", " · "))
+        if idx is not None:
+            return idx
+        # Longest-prefix match: handles `[Title · Section · Extra]` when the
+        # LLM appends invented segments to a registered Title+Section.
+        parts = re.split(r"\s+[·—]\s+", content)
+        for k in range(len(parts) - 1, 0, -1):
+            prefix = " · ".join(parts[:k])
+            idx = by_full.get(prefix) or by_full.get(prefix.replace(" · ", " — "))
+            if idx is not None:
+                return idx
+        if not allow_title_only:
+            return None
+        sep = content.find(" · ")
+        title = (content[:sep] if sep > -1 else content).strip()
+        candidates = by_title.get(title, [])
+        if len(candidates) == 1:
+            return candidates[0]
+        return None
+
     def _replace(m: re.Match) -> str:
         content = m.group(1).strip()
-        idx = by_full.get(content)
+        idx = _match(content, allow_title_only=True)
         if idx is None:
-            idx = by_full.get(content.replace(" · ", " — "))
-        if idx is None:
-            idx = by_full.get(content.replace(" — ", " · "))
-        if idx is None:
-            # Title-only fallback when unambiguous.
-            sep = content.find(" · ")
-            title = (content[:sep] if sep > -1 else content).strip()
-            candidates = by_title.get(title, [])
-            if len(candidates) == 1:
-                idx = candidates[0]
+            return m.group(0)
+        return f"[{_assign(idx)}]"
+
+    def _replace_parens(m: re.Match) -> str:
+        content = m.group(1).strip()
+        # Require a citation-shaped separator so we never rewrite ordinary
+        # parentheticals like "(t.ex. ...)" or "(KEX-jobb)".
+        if " · " not in content and " — " not in content:
+            return m.group(0)
+        idx = _match(content, allow_title_only=False)
         if idx is None:
             return m.group(0)
         return f"[{_assign(idx)}]"
 
     new_body = _INLINE_CITATION_RE.sub(_replace, body)
+    new_body = _PARENS_CITATION_RE.sub(_replace_parens, new_body)
     cited = [rows[i] for i in cited_indices]
     return new_body, cited
 

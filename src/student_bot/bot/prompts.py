@@ -40,8 +40,10 @@ för {counselor_label}.
 Strikt regler:
 - Använd ENDAST information från den bifogade kontexten. Hitta inte på regler, datum, \
 namn eller paragrafer.
-- Citera källan inline efter varje påstående med formatet [doktitel · sektion] \
-(precis som i kontextens hakparenteser).
+- Citera källan inline efter varje påstående genom att kopiera hakparentes-taggen \
+[så här] EXAKT som den står ovanför motsvarande textstycke i kontexten — använd \
+alltid hakparenteser, aldrig vanliga parenteser eller andra tecken. Lägg inte till, \
+ta bort eller hitta på extra segment i taggen.
 - Om du återger vad som står i en viss sida, årskurs eller bilaga — ska det \
 ha en sådan källhänvisning direkt efter meningen; utelämna inte märken bara \
 för att svaret blir kort eller saknar detaljer.
@@ -76,8 +78,10 @@ role and the topics above, and remind them that you complement, not replace, \
 Hard rules:
 - Use ONLY the provided context. Do not invent rules, dates, names, or paragraph \
 numbers.
-- Cite sources inline after each claim using the format [doc title · section] \
-(including the exact bracket format shown in the context).
+- Cite sources inline after each claim by copying the square-bracket tag like \
+[this] EXACTLY as shown above the matching context excerpt — always use square \
+brackets, never round parentheses or other characters. Do not add, drop, or invent \
+extra segments inside the bracket.
 - When you summarise what a specific page, study year, or appendix says, you \
 must attach the matching citation right after the sentence — even if the \
 answer is brief or incomplete.
@@ -284,8 +288,9 @@ def format_context(chunks: list[RetrievedChunk]) -> str:
     """Render retrieved chunks for the user message. Each chunk shows its citation tag."""
     lines: list[str] = []
     for c in chunks:
-        section = c.section_path or "—"
-        lines.append(f"[{c.doc_title} · {section}]\n{c.text}")
+        section = (c.section_path or "").strip()
+        tag = f"[{c.doc_title} · {section}]" if section else f"[{c.doc_title}]"
+        lines.append(f"{tag}\n{c.text}")
     return "\n\n---\n\n".join(lines)
 
 

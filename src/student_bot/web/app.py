@@ -48,6 +48,7 @@ from student_bot.config import Config, get_config
 from student_bot.jargon import Jargon, _nfc_lower, _read_json, _write_json
 from student_bot.logging_db import LogDB
 from student_bot.web.auth import require_access
+from student_bot.web.md_render import render_file
 
 
 log = logging.getLogger("student_bot.web")
@@ -91,8 +92,28 @@ def _source_http_url(
     doc_base_url: str,
     *,
     source_url: str = "",
+    md_render_base_url: str = "",
 ) -> str:
-    """URL for the web UI / SSE `sources` list. Never drop obvious http(s) links."""
+    """URL for the web UI / SSE `sources` list. Never drop obvious http(s) links.
+
+    Curated local markdown files are routed through `md_render_base_url` so
+    they open as styled HTML pages with attribution, rather than raw text via
+    the static mount. Web-imported markdown (under `web_import/`) keeps its
+    upstream `source_url` preference.
+    """
+    rs = (rel_source or "").strip()
+    if (
+        md_render_base_url
+        and rs
+        and rs.lower().endswith(".md")
+        and not rs.startswith("web_import/")
+        and not rs.startswith("https://")
+        and not rs.startswith("http://")
+        and not (source_url or "").startswith(("http://", "https://"))
+    ):
+        from urllib.parse import quote as _quote
+
+        return f"{md_render_base_url.rstrip('/')}/{_quote(rs, safe='/')}"
     u = build_doc_url(rel_source, page_start, doc_base_url, source_url=source_url)
     if u:
         return u
@@ -147,6 +168,8 @@ def create_app(cfg: Config | None = None) -> FastAPI:
 
     if cfg.web.doc_base_url:
         cfg.web.doc_base_url = _join_base(base_path, cfg.web.doc_base_url)
+    if cfg.web.md_render_base_url:
+        cfg.web.md_render_base_url = _join_base(base_path, cfg.web.md_render_base_url)
 
     session_secret = os.environ.get("WEB_SESSION_SECRET") or secrets.token_hex(16)
     app.add_middleware(
@@ -191,6 +214,16 @@ def create_app(cfg: Config | None = None) -> FastAPI:
     def glossary(request: Request):
         require_access(request, cfg)
         return _glossary_page(cfg, base_path)
+
+    if cfg.web.md_render_base_url:
+
+        @app.get(
+            cfg.web.md_render_base_url.rstrip("/") + "/{rel_source:path}",
+            response_class=HTMLResponse,
+        )
+        def render_doc(request: Request, rel_source: str):
+            require_access(request, cfg)
+            return _md_doc_page(cfg, docs_dir, rel_source, base_path)
 
     @app.post(_join_base(base_path, "/api/jargon/suggest"))
     def jargon_suggest(request: Request, payload: JargonSuggestRequest):
@@ -446,6 +479,7 @@ def _stream_answer(
                 c.page_start,
                 cfg.web.doc_base_url,
                 source_url=c.source_url,
+                md_render_base_url=cfg.web.md_render_base_url,
             )
             sources.append({"n": len(sources) + 1, "label": label, "url": url})
 
@@ -465,6 +499,7 @@ def _stream_answer(
                 c.page_start,
                 cfg.web.doc_base_url,
                 source_url=c.source_url,
+                md_render_base_url=cfg.web.md_render_base_url,
             )
             source_candidates.append(
                 {
@@ -748,6 +783,83 @@ async function submitJargon(e) {{
 
 def _h(s: str) -> str:
     return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _md_doc_page(cfg: Config, docs_dir: Path, rel_source: str, base_path: str = "") -> HTMLResponse:
+    """Render a curated `.md` file as a styled HTML page with attribution.
+
+    Refuses anything outside `docs_dir`, anything under `web_import/`, and any
+    non-`.md` path. The route should not see those because `_source_http_url`
+    only emits render URLs for curated md, but we double-check here.
+    """
+    rs = (rel_source or "").strip().strip("/")
+    if not rs.lower().endswith(".md") or rs.startswith("web_import/"):
+        raise HTTPException(status_code=404, detail="Not a renderable document")
+
+    abs_path = (docs_dir / rs).resolve()
+    try:
+        abs_path.relative_to(docs_dir)
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail="Path outside corpus") from e
+    if not abs_path.is_file():
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    doc = render_file(abs_path)
+    static_prefix = _join_base(base_path, "/static")
+    home = _join_base(base_path, "/") or "/"
+    raw_link = _join_base(base_path, cfg.web.doc_base_url.rstrip("/") + "/" + rs)
+
+    def _join_authors(joiner: str) -> str:
+        parts: list[str] = []
+        for a in doc.authors:
+            label = _h(a.name)
+            if a.role:
+                label += f" ({_h(a.role)})"
+            parts.append(label)
+        if not parts:
+            return ""
+        if len(parts) == 1:
+            return parts[0]
+        return joiner.join([", ".join(parts[:-1]), parts[-1]])
+
+    sv_authors = _join_authors(" och ")
+    en_authors = _join_authors(" and ")
+    upd = _h(doc.updated)
+    attribution_html = ""
+    if sv_authors or upd:
+        sv_bits: list[str] = []
+        en_bits: list[str] = []
+        if sv_authors:
+            sv_bits.append(f"Sammanställt av <strong>{sv_authors}</strong>")
+            en_bits.append(f"Compiled by <strong>{en_authors}</strong>")
+        if upd:
+            sv_bits.append(f"senast uppdaterad {upd}")
+            en_bits.append(f"last updated {upd}")
+        sv_text = ", ".join(sv_bits) + "."
+        en_text = ", ".join(en_bits) + "."
+        attribution_html = (
+            '<footer class="md-attribution">'
+            f'<span class="lang-sv">{sv_text}</span>'
+            f'<span class="lang-en">{en_text}</span>'
+            "</footer>"
+        )
+
+    body = f"""
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><title>{_h(doc.title)}</title>
+<link rel="stylesheet" href="{static_prefix}/style.css?v=22">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix)}
+<main><div class="card md-doc">
+<nav class="md-nav">
+  <a href="{home}"><span class="lang-sv">← Tillbaka till chatten</span><span class="lang-en">← Back to the chat</span></a>
+  · <a href="{raw_link}"><span class="lang-sv">Rå källfil</span><span class="lang-en">Raw source file</span></a>
+</nav>
+<article class="md-body">
+{doc.body_html}
+</article>
+{attribution_html}
+</div></main></body></html>
+"""
+    return HTMLResponse(body)
 
 
 def _stats_page(cfg: Config, db: LogDB, base_path: str = "") -> HTMLResponse:

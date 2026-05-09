@@ -34,6 +34,7 @@ dependencies = [
     "fastapi>=0.110",
     "uvicorn>=0.30",
     "itsdangerous>=2.2",
+    "markdown-it-py>=3.0",
 ]
 
 [project.optional-dependencies]
