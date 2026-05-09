@@ -168,6 +168,18 @@ class DynamicWebConfig(BaseModel):
     program_aliases_ttl_hours: int = 24
     # Optional manual overrides/additions: alias -> five-letter program code.
     program_aliases: dict[str, str] = Field(default_factory=dict)
+    # Curated colloquial-name registry, separate from the user-facing jargon
+    # dictionary because nickname resolution needs a candidate list (e.g.
+    # "teknisk fysik" -> [CTFYS, TTFYM]) rather than an inline expansion.
+    program_nicknames_file: str = "data/program_nicknames.json"
+    # Programs whose most recent intake year is older than (current_year - N)
+    # are treated as historical: hidden from disambiguation lists when at
+    # least one current program also matches. They still resolve when the
+    # user types the code or a discriminative alias token verbatim.
+    historical_program_years: int = 8
+    # Minimum alias score (coverage of discriminative tokens) required to
+    # treat a program alias as a candidate match.
+    alias_min_score: float = 0.6
 
 
 class UrlIngestConfig(BaseModel):

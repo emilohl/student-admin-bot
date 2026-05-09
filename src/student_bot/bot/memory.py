@@ -22,6 +22,7 @@ from student_bot.config import Config
 class _Slot:
     last_used: float
     turns: deque = field(default_factory=deque)
+    program_code: str | None = None
 
 
 class ConversationMemory:
@@ -63,6 +64,27 @@ class ConversationMemory:
     def clear(self, user_id: str, root_id: str) -> None:
         with self._lock:
             self._store.pop((user_id, root_id), None)
+
+    def get_program_code(self, user_id: str, root_id: str) -> str | None:
+        now = time.time()
+        with self._lock:
+            self._prune(now)
+            slot = self._store.get((user_id, root_id))
+            if not slot:
+                return None
+            slot.last_used = now
+            return slot.program_code
+
+    def set_program_code(self, user_id: str, root_id: str, code: str | None) -> None:
+        now = time.time()
+        with self._lock:
+            self._prune(now)
+            slot = self._store.get((user_id, root_id))
+            if not slot:
+                slot = _Slot(last_used=now)
+                self._store[(user_id, root_id)] = slot
+            slot.program_code = code
+            slot.last_used = now
 
 
 __all__ = ["ConversationMemory"]

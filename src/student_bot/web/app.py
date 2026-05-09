@@ -378,6 +378,7 @@ def _stream_answer(
     """Generator producing SSE blocks. Streams answer tokens and a final
     `meta` event with confidence, qa_id, and gate info."""
     history = memory.get(web_user_id, "default")
+    program_prior = memory.get_program_code(web_user_id, "default")
 
     queue: asyncio.Queue = asyncio.Queue()
     sentinel = object()
@@ -401,6 +402,7 @@ def _stream_answer(
                 on_jargon_prefix=on_jargon_prefix,
                 on_thinking=on_thinking,
                 rate_limit_key=web_user_id,
+                program_prior=program_prior,
             )
         except Exception as e:
             queue.put_nowait(("token", f"\n[error: {e}]"))
@@ -435,6 +437,8 @@ def _stream_answer(
         ):
             memory.append(web_user_id, "default", "user", payload.question)
             memory.append(web_user_id, "default", "assistant", result.answer)
+        if result.program_code:
+            memory.set_program_code(web_user_id, "default", result.program_code)
 
         chunk_ids = [c.chunk_id for c in result.retrieval.reranked]
         qa_id = db.record_qa(

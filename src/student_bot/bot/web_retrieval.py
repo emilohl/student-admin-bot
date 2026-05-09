@@ -178,7 +178,13 @@ def _parse_programme_year_level(q: str) -> int | None:
 
 def program_study_intent_question(q: str) -> bool:
     lower = (q or "").lower()
-    if "program" in lower or "utbildningsplan" in lower or "study plan" in lower:
+    if (
+        "program" in lower
+        or "utbildningsplan" in lower
+        or "study plan" in lower
+        or "curriculum" in lower
+        or "kurslista" in lower
+    ):
         return True
     return _parse_programme_year_level(q or "") is not None
 
@@ -250,22 +256,48 @@ def is_programme_clarification_assistant_message(content: str) -> bool:
     )
 
 
+def is_multi_program_clarification_assistant_message(content: str) -> bool:
+    """True if this assistant text is our 'which program code do you mean?' list."""
+    c = (content or "").lower()
+    return (
+        "ditt program är inte entydigt" in c
+        or "your program reference is ambiguous" in c
+    )
+
+
+def _is_clarification_followup_anchor(content: str) -> bool:
+    return (
+        is_programme_clarification_assistant_message(content)
+        or is_multi_program_clarification_assistant_message(content)
+    )
+
+
 def merge_programme_clarification_followup(question: str, history: list[dict] | None) -> str:
-    """If the user is answering our admission-year question, fuse with the prior user ask."""
+    """If the user is answering our admission-year or program-pick question, fuse with the prior user ask."""
     hist = history or []
     if len(hist) < 2:
         return question
     last = hist[-1]
     if last.get("role") != "assistant":
         return question
-    if not is_programme_clarification_assistant_message(last.get("content", "")):
+    last_content = last.get("content", "")
+    is_round = is_programme_clarification_assistant_message(last_content)
+    is_pick = is_multi_program_clarification_assistant_message(last_content)
+    if not (is_round or is_pick):
         return question
 
     qstrip = question.strip()
-    hints = parse_program_admission_hints(question)
-    bare_year = bool(re.fullmatch(r"20\d{2}", qstrip))
-    if not (hints.exact_term or hints.year_prefix or bare_year):
-        return question
+    if is_round:
+        hints = parse_program_admission_hints(question)
+        bare_year = bool(re.fullmatch(r"20\d{2}", qstrip))
+        if not (hints.exact_term or hints.year_prefix or bare_year):
+            return question
+    else:
+        # Program pick: accept a 5-letter code or a short reply naming a program.
+        has_code = bool(_PROGRAM_CODE_RE.search(qstrip))
+        short_pick = 0 < len(qstrip) <= 80
+        if not (has_code or short_pick):
+            return question
 
     prev_user = ""
     for entry in reversed(hist[:-1]):
@@ -275,7 +307,10 @@ def merge_programme_clarification_followup(question: str, history: list[dict] | 
     if not prev_user:
         return question
     merged = f"{prev_user}\n\n{qstrip}"
-    log.info("dynamic-web: merged programme clarification follow-up with prior user question")
+    log.info(
+        "dynamic-web: merged %s clarification follow-up with prior user question",
+        "admission-round" if is_round else "program-pick",
+    )
     return merged
 
 
@@ -285,7 +320,7 @@ def history_without_programme_clarification_tail(
     """Drop the last user+assistant pair when folded into the current user prompt."""
     if not programme_followup_merged or len(history) < 2 or history[-1].get("role") != "assistant":
         return history
-    if not is_programme_clarification_assistant_message(history[-1].get("content", "")):
+    if not _is_clarification_followup_anchor(history[-1].get("content", "")):
         return history
     return history[:-2]
 
@@ -297,11 +332,15 @@ class WebFetchResult:
     used_stale_cache: bool = False
     stale_age_days: int = 0
     failure_url: str = ""
-    # Bilingual clarification when cohort (programme period) can't be inferred.
+    # Bilingual clarification when cohort (programme period) can't be inferred,
+    # or when a colloquial program reference matched several KTH codes.
     clarification: tuple[str, str] | None = None
     # KTH may return 200 + empty SPA shell (h1 «undefined …») for non-existent codes.
     missing_kth_course: tuple[str, str] | None = None
     missing_kth_program: tuple[str, str] | None = None
+    # Five-letter KTH code resolved by this fetch, when exactly one program was
+    # narrowed to. Surfaced so the pipeline can persist it in conversation memory.
+    resolved_program_code: str | None = None
 
 
 def _compiled_patterns(cfg: Config) -> list[re.Pattern[str]]:
@@ -524,11 +563,252 @@ def _get_program_aliases(cfg: Config) -> dict[str, str]:
     return aliases
 
 
+def _alias_strong_tokens(alias: str) -> set[str]:
+    """Discriminative tokens of an alias: length ≥ 4, not in the generic block-list."""
+    tokens = set(re.findall(r"[a-z0-9åäö]+", alias))
+    return {t for t in tokens if len(t) >= 4 and t not in _GENERIC_ALIAS_TOKENS}
+
+
+def _alias_score(alias: str, qn: str, q_tokens: set[str]) -> tuple[float, bool]:
+    """Score a normalised alias against a normalised question.
+
+    Score = fraction of the alias's discriminative ('strong') tokens present
+    in the question, plus 0.5 if the full alias phrase appears verbatim.
+    Returns (score, verbatim_phrase_present). Score 0 = no match.
+    """
+    if not alias:
+        return 0.0, False
+    strong = _alias_strong_tokens(alias)
+    if not strong:
+        # Aliases that are entirely generic (e.g. the lowercased code "ctfys")
+        # only count when the question contains the alias verbatim.
+        return (1.5, True) if alias and alias == qn else (0.0, False)
+    inter = strong & q_tokens
+    if not inter:
+        return 0.0, False
+    coverage = len(inter) / len(strong)
+    verbatim = alias in qn
+    return coverage + (0.5 if verbatim else 0.0), verbatim
+
+
+def _program_level(code: str) -> str:
+    """KTH program codes encode level via the leading letters and final letter."""
+    if not code or len(code) != 5:
+        return "other"
+    if code[0] == "C":
+        return "civilingenjor"
+    if code.startswith("TI"):
+        return "hogskoleingenjor"
+    if code[0] == "T" and code[4] == "M":
+        return "master"
+    if code[0] == "T":
+        return "bachelor"
+    return "other"
+
+
+def _level_prior_from_question(question: str) -> set[str] | None:
+    """Infer which program levels the user is asking about. None = no signal."""
+    qn = _norm(question)
+    year = _parse_programme_year_level(question)
+    has_civ = "civilingenjör" in qn or "civilingenjor" in qn or "civil engineering" in qn
+    has_master = (
+        "masterprogram" in qn
+        or "master's programme" in qn
+        or "master programme" in qn
+        or "master's program" in qn
+        or "master program" in qn
+    )
+    has_hogskole = "högskoleingenjör" in qn or "hogskoleingenjor" in qn
+    has_bachelor = "kandidatprogram" in qn or "bachelor" in qn
+
+    if year is not None and year <= 3:
+        if has_civ:
+            return {"civilingenjor"}
+        if has_hogskole:
+            return {"hogskoleingenjor"}
+        if has_bachelor:
+            return {"bachelor"}
+        # Year ≤ 3 + master keyword: the student is in the civilingenjör phase
+        # asking about future master options. Anchor to the current program.
+        if has_master:
+            return {"civilingenjor"}
+        return {"civilingenjor", "hogskoleingenjor", "bachelor"}
+    if year is not None and year >= 4:
+        if has_civ:
+            return {"civilingenjor"}
+        if has_master:
+            return {"master"}
+        return {"civilingenjor", "master"}
+    if has_civ and not has_master:
+        return {"civilingenjor"}
+    if has_master and not has_civ:
+        return {"master"}
+    if has_hogskole:
+        return {"hogskoleingenjor"}
+    if has_bachelor:
+        return {"bachelor"}
+    return None
+
+
+_program_nicknames_cache: dict[str, tuple[float, dict[str, list[str]]]] = {}
+_PROGRAM_NICKNAMES_TTL_SECONDS = 300.0  # mtime check cadence
+
+
+def _load_program_nicknames(cfg: Config) -> dict[str, list[str]]:
+    """Load curated colloquial-name -> [program codes] map. Empty on missing file."""
+    path = cfg.absolute(Path(cfg.dynamic_web.program_nicknames_file))
+    key = str(path)
+    now = time.time()
+    cached = _program_nicknames_cache.get(key)
+    if cached and now - cached[0] < _PROGRAM_NICKNAMES_TTL_SECONDS:
+        return cached[1]
+    out: dict[str, list[str]] = {}
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        _program_nicknames_cache[key] = (now, out)
+        return out
+    except (OSError, json.JSONDecodeError) as e:
+        log.warning("program nicknames load failed for %s: %s", path, e)
+        _program_nicknames_cache[key] = (now, out)
+        return out
+    entries = data.get("entries", {}) if isinstance(data, dict) else {}
+    if not isinstance(entries, dict):
+        _program_nicknames_cache[key] = (now, out)
+        return out
+    for key_phrase, entry in entries.items():
+        if not isinstance(entry, dict):
+            continue
+        cands = entry.get("candidates", [])
+        if not isinstance(cands, list):
+            continue
+        codes = [
+            c
+            for c in (str(x).strip().upper() for x in cands)
+            if re.fullmatch(r"[A-Z]{5}", c)
+        ]
+        if codes:
+            out[_norm(str(key_phrase))] = codes
+    _program_nicknames_cache[key] = (now, out)
+    return out
+
+
+@dataclass
+class _ProgramCandidate:
+    code: str
+    score: float
+    matched_alias: str
+    verbatim: bool  # True when the user typed the 5-letter code or the alias verbatim
+
+
+def _extract_program_candidates(
+    question: str, cfg: Config, *, program_prior: str | None = None
+) -> tuple[list[_ProgramCandidate], list[str]]:
+    """Score program candidates from the question. Returns (candidates, verbatim_codes).
+
+    Candidates are deduped per code (best-scoring alias kept) and narrowed by
+    a level prior (civilingenjör / master / etc.) when the question has a clear
+    level signal. Verbatim-typed codes always survive narrowing.
+    """
+    aliases = _get_program_aliases(cfg)
+    known_codes = {
+        v for v in aliases.values() if re.fullmatch(r"[A-Z]{5}", v.upper() if isinstance(v, str) else "")
+    }
+    qn = _norm(question)
+    q_tokens = set(re.findall(r"[a-z0-9åäö]+", qn))
+
+    verbatim_codes: list[str] = []
+    for code in _PROGRAM_CODE_RE.findall(question):
+        if known_codes and code not in known_codes:
+            continue
+        if code not in verbatim_codes:
+            verbatim_codes.append(code)
+
+    by_code: dict[str, _ProgramCandidate] = {}
+    for code in verbatim_codes:
+        by_code[code] = _ProgramCandidate(
+            code=code, score=2.0, matched_alias=code, verbatim=True
+        )
+
+    min_score = cfg.dynamic_web.alias_min_score
+    for alias, code in aliases.items():
+        if not isinstance(code, str) or not re.fullmatch(r"[A-Z]{5}", code):
+            continue
+        # Skip aliases that are themselves the lowercased 5-letter code; the
+        # verbatim-codes pass above handles those.
+        if alias and alias.upper() == code:
+            continue
+        score, verbatim = _alias_score(alias, qn, q_tokens)
+        if score < min_score:
+            continue
+        prev = by_code.get(code)
+        if prev is None or score > prev.score:
+            by_code[code] = _ProgramCandidate(
+                code=code,
+                score=score,
+                matched_alias=alias,
+                verbatim=verbatim or (prev.verbatim if prev else False),
+            )
+        elif verbatim and not prev.verbatim:
+            prev.verbatim = True
+
+    if not by_code:
+        # Backstop: curated colloquial names ("teknisk fysik" -> [CTFYS, TTFYM])
+        nicknames = _load_program_nicknames(cfg)
+        for phrase, codes in nicknames.items():
+            if phrase and phrase in qn:
+                for c in codes:
+                    if c not in by_code:
+                        by_code[c] = _ProgramCandidate(
+                            code=c,
+                            score=0.8,
+                            matched_alias=f"<nickname:{phrase}>",
+                            verbatim=False,
+                        )
+                break  # one nickname phrase is enough; avoid stacking entries
+
+    if not by_code and program_prior and re.fullmatch(r"[A-Z]{5}", program_prior):
+        # Conversation prior: use the last resolved program when the current
+        # turn produced no candidates. Score below alias matches so a fresh
+        # signal in this turn would always win.
+        by_code[program_prior] = _ProgramCandidate(
+            code=program_prior,
+            score=0.7,
+            matched_alias="<prior>",
+            verbatim=False,
+        )
+
+    candidates = list(by_code.values())
+
+    # If the user typed any 5-letter code verbatim, it is the unambiguous
+    # signal — drop alias-only matches so they don't pull the resolver into
+    # the multi-candidate path. (Multiple verbatim codes still produce a
+    # multi-candidate clarification.)
+    if verbatim_codes:
+        verbatim_set = set(verbatim_codes)
+        candidates = [c for c in candidates if c.code in verbatim_set]
+
+    levels = _level_prior_from_question(question)
+    if levels and len(candidates) > 1:
+        narrowed = [c for c in candidates if _program_level(c.code) in levels]
+        if narrowed:
+            verbatim_extras = [
+                c for c in candidates if c.verbatim and c.code not in {n.code for n in narrowed}
+            ]
+            candidates = narrowed + verbatim_extras
+
+    candidates.sort(key=lambda c: (-c.score, c.code))
+    return candidates, verbatim_codes
+
+
 def _extract_targets(question: str) -> list[str]:
     raise RuntimeError("_extract_targets requires cfg; use _extract_targets_with_cfg")
 
 
-def _extract_targets_with_cfg(question: str, cfg: Config) -> list[str]:
+def _extract_targets_with_cfg(
+    question: str, cfg: Config, *, program_prior: str | None = None
+) -> list[str]:
     urls: list[str] = []
     for code in _COURSE_CODE_RE.findall(question.upper()):
         urls.append(f"https://{_KTH_HOST}/student/kurser/kurs/{code}")
@@ -536,67 +816,40 @@ def _extract_targets_with_cfg(question: str, cfg: Config) -> list[str]:
     # Program lookup is triggered by explicit program intent words OR explicit
     # study-year phrasing (e.g. "år 2", "second year").
     lower = question.lower()
-    if (
+    program_intent = (
         "program" in lower
         or "utbildningsplan" in lower
         or "study plan" in lower
+        or "curriculum" in lower
+        or "kurslista" in lower
         or _parse_programme_year_level(question) is not None
-    ):
+    )
+
+    if program_intent:
         aliases = _get_program_aliases(cfg)
-        known_codes = {v for v in aliases.values() if re.fullmatch(r"[A-Z]{5}", v)}
-        # Only accept explicit program codes when the user wrote them in code form
-        # (uppercase token, e.g. CTFYS). Avoid interpreting lowercase words like
-        # "fysik" as a code.
-        for code in _PROGRAM_CODE_RE.findall(question):
-            # Fallback: when alias/code snapshot is empty (e.g. fetch outage), still
-            # probe explicit uppercase code tokens and validate by fetching KTH root.
-            if not known_codes:
+        candidates, verbatim_codes = _extract_program_candidates(
+            question, cfg, program_prior=program_prior
+        )
+        # Cold-cache fallback: when the alias snapshot is empty AND no
+        # candidate scored, still probe verbatim-typed codes via the KTH root.
+        if not aliases and not candidates:
+            for code in _PROGRAM_CODE_RE.findall(question):
                 log.warning(
                     "dynamic-web: programme code list empty; "
                     "probing bare token %s directly via KTH root page",
                     code,
                 )
                 urls.append(f"https://{_KTH_HOST}/student/kurser/program/{code}")
-                continue
-            if code not in known_codes:
-                log.info("dynamic-web: ignoring unknown program-like token %s", code)
-                continue
-            urls.append(f"https://{_KTH_HOST}/student/kurser/program/{code}")
-        qn = _norm(question)
-        q_tokens = set(re.findall(r"[a-z0-9åäö]+", qn))
+        for cand in candidates:
+            urls.append(f"https://{_KTH_HOST}/student/kurser/program/{cand.code}")
+        if candidates:
+            log.info(
+                "dynamic-web: program candidates=%s",
+                [(c.code, round(c.score, 2), c.matched_alias) for c in candidates],
+            )
+        elif verbatim_codes:
+            log.info("dynamic-web: verbatim-only program codes=%s", verbatim_codes)
 
-        matched_aliases: list[tuple[str, str]] = []
-
-        def alias_match(alias: str) -> bool:
-            if not alias:
-                return False
-            alias_tokens = set(re.findall(r"[a-z0-9åäö]+", alias))
-            strong = {t for t in alias_tokens if len(t) >= 4 and t not in _GENERIC_ALIAS_TOKENS}
-            if alias == qn:
-                return True
-            if alias in qn:
-                # Avoid matching broad labels like "masterprogram" or single
-                # subject words like "fysik" in multi-word questions.
-                if len(strong) < 2:
-                    return False
-                return strong.issubset(q_tokens)
-            # Also allow semantic token overlap when the full alias phrase isn't
-            # present verbatim (e.g. "masterprogrammet i teknisk fysik" should
-            # hit alias "civilingenjörsutbildning i teknisk fysik").
-            if len(strong) >= 2 and len(strong.intersection(q_tokens)) >= 2:
-                return True
-            return False
-
-        # Prefer longest aliases first so "teknisk fysik" wins over "fysik".
-        for alias in sorted(aliases.keys(), key=len, reverse=True):
-            if alias_match(alias):
-                code = aliases[alias]
-                if re.fullmatch(r"[A-Z]{5}", code):
-                    matched_aliases.append((alias, code))
-                    urls.append(f"https://{_KTH_HOST}/student/kurser/program/{code}")
-        if matched_aliases:
-            log.info("dynamic-web: matched program aliases=%s", matched_aliases)
-    # Stable dedupe
     out: list[str] = []
     seen: set[str] = set()
     for u in urls:
@@ -1001,6 +1254,225 @@ def _clarify_program_terms_sv(program_code: str, terms: list[str]) -> str:
     )
 
 
+_PROGRAM_TERMS_CACHE: dict[str, tuple[float, list[str]]] = {}
+_PROGRAM_TERMS_CACHE_TTL_SECONDS = 6 * 3600.0
+
+
+def _cached_terms_for_code(cfg: Config, code: str) -> list[str]:
+    """Fetch the programme root once per code (6h TTL) and parse its terms list.
+
+    Used by the multi-candidate disambiguator to decide whether each candidate
+    is currently active. Errors are cached as empty so a transient outage does
+    not silently mark a program as discontinued.
+    """
+    now = time.time()
+    cached = _PROGRAM_TERMS_CACHE.get(code)
+    if cached and now - cached[0] < _PROGRAM_TERMS_CACHE_TTL_SECONDS:
+        return cached[1]
+    url = _canonicalize(f"https://{_KTH_HOST}/student/kurser/program/{code}")
+    try:
+        _, html = _fetch_html(url, cfg)
+    except Exception as e:
+        log.warning("dynamic-web: terms fetch failed for %s: %s", code, e)
+        _PROGRAM_TERMS_CACHE[code] = (now, [])
+        return []
+    store = _compressed_application_store(html)
+    terms = _normalized_programme_terms_from_store(store)
+    _PROGRAM_TERMS_CACHE[code] = (now, terms)
+    return terms
+
+
+def _level_label_sv(level: str) -> str:
+    return {
+        "civilingenjor": "civilingenjör, 5 år",
+        "master": "masterprogram, 2 år",
+        "hogskoleingenjor": "högskoleingenjör, 3 år",
+        "bachelor": "kandidatprogram, 3 år",
+    }.get(level, "")
+
+
+def _level_label_en(level: str) -> str:
+    return {
+        "civilingenjor": "Master of Science in Engineering, 5 years",
+        "master": "Master's programme, 2 years",
+        "hogskoleingenjor": "Bachelor of Science in Engineering, 3 years",
+        "bachelor": "Bachelor's programme, 3 years",
+    }.get(level, "")
+
+
+def _canonical_alias_for_code(
+    aliases: dict[str, str], code: str, lang: str
+) -> str:
+    """Pick the most informative human-readable alias for this code."""
+    matches = [a for a, c in aliases.items() if c == code and a and a.upper() != code]
+    if not matches:
+        return code
+    if lang == "en":
+        prefs = ("degree programme", "master's programme", "master programme", "bachelor")
+        en_likely = [a for a in matches if any(p in a for p in prefs)]
+        if en_likely:
+            return max(en_likely, key=len)
+    sv_prefs = (
+        "civilingenjörsutbildning",
+        "masterprogram",
+        "kandidatprogram",
+        "högskoleingenjörsutbildning",
+    )
+    sv_likely = [a for a in matches if any(a.startswith(p) for p in sv_prefs)]
+    if sv_likely:
+        return max(sv_likely, key=len)
+    return max(matches, key=len)
+
+
+def _build_multi_program_clarification(
+    candidates: list[tuple[str, list[str], str]], aliases: dict[str, str]
+) -> tuple[str, str]:
+    """Bilingual 'which program do you mean?' message. `candidates` items are
+    (code, terms, status) where status is 'current' or 'historical'."""
+
+    def _line_sv(code: str, terms: list[str], status: str) -> str:
+        name = _canonical_alias_for_code(aliases, code, "sv")
+        if name and name != code:
+            name = name[:1].upper() + name[1:]
+        level = _level_label_sv(_program_level(code))
+        bits = [f"**{code}**"]
+        if name and name != code:
+            bits.append(name)
+        if level:
+            bits.append(f"({level})")
+        if status == "historical":
+            span = _intake_year_bounds_from_terms(terms)
+            bits.append(
+                f"– avvecklat, senaste antagning {span[1]}" if span else "– avvecklat program"
+            )
+        return "- " + " ".join(bits)
+
+    def _line_en(code: str, terms: list[str], status: str) -> str:
+        name = _canonical_alias_for_code(aliases, code, "en")
+        if name and name != code:
+            name = name[:1].upper() + name[1:]
+        level = _level_label_en(_program_level(code))
+        bits = [f"**{code}**"]
+        if name and name != code:
+            bits.append(name)
+        if level:
+            bits.append(f"({level})")
+        if status == "historical":
+            span = _intake_year_bounds_from_terms(terms)
+            bits.append(
+                f"– discontinued, last intake {span[1]}" if span else "– discontinued"
+            )
+        return "- " + " ".join(bits)
+
+    sv = (
+        "Ditt program är inte entydigt. Vilket av följande menar du? "
+        "Svara gärna med koden eller hela namnet:\n"
+        + "\n".join(_line_sv(c, t, s) for c, t, s in candidates)
+    )
+    en = (
+        "Your program reference is ambiguous. Which one do you mean? "
+        "Reply with the code or the full name:\n"
+        + "\n".join(_line_en(c, t, s) for c, t, s in candidates)
+    )
+    return sv, en
+
+
+@dataclass
+class _MultiCandidateResolution:
+    queue_urls: list[str] = field(default_factory=list)
+    clarification_sv: str = ""
+    clarification_en: str = ""
+    resolved_code: str | None = None
+
+
+def _current_calendar_year() -> int:
+    import datetime as _dt
+
+    return _dt.datetime.now().year
+
+
+def _resolve_multi_program_candidates(
+    cfg: Config, question: str, prog_roots: list[str]
+) -> _MultiCandidateResolution:
+    """Decide between several candidate program codes by intake-year recency
+    and discriminative-token bypass. Returns either a narrowed program list
+    or a 'which one?' clarification."""
+    qn = _norm(question)
+    q_tokens = set(re.findall(r"[a-z0-9åäö]+", qn))
+    aliases = _get_program_aliases(cfg)
+
+    cutoff = _current_calendar_year() - cfg.dynamic_web.historical_program_years
+    candidates: list[tuple[str, list[str], str]] = []
+    seen: set[str] = set()
+    for root in prog_roots:
+        code = _program_segment_code(root)
+        if not code or code in seen:
+            continue
+        seen.add(code)
+        terms = _cached_terms_for_code(cfg, code)
+        candidates.append((code, terms, ""))
+
+    if not candidates:
+        return _MultiCandidateResolution(queue_urls=list(prog_roots))
+
+    def is_current(terms: list[str]) -> bool:
+        bounds = _intake_year_bounds_from_terms(terms)
+        if not bounds:
+            return True  # unknown — treat as current
+        return bounds[1] >= cutoff
+
+    has_current = any(is_current(t) for _, t, _ in candidates)
+
+    verbatim_typed = set(_PROGRAM_CODE_RE.findall(question))
+
+    def discriminator_present(code: str) -> bool:
+        """User typed at least one of the alias's discriminative tokens.
+
+        Used to override the historical-program suppression: e.g. typing
+        'fusionsenergi' keeps TFEPM in the disambiguation list even though
+        its last intake is older than the cutoff.
+        """
+        for alias, c in aliases.items():
+            if c != code or not alias:
+                continue
+            strong = _alias_strong_tokens(alias)
+            if strong and len(strong & q_tokens) == len(strong):
+                return True
+        return False
+
+    if has_current:
+        kept: list[tuple[str, list[str], str]] = []
+        dropped: list[str] = []
+        for code, terms, _ in candidates:
+            if is_current(terms):
+                kept.append((code, terms, "current"))
+            elif code in verbatim_typed or discriminator_present(code):
+                kept.append((code, terms, "historical"))
+            else:
+                dropped.append(code)
+        if dropped:
+            log.info(
+                "dynamic-web: hid historical candidates with last intake < %d: %s",
+                cutoff,
+                dropped,
+            )
+        candidates = kept
+    else:
+        candidates = [(c, t, "historical") for c, t, _ in candidates]
+
+    if len(candidates) == 0:
+        return _MultiCandidateResolution(queue_urls=list(prog_roots))
+    if len(candidates) == 1:
+        code = candidates[0][0]
+        return _MultiCandidateResolution(
+            queue_urls=[f"https://{_KTH_HOST}/student/kurser/program/{code}"],
+            resolved_code=code,
+        )
+
+    sv, en = _build_multi_program_clarification(candidates, aliases)
+    return _MultiCandidateResolution(clarification_sv=sv, clarification_en=en)
+
+
 def _clarify_program_terms_en(program_code: str, terms: list[str]) -> str:
     span = _intake_year_bounds_from_terms(terms)
     span_line = ""
@@ -1177,6 +1649,8 @@ def maybe_fetch_dynamic_web(
     cfg: Config,
     question: str,
     _lang: str = "sv",
+    *,
+    program_prior: str | None = None,
 ) -> WebFetchResult | None:
     if not cfg.dynamic_web.enabled:
         return None
@@ -1188,7 +1662,7 @@ def maybe_fetch_dynamic_web(
         )
 
     patterns = _compiled_patterns(cfg)
-    targets = _extract_targets_with_cfg(question, cfg)
+    targets = _extract_targets_with_cfg(question, cfg, program_prior=program_prior)
     if not targets:
         return None
     log.info("dynamic-web: targets=%s", targets)
@@ -1198,7 +1672,21 @@ def maybe_fetch_dynamic_web(
     hints = parse_program_admission_hints(question)
     year_level = _parse_programme_year_level(question)
 
+    # When the question's wording matches more than one program code, decide
+    # between them by intake-year recency before asking about admission round
+    # for any single candidate. Otherwise we'd silently pick (and ask about)
+    # whichever code happened to be sorted first — possibly a discontinued one.
+    if len(prog_roots) > 1:
+        multi = _resolve_multi_program_candidates(cfg, question, prog_roots)
+        if multi.clarification_sv:
+            return WebFetchResult(
+                clarification=(multi.clarification_sv, multi.clarification_en),
+            )
+        if multi.queue_urls:
+            prog_roots = list(multi.queue_urls)
+
     queue: list[str] = list(course_urls)
+    resolved_program_code: str | None = None
     for root in prog_roots:
         res = _resolve_program_root_targets(cfg, root, hints, year_level=year_level)
         if res.missing_program_codes:
@@ -1210,9 +1698,12 @@ def maybe_fetch_dynamic_web(
         if res.clarification_sv:
             return WebFetchResult(
                 clarification=(res.clarification_sv, res.clarification_en),
+                resolved_program_code=_program_segment_code(root),
             )
         for u in res.queue_urls:
             queue.extend(_programme_term_bundle_urls(u))
+        if resolved_program_code is None:
+            resolved_program_code = _program_segment_code(root)
 
     queue = _dedupe_urls(queue)
     if not queue:
@@ -1345,4 +1836,5 @@ def maybe_fetch_dynamic_web(
         source_urls=source_urls,
         used_stale_cache=used_stale,
         stale_age_days=stale_days,
+        resolved_program_code=resolved_program_code,
     )
