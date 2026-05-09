@@ -259,17 +259,13 @@ def is_programme_clarification_assistant_message(content: str) -> bool:
 def is_multi_program_clarification_assistant_message(content: str) -> bool:
     """True if this assistant text is our 'which program code do you mean?' list."""
     c = (content or "").lower()
-    return (
-        "ditt program är inte entydigt" in c
-        or "your program reference is ambiguous" in c
-    )
+    return "ditt program är inte entydigt" in c or "your program reference is ambiguous" in c
 
 
 def _is_clarification_followup_anchor(content: str) -> bool:
-    return (
-        is_programme_clarification_assistant_message(content)
-        or is_multi_program_clarification_assistant_message(content)
-    )
+    return is_programme_clarification_assistant_message(
+        content
+    ) or is_multi_program_clarification_assistant_message(content)
 
 
 def merge_programme_clarification_followup(question: str, history: list[dict] | None) -> str:
@@ -688,11 +684,7 @@ def _load_program_nicknames(cfg: Config) -> dict[str, list[str]]:
         cands = entry.get("candidates", [])
         if not isinstance(cands, list):
             continue
-        codes = [
-            c
-            for c in (str(x).strip().upper() for x in cands)
-            if re.fullmatch(r"[A-Z]{5}", c)
-        ]
+        codes = [c for c in (str(x).strip().upper() for x in cands) if re.fullmatch(r"[A-Z]{5}", c)]
         if codes:
             out[_norm(str(key_phrase))] = codes
     _program_nicknames_cache[key] = (now, out)
@@ -718,7 +710,9 @@ def _extract_program_candidates(
     """
     aliases = _get_program_aliases(cfg)
     known_codes = {
-        v for v in aliases.values() if re.fullmatch(r"[A-Z]{5}", v.upper() if isinstance(v, str) else "")
+        v
+        for v in aliases.values()
+        if re.fullmatch(r"[A-Z]{5}", v.upper() if isinstance(v, str) else "")
     }
     qn = _norm(question)
     q_tokens = set(re.findall(r"[a-z0-9åäö]+", qn))
@@ -732,9 +726,7 @@ def _extract_program_candidates(
 
     by_code: dict[str, _ProgramCandidate] = {}
     for code in verbatim_codes:
-        by_code[code] = _ProgramCandidate(
-            code=code, score=2.0, matched_alias=code, verbatim=True
-        )
+        by_code[code] = _ProgramCandidate(code=code, score=2.0, matched_alias=code, verbatim=True)
 
     min_score = cfg.dynamic_web.alias_min_score
     for alias, code in aliases.items():
@@ -1306,9 +1298,7 @@ def _level_label_en(level: str) -> str:
     }.get(level, "")
 
 
-def _canonical_alias_for_code(
-    aliases: dict[str, str], code: str, lang: str
-) -> str:
+def _canonical_alias_for_code(aliases: dict[str, str], code: str, lang: str) -> str:
     """Pick the most informative human-readable alias for this code."""
     matches = [a for a, c in aliases.items() if c == code and a and a.upper() != code]
     if not matches:
@@ -1365,9 +1355,7 @@ def _build_multi_program_clarification(
             bits.append(f"({level})")
         if status == "historical":
             span = _intake_year_bounds_from_terms(terms)
-            bits.append(
-                f"– discontinued, last intake {span[1]}" if span else "– discontinued"
-            )
+            bits.append(f"– discontinued, last intake {span[1]}" if span else "– discontinued")
         return "- " + " ".join(bits)
 
     sv = (
@@ -1677,10 +1665,9 @@ def maybe_fetch_dynamic_web(
 
     patterns = _compiled_patterns(cfg)
     targets = _extract_targets_with_cfg(question, cfg, program_prior=program_prior)
-    course_intent_no_code = (
-        question_has_course_intent(question)
-        and not question_has_explicit_course_code(question)
-    )
+    course_intent_no_code = question_has_course_intent(
+        question
+    ) and not question_has_explicit_course_code(question)
     if not targets and not (course_intent_no_code and program_prior):
         return None
     log.info("dynamic-web: targets=%s", targets)

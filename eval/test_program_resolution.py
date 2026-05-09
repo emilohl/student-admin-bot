@@ -69,6 +69,7 @@ def patched(target: Any, attr: str, value: Any):
 # Section 1: alias_score primitive
 # -----------------------------------------------------------------------------
 
+
 def section_alias_score() -> None:
     print("\n[alias_score]")
     qn = "jag går årskurs 2 på teknisk fysik och funderar på masterprogram"
@@ -81,9 +82,7 @@ def section_alias_score() -> None:
     # All strong tokens present + verbatim phrase contained → 1.0 + 0.5
     qn2 = "vad är masterprogrammet i fusionsenergi och teknisk fysik"
     qt2 = set(qn2.split())
-    s, v = _alias_score(
-        "masterprogram, fusionsenergi och teknisk fysik", qn2, qt2
-    )
+    s, v = _alias_score("masterprogram, fusionsenergi och teknisk fysik", qn2, qt2)
     # Strong tokens are {fusionsenergi, teknisk, fysik}; all present → 1.0.
     # Verbatim phrase doesn't appear (comma vs " i "), so no bonus.
     _check("TFEPM alias all 3 strong tokens", s >= 0.99 and not v, f"score={s:.3f} verbatim={v}")
@@ -96,6 +95,7 @@ def section_alias_score() -> None:
 # -----------------------------------------------------------------------------
 # Section 2: program_level + level_prior_from_question
 # -----------------------------------------------------------------------------
+
 
 def section_level_prior() -> None:
     print("\n[level / level_prior]")
@@ -120,6 +120,7 @@ def section_level_prior() -> None:
 # Section 3: _extract_program_candidates against the live alias snapshot
 # -----------------------------------------------------------------------------
 
+
 def section_extract_candidates() -> None:
     print("\n[extract_program_candidates]")
     cfg = get_config()
@@ -141,7 +142,11 @@ def section_extract_candidates() -> None:
     q = "Vad är TFEPM?"
     cands, verbatim = _extract_program_candidates(q, cfg)
     codes = [c.code for c in cands]
-    _check("verbatim TFEPM only", codes == ["TFEPM"] and verbatim == ["TFEPM"], f"got={codes} verbatim={verbatim}")
+    _check(
+        "verbatim TFEPM only",
+        codes == ["TFEPM"] and verbatim == ["TFEPM"],
+        f"got={codes} verbatim={verbatim}",
+    )
 
     # Conversation prior carries the program when no other signal exists.
     q = "Vilka kurser ingår i programmet?"
@@ -157,9 +162,7 @@ def section_extract_candidates() -> None:
     real = web_retrieval._get_program_aliases
     web_retrieval._get_program_aliases = lambda c: {}  # type: ignore[assignment]
     try:
-        cands, _ = _extract_program_candidates(
-            "Vilken utbildningsplan har teknisk fysik?", cfg
-        )
+        cands, _ = _extract_program_candidates("Vilken utbildningsplan har teknisk fysik?", cfg)
         codes = sorted(c.code for c in cands)
         _check(
             "nickname backstop yields curated candidates",
@@ -174,6 +177,7 @@ def section_extract_candidates() -> None:
 # Section 4: multi-candidate resolver — historical filter, discriminator bypass
 # -----------------------------------------------------------------------------
 
+
 def section_multi_candidate() -> None:
     print("\n[resolve_multi_program_candidates]")
     cfg = get_config()
@@ -185,7 +189,9 @@ def section_multi_candidate() -> None:
         "TTFYM": ["20262", "20252", "20242"],
         "TFEPM": ["20102", "20092", "20082", "20072"],
     }
-    with patched(web_retrieval, "_cached_terms_for_code", lambda _cfg, code: fake_terms.get(code, [])):
+    with patched(
+        web_retrieval, "_cached_terms_for_code", lambda _cfg, code: fake_terms.get(code, [])
+    ):
         # Question without discriminator: TFEPM should be hidden in the list.
         q = "Vad ingår i utbildningsplanen för Teknisk fysik?"
         prog_roots = [
@@ -204,8 +210,7 @@ def section_multi_candidate() -> None:
         res2 = _resolve_multi_program_candidates(cfg, q2, prog_roots)
         msg2 = res2.clarification_sv
         _check("multi-cand: fusionsenergi keeps TFEPM", "TFEPM" in msg2, msg2)
-        _check("multi-cand: TFEPM annotated as discontinued",
-               "avvecklat" in msg2, msg2)
+        _check("multi-cand: TFEPM annotated as discontinued", "avvecklat" in msg2, msg2)
 
         # Verbatim TFEPM also survives.
         q3 = "Vilken utbildningsplan har TFEPM och TTFYM?"
@@ -218,6 +223,7 @@ def section_multi_candidate() -> None:
 # Section 5: clarification-followup merging
 # -----------------------------------------------------------------------------
 
+
 def section_clarification_followup() -> None:
     print("\n[clarification followup merging]")
     pick_msg = "Ditt program är inte entydigt. Vilket av följande menar du?"
@@ -227,36 +233,44 @@ def section_clarification_followup() -> None:
         {"role": "assistant", "content": pick_msg},
     ]
     fused = merge_programme_clarification_followup("CTFYS", hist_pick)
-    _check("program-pick fuses with prior question",
-           "Teknisk fysik" in fused and "CTFYS" in fused, fused)
+    _check(
+        "program-pick fuses with prior question",
+        "Teknisk fysik" in fused and "CTFYS" in fused,
+        fused,
+    )
 
     hist_round = [
         {"role": "user", "content": "Vad ingår i utbildningsplanen för CTFYS?"},
         {"role": "assistant", "content": round_msg},
     ]
     fused = merge_programme_clarification_followup("HT2024", hist_round)
-    _check("admission-round fuses with prior question",
-           "CTFYS" in fused and "HT2024" in fused, fused)
+    _check(
+        "admission-round fuses with prior question", "CTFYS" in fused and "HT2024" in fused, fused
+    )
 
     # Negative: an unrelated reply should NOT fuse.
     fused = merge_programme_clarification_followup("Hej hur mår du?", hist_pick)
     _check("non-pick reply doesn't fuse", fused == "Hej hur mår du?", fused)
 
-    _check("multi-program clarification recogniser",
-           is_multi_program_clarification_assistant_message(pick_msg))
+    _check(
+        "multi-program clarification recogniser",
+        is_multi_program_clarification_assistant_message(pick_msg),
+    )
 
 
 # -----------------------------------------------------------------------------
 # Section 6: course resolver — phrase extraction, fuzzy match, mocked HTTP
 # -----------------------------------------------------------------------------
 
+
 def section_course_resolver() -> None:
     print("\n[course resolver]")
 
-    _check("course intent detected", question_has_course_intent("Vad är tentamen i linjär algebra?"))
+    _check(
+        "course intent detected", question_has_course_intent("Vad är tentamen i linjär algebra?")
+    )
     _check("explicit code detected", question_has_explicit_course_code("Vad är tentamen i SK1110?"))
-    _check("no false-positive on program-only",
-           not question_has_course_intent("Vad är CTFYS?"))
+    _check("no false-positive on program-only", not question_has_course_intent("Vad är CTFYS?"))
 
     cases = [
         ("Vilken kursbok används i elektromagnetisk fältteori?", "elektromagnetisk fältteori"),
@@ -269,8 +283,9 @@ def section_course_resolver() -> None:
 
     # Fuzzy: same string scores 1.0; partial overlap > 0.4
     _check("fuzzy identical", _fuzzy_score("linjär algebra", "Linjär algebra") == 1.0)
-    _check("fuzzy partial",
-           _fuzzy_score("linjär algebra", "Linjär algebra, fortsättningskurs") > 0.4)
+    _check(
+        "fuzzy partial", _fuzzy_score("linjär algebra", "Linjär algebra, fortsättningskurs") > 0.4
+    )
 
     # End-to-end with mocked HTTP fetches.
     cfg = get_config()
@@ -283,39 +298,44 @@ def section_course_resolver() -> None:
     fake_terms = ["20262", "20252"]
     with (
         patched(web_retrieval, "_cached_terms_for_code", lambda _c, _code: fake_terms),
-        patched(course_resolver, "_fetch_program_courses",
-                lambda _c, _code, _term: fake_courses),
+        patched(course_resolver, "_fetch_program_courses", lambda _c, _code, _term: fake_courses),
     ):
         # Multi-hit → clarification.
-        res = resolve_course_intent(cfg, "Vad är tentamen i Linjär algebra?",
-                                    program_prior="CTFYS")
-        _check("course resolver: multi-hit → clarification",
-               res is not None and bool(res.clarification_sv), repr(res))
-        _check("course resolver: lists both Linjär algebra hits",
-               "SF1672" in res.clarification_sv and "SF1681" in res.clarification_sv,
-               res.clarification_sv if res else "")
+        res = resolve_course_intent(cfg, "Vad är tentamen i Linjär algebra?", program_prior="CTFYS")
+        _check(
+            "course resolver: multi-hit → clarification",
+            res is not None and bool(res.clarification_sv),
+            repr(res),
+        )
+        _check(
+            "course resolver: lists both Linjär algebra hits",
+            "SF1672" in res.clarification_sv and "SF1681" in res.clarification_sv,
+            res.clarification_sv if res else "",
+        )
 
         # Single hit → auto-resolve to course URL.
-        res = resolve_course_intent(cfg, "Vilka föreläsningar har vi om vektoranalys?",
-                                    program_prior="CTFYS")
-        _check("course resolver: single-hit auto-resolve",
-               res is not None and res.course_urls
-               and "SI1146" in res.course_urls[0], repr(res))
+        res = resolve_course_intent(
+            cfg, "Vilka föreläsningar har vi om vektoranalys?", program_prior="CTFYS"
+        )
+        _check(
+            "course resolver: single-hit auto-resolve",
+            res is not None and res.course_urls and "SI1146" in res.course_urls[0],
+            repr(res),
+        )
 
         # No prior, no resolution.
-        res = resolve_course_intent(cfg, "Vad är tentamen i Linjär algebra?",
-                                    program_prior=None)
+        res = resolve_course_intent(cfg, "Vad är tentamen i Linjär algebra?", program_prior=None)
         _check("course resolver: no prior → None", res is None, repr(res))
 
         # Has explicit code → not handled by resolver.
-        res = resolve_course_intent(cfg, "Vad är tentamen i SK1110?",
-                                    program_prior="CTFYS")
+        res = resolve_course_intent(cfg, "Vad är tentamen i SK1110?", program_prior="CTFYS")
         _check("course resolver: explicit code skipped", res is None, repr(res))
 
 
 # -----------------------------------------------------------------------------
 # Section 7: ConversationMemory program-code state
 # -----------------------------------------------------------------------------
+
 
 def section_memory() -> None:
     print("\n[memory.set/get_program_code]")

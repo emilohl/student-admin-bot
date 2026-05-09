@@ -139,9 +139,7 @@ _COURSE_KEYWORD_RE = re.compile(
     r"\b(?:kurs[a-zåäö]*|tenta[a-zåäö]*|föreläsning[a-zåäö]*|labb[a-zåäö]*|"
     r"examination[a-zåäö]*|course[a-z]*|textbook|exam|lecture[s]?|lab[s]?)\b"
 )
-_PHRASE_PREP_RE = re.compile(
-    r"\b(?:i|om|för|på|inom|in|on|of|for|about)\s+([^.?!]{3,80})"
-)
+_PHRASE_PREP_RE = re.compile(r"\b(?:i|om|för|på|inom|in|on|of|for|about)\s+([^.?!]{3,80})")
 
 
 def _candidate_phrase(q: str) -> str:
@@ -269,9 +267,7 @@ def _fetch_program_courses(cfg: Config, code: str, term: str) -> list[tuple[str,
     store = _compressed_application_store(html)
     pairs = _walk_courses_in_store(store)
     _COURSE_LIST_CACHE[cache_key] = (now, pairs)
-    log.info(
-        "course-resolver: cached %d courses for kurslista %s/%s", len(pairs), code, term
-    )
+    log.info("course-resolver: cached %d courses for kurslista %s/%s", len(pairs), code, term)
     return pairs
 
 
@@ -346,17 +342,13 @@ def resolve_course_intent(
     en_lines = [f"- **{h.code}** {h.name}" for h in top]
     sv = (
         f"Du nämnde inte någon kurskod. Här är kurser i **{code}** som matchar "
-        f"\"{phrase}\". Vilken menar du? Skicka kurskoden så svarar jag:\n"
-        + "\n".join(sv_lines)
+        f'"{phrase}". Vilken menar du? Skicka kurskoden så svarar jag:\n' + "\n".join(sv_lines)
     )
     en = (
         f"You didn't include a course code. Here are courses in **{code}** "
-        f"matching \"{phrase}\". Which one do you mean? Reply with the code:\n"
-        + "\n".join(en_lines)
+        f'matching "{phrase}". Which one do you mean? Reply with the code:\n' + "\n".join(en_lines)
     )
-    return CourseResolution(
-        clarification_sv=sv, clarification_en=en, matched_phrase=phrase
-    )
+    return CourseResolution(clarification_sv=sv, clarification_en=en, matched_phrase=phrase)
 
 
 __all__ = [

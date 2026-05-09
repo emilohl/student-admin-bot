@@ -708,9 +708,7 @@ def _repl(cfg: Config, console: Console, *, show_context: bool):
             printed_any = True
 
         program_prior = memory.get_program_code(user_id, thread_id)
-        result = answer(
-            q, history=history, cfg=cfg, on_token=on_tok, program_prior=program_prior
-        )
+        result = answer(q, history=history, cfg=cfg, on_token=on_tok, program_prior=program_prior)
         if printed_any:
             sys.stdout.write("\n")
 
