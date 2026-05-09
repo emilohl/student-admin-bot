@@ -67,6 +67,7 @@ student-bot-host-metrics = "scripts.host_metrics_collector:main"
 student-bot-up = "scripts.up:main"
 student-bot-down = "scripts.down:main"
 student-bot-fetch-url-corpus = "scripts.fetch_url_corpus:main"
+student-bot-replay-failures = "scripts.replay_failures:main"
 
 [build-system]
 requires = ["hatchling"]
