@@ -547,6 +547,18 @@ function normalizeHttpUrl(u) {
   return "";
 }
 
+// Accepts http(s) and root-relative paths (e.g. "/docs/markdown/FAQ.md" from
+// the local corpus static mount). Use this for link rendering and "is a URL
+// already attached" checks; keep `normalizeHttpUrl` for places that must
+// filter to externally-fetched URLs only.
+function normalizeUrl(u) {
+  if (u == null || u === "") return "";
+  const s = String(u).trim();
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("/")) return s;
+  return "";
+}
+
 function renderBodyWithCitations(body, allSources) {
   const lookup = buildCitationLookup(allSources);
   const byNumber = new Map();
@@ -643,7 +655,7 @@ function renderSources(sources, lang) {
     const sectionHtml = section ? ` — ${escapeHtml(section)}` : "";
     const pageHtml = page ? `, ${pageLabel} ${escapeHtml(page)}` : "";
     const core = `${titleHtml}${sectionHtml}${pageHtml}`;
-    const href = normalizeHttpUrl(s.url);
+    const href = normalizeUrl(s.url);
     const linkBlock = href
       ? `<a href="${escapeAttr(href)}" target="_blank" rel="noopener">${core}</a>`
       : core;
@@ -667,7 +679,7 @@ function backfillMissingSourceUrls(citedSources, allSources) {
   const byLabel = new Map();
   const byTitle = new Map();
   for (const s of allSources) {
-    const u = normalizeHttpUrl(s?.url);
+    const u = normalizeUrl(s?.url);
     if (!s || !u) continue;
     if (isNumericSourceN(s.n)) byNum.set(Number(s.n), u);
     const key = normalizeSourceLabel(s.label);
@@ -676,7 +688,7 @@ function backfillMissingSourceUrls(citedSources, allSources) {
     if (titleKey && !byTitle.has(titleKey)) byTitle.set(titleKey, u);
   }
   return citedSources.map((s) => {
-    if (!s || normalizeHttpUrl(s.url)) return s;
+    if (!s || normalizeUrl(s.url)) return s;
     let url = "";
     if (isNumericSourceN(s.n)) url = byNum.get(Number(s.n)) || "";
     if (!url) url = byLabel.get(normalizeSourceLabel(s.label)) || "";
@@ -696,7 +708,7 @@ function mergeCitedUrlsFromServerMeta(citedSources, serverSources) {
   const byNormLabel = new Map();
   for (const s of serverSources) {
     if (!s) continue;
-    const u = normalizeHttpUrl(s.url);
+    const u = normalizeUrl(s.url);
     if (!u) continue;
     if (isNumericSourceN(s.n)) byMetaN.set(Number(s.n), u);
     if (typeof s.label === "string") {
@@ -706,15 +718,15 @@ function mergeCitedUrlsFromServerMeta(citedSources, serverSources) {
   }
   return citedSources.map((c, i) => {
     if (!c) return c;
-    if (normalizeHttpUrl(c.url)) return c;
+    if (normalizeUrl(c.url)) return c;
     let url = "";
     if (isNumericSourceN(c.n)) url = byMetaN.get(Number(c.n)) || "";
     if (!url) url = byNormLabel.get(normalizeSourceLabel(c.label || "")) || "";
     if (!url && citedSources.length === 1) {
-      const first = normalizeHttpUrl(serverSources[0]?.url);
+      const first = normalizeUrl(serverSources[0]?.url);
       if (first) url = first;
     }
-    if (!url && serverSources[i]) url = normalizeHttpUrl(serverSources[i].url) || "";
+    if (!url && serverSources[i]) url = normalizeUrl(serverSources[i].url) || "";
     return url ? { ...c, url } : c;
   });
 }
@@ -722,10 +734,13 @@ function mergeCitedUrlsFromServerMeta(citedSources, serverSources) {
 /** Last resort: `meta.source_urls` from dynamic-web turns (program code in label → path). */
 function mergeSourceUrlsHeuristic(citedSources, sourceUrls) {
   if (!Array.isArray(citedSources) || !citedSources.length) return citedSources || [];
+  // `meta.source_urls` only contains externally-fetched URLs from the
+  // dynamic-web pipeline; keep the http(s) filter so we don't synthesise a
+  // local-static URL into a citation that has no externally-fetched origin.
   const urls = [...new Set((sourceUrls || []).map(normalizeHttpUrl).filter(Boolean))];
   if (!urls.length) return citedSources;
   return citedSources.map((c) => {
-    if (!c || normalizeHttpUrl(c.url)) return c;
+    if (!c || normalizeUrl(c.url)) return c;
     let url = "";
     if (urls.length === 1) {
       url = urls[0];

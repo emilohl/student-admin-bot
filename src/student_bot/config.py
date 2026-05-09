@@ -120,6 +120,11 @@ class WebConfig(BaseModel):
     # Citations link to "<doc_base_url>/<rel_source>#page=N". Leave empty to
     # render plain-text citations without links.
     doc_base_url: str = "/docs"
+    # URL prefix for the curated-markdown renderer. Citations whose rel_source
+    # ends in `.md` AND is not under `web_import/` are rewritten to point here
+    # so they open as styled HTML (with optional YAML-frontmatter attribution)
+    # instead of raw text via the static mount. Empty string disables.
+    md_render_base_url: str = "/doc"
     require_name: bool = True
     auth_enabled: bool = False
     # Path (relative to project root) to a passwd-style file:

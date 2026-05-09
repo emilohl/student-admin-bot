@@ -93,6 +93,11 @@ web:
   # Where the corpus is served from. Citations link to <doc_base_url>/<rel_source>.
   # Empty string = no clickable links.
   doc_base_url: /docs
+  # Curated `.md` files (anything under docs/corpus/ that is NOT in
+  # web_import/) are routed through this viewer instead of the raw static
+  # mount, so they render as styled HTML with optional YAML-frontmatter
+  # attribution. Empty string = serve raw markdown via doc_base_url.
+  md_render_base_url: /doc
   require_name: true
   auth_enabled: false
   users_file: data/web_users   # passwd-like: "user:scrypt:<salt_b64>:<hash_b64>"
