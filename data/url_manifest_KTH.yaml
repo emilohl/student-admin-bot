@@ -113,3 +113,14 @@ entries:
     exclude_patterns: []
     type_hint: auto
     doc_title_override: ""
+
+  # Linked from `kurs-och-examination` but not reached by its BFS (the seed
+  # saturates max_pages_per_seed: 12 first). Pulled explicitly so we can
+  # drop the lower-quality `Omprövning av betyg.pdf` print-snapshot.
+  - url: https://www.kth.se/student/studier/kurs/tentamen/omprovning-av-betyg-1.1170668
+    follow_links: false
+    max_depth: 0
+    include_patterns: []
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""

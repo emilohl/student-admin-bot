@@ -1,0 +1,19 @@
+# qa_log rows that `student-bot-replay-failures` should bucket as IGNORED
+# rather than counting them as STILL-REFUSE / REGRESSED.
+#
+# Use this for refusals that aren't actually retrieval failures we want
+# to fix:
+#   needs-context  follow-up question whose meaning depends on the prior
+#                  turn. The replay tool also auto-detects these via the
+#                  session-history heuristic, but use the file when the
+#                  heuristic misses one.
+#   out-of-scope   refusal is correct (e.g. clearly off-topic, asking
+#                  about another university entirely).
+#   noise          one-off garbage / duplicate / test traffic.
+#
+# Each entry: { id: <qa_id>, reason: <enum>, note: <free text> }
+
+ignored:
+  - { id: 224, reason: needs-context, note: "CFATE då" }
+  - { id: 222, reason: needs-context, note: "HT2025" }
+  - { id: 200, reason: needs-context, note: "Är alla dessa obligatoriska?" }
