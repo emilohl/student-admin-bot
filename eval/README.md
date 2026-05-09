@@ -44,3 +44,18 @@ After running `run_eval.py`, copy the suggested `rerank_top1_min` and
 `rerank_meanK_min` into `config.yaml` under `gate:`. If the suggestion looks
 permissive, prefer the in-domain min over the OOD max — biasing toward false
 refusal is preferable to hallucinating policy.
+
+## Disambiguation logic tests
+
+`test_program_resolution.py` covers the program-alias scoring, multi-candidate
+clarification, level/historical filters, conversation-prior carryover, and the
+kurslista-backed course resolver introduced for issue #26. It mocks HTTP so it
+runs offline.
+
+```bash
+uv run python -m eval.test_program_resolution
+```
+
+Exits 0 on success, 1 on the first failure. The retrieval-level eval suite
+(`run_eval.py`) does not exercise these paths — clarifications short-circuit
+before retrieval — so this script is the regression check for them.

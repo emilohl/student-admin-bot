@@ -293,10 +293,15 @@ def merge_programme_clarification_followup(question: str, history: list[dict] | 
         if not (hints.exact_term or hints.year_prefix or bare_year):
             return question
     else:
-        # Program pick: accept a 5-letter code or a short reply naming a program.
+        # Program pick: require either a 5-letter code or an explicit "I mean X"
+        # / "jag menar X" anchor. A bare short message could just be a topic
+        # shift, so we don't fuse on length alone.
         has_code = bool(_PROGRAM_CODE_RE.search(qstrip))
-        short_pick = 0 < len(qstrip) <= 80
-        if not (has_code or short_pick):
+        has_pick_anchor = bool(
+            re.search(r"\b(?:jag\s+menar|menar)\b", qstrip, re.IGNORECASE)
+            or re.search(r"\bi\s+mean\b", qstrip, re.IGNORECASE)
+        )
+        if not (has_code or has_pick_anchor):
             return question
 
     prev_user = ""
@@ -823,6 +828,7 @@ def _extract_targets_with_cfg(
         or "curriculum" in lower
         or "kurslista" in lower
         or _parse_programme_year_level(question) is not None
+        or bool(_PROGRAM_CODE_RE.search(question))
     )
 
     if program_intent:
@@ -1661,9 +1667,21 @@ def maybe_fetch_dynamic_web(
             missing_kth_program=_bilingual_missing_kth_program_message(unknown_codes),
         )
 
+    # Local import to avoid a circular dependency at module load time
+    # (course_resolver imports a couple of helpers from this module).
+    from student_bot.bot.course_resolver import (
+        question_has_course_intent,
+        question_has_explicit_course_code,
+        resolve_course_intent,
+    )
+
     patterns = _compiled_patterns(cfg)
     targets = _extract_targets_with_cfg(question, cfg, program_prior=program_prior)
-    if not targets:
+    course_intent_no_code = (
+        question_has_course_intent(question)
+        and not question_has_explicit_course_code(question)
+    )
+    if not targets and not (course_intent_no_code and program_prior):
         return None
     log.info("dynamic-web: targets=%s", targets)
 
@@ -1704,6 +1722,29 @@ def maybe_fetch_dynamic_web(
             queue.extend(_programme_term_bundle_urls(u))
         if resolved_program_code is None:
             resolved_program_code = _program_segment_code(root)
+
+    # Course-without-code path. Triggers when the question references a course
+    # by name (no explicit code) and a program code is known — either
+    # established this turn or carried over via program_prior.
+    if course_intent_no_code:
+        course_res = resolve_course_intent(
+            cfg,
+            question,
+            program_prior=program_prior,
+            program_now=resolved_program_code,
+        )
+        if course_res is not None:
+            if course_res.clarification_sv:
+                return WebFetchResult(
+                    clarification=(
+                        course_res.clarification_sv,
+                        course_res.clarification_en,
+                    ),
+                    resolved_program_code=resolved_program_code,
+                )
+            for cu in course_res.course_urls:
+                if cu not in queue:
+                    queue.append(cu)
 
     queue = _dedupe_urls(queue)
     if not queue:
