@@ -442,6 +442,15 @@ def main(limit_seeds: int | None) -> None:
             if seed.doc_title_override:
                 title = seed.doc_title_override
 
+            # KTH replaces retired pages with a stub whose title is the
+            # literal "PURGED" (the rest of the body is just an "Add to
+            # calendar" link). Don't ingest those — they're noise.
+            if (title or "").strip() == "PURGED":
+                click.echo(f"skip purged page: {final_url}")
+                skipped += 1
+                _record_skip_reason(skip_reasons, "kth_purged_page", final_url)
+                continue
+
             rel_source = _rel_source_for_url(final_url, output_rel)
             vetted_links: list[str] = []
             if cfg.url_ingest.include_vetted_links_in_markdown and links:

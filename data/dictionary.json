@@ -145,6 +145,38 @@
       "definition": "kurs för kandidatexamensarbete, för CTFYS SA114X eller EF112X",
       "added_by": "admin (accepted from student suggestion)",
       "added_ts": "2026-05-05"
+    },
+    "tenta om": {
+      "term": "tenta om",
+      "expansion": "skriva omtentamen",
+      "lang": "sv",
+      "definition": "Att skriva en förnyad examination i en kurs man inte godkänts på.",
+      "added_by": "admin",
+      "added_ts": "2026-05-09"
+    },
+    "utbytesår": {
+      "term": "utbytesår",
+      "expansion": "utbytesstudier",
+      "lang": "sv",
+      "definition": "Studier vid ett partneruniversitet utomlands under en hel årskurs.",
+      "added_by": "admin",
+      "added_ts": "2026-05-09"
+    },
+    "utbytestermin": {
+      "term": "utbytestermin",
+      "expansion": "utbytesstudier",
+      "lang": "sv",
+      "definition": "Studier vid ett partneruniversitet utomlands under en termin.",
+      "added_by": "admin",
+      "added_ts": "2026-05-09"
+    },
+    "militärövning": {
+      "term": "militärövning",
+      "expansion": "militär grundutbildning, värnpliktstjänstgöring",
+      "lang": "sv",
+      "definition": "Tjänstgöring i Försvarsmakten — räknas som särskilt skäl för studieuppehåll.",
+      "added_by": "admin",
+      "added_ts": "2026-05-09"
     }
   }
 }
