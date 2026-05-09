@@ -226,6 +226,49 @@ readable, and the entire RAG path is ~250 lines.
 - Indexing is incremental: chunks identified by `<rel_source>#<idx>` with a
   content hash, so re-runs only touch what changed.
 
+### Corpus layout & curated markdown
+
+`docs/corpus/` (typically a symlink to your knowledge base) is organised
+into three sibling trees:
+
+| Path | What lives here | How citations link |
+|---|---|---|
+| `pdfs/` | Official PDFs (study plans, regulations) | `<doc_base_url>/<rel_source>#page=N` (browser jumps to the cited page) |
+| `markdown/` | Curated `.md` files written by the programme team | `<md_render_base_url>/<rel_source>` — rendered to HTML with attribution (see below) |
+| `web_import/` | `.md` artifacts produced by `student-bot-fetch-url-corpus` | `source_url` from `data/url_source_map.json` (the upstream page) |
+
+Curated markdown files in `markdown/` accept an optional **YAML frontmatter
+block** that the renderer at `/doc/<rel_source>` uses to build a footer:
+
+```yaml
+---
+title: KEX i CTFYS — kort guide   # optional; falls back to first H1, then file stem
+authors:
+  - studievägledarna på SCI-skolan
+  - name: Christian Ohm
+    role: Programansvarig CTFYS
+updated: 2026-05-09
+---
+```
+
+Notes:
+
+- `authors` accepts plain strings *and* `{name, role}` mappings; mix them
+  freely. A single legacy `author:` + `role:` pair is also accepted.
+- The footer wording is bilingual and follows the chat's SV/EN toggle:
+  `Sammanställt av <authors>, senast uppdaterad <date>.` /
+  `Compiled by <authors>, last updated <date>.`
+- Frontmatter is **stripped at ingest** (`ingest/parse.py:_parse_markdown`),
+  so author and date metadata never leak into retrieval chunks or answers.
+- A complete example with prose, tables, lists, and frontmatter lives at
+  [`docs/examples/curated_markdown_example.md`](docs/examples/curated_markdown_example.md) —
+  copy it into your `docs/corpus/markdown/` tree and edit.
+- Reindex after edits: `uv run python -m scripts.reindex` (incremental).
+
+The render route is gated on `web.md_render_base_url` in `config.yaml`
+(default `/doc`); set it to an empty string to disable and serve raw
+markdown via the static mount instead.
+
 ### Off-topic gate
 
 A passing question must clear *both*:
@@ -455,7 +498,11 @@ Localhost-only by default. Two-factor authentication when exposed to a network. 
 | **Add a user** | `uv run student-bot-mkuser alice` — prompts for a password, writes a scrypt-hashed record. |
 
 The corpus is mounted under `/docs/...` for citation links; PDFs use
-`#page=N` so the browser jumps to the cited page.
+`#page=N` so the browser jumps to the cited page. Curated `.md` files
+under `docs/corpus/markdown/` are instead served via `/doc/<rel_source>`,
+which renders the markdown to styled HTML with an optional bilingual
+attribution footer — see *Corpus layout & curated markdown* above for the
+frontmatter format and the in-tree example.
 
 `/about` is a server-rendered page explaining the five literacy points
 above. `/stats` shows per-topic counts and feedback ratios.
