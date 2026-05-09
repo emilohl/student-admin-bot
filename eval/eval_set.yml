@@ -90,6 +90,31 @@
   kind: in_domain
   expected_doc_substring: "Utbildningsplan CTFYS HT2024 sve"
 
+# Regression coverage for failure clusters seen in production logs.
+- question: "Hur ansöker jag om studieuppehåll?"
+  lang: sv
+  kind: in_domain
+  expected_doc_substring: "studieuppehall"
+  notes: "qa_id 261, 262 — students asking how to apply for study leave."
+
+- question: "Hur många gånger får jag tenta om en kurs?"
+  lang: sv
+  kind: in_domain
+  expected_any: ["tentamensregler", "omregistrering-pa-kurs", "examination"]
+  notes: "qa_id 260 — re-exam attempt limit."
+
+- question: "Kan jag åka på utbytesstudier till USA?"
+  lang: sv
+  kind: in_domain
+  expected_any: ["utbyte", "utbytesstudier", "utbytesuniversitet"]
+  notes: "qa_id 263 — exchange-studies destination question."
+
+- question: "Hur väljer jag masterprogram inom mitt civilingenjörsprogram?"
+  lang: sv
+  kind: in_domain
+  expected_any: ["masteranmalan", "kthmastermassa", "masterprogram", "val-"]
+  notes: "qa_id 229, 232, 259 — master selection. Section parent /val/masterprogram is only reachable via the navigation pane (stripped at scrape), so the relevant pages are the sub-leaves masteranmalan and kthmastermassa plus the val parent."
+
 # ---------------- in-domain, English ----------------
 - question: "How do I appeal a grade?"
   lang: en

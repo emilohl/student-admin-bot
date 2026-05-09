@@ -1,64 +1,115 @@
 entries:
-  # - url: https://www.kth.se/student/kurser/program/CTFYS
-  #   # Defaults:
-  #   #   follow_links: false
-  #   #   max_depth: 1            # only used when follow_links: true (url_ingest.default_max_depth)
-  #   #   include_patterns: []    # include all paths
-  #   #   exclude_patterns: []    # exclude none
-  #   #   type_hint: auto         # html|pdf|auto
-  #   #   doc_title_override: ""  # use detected title if empty
-  #   follow_links: true
-  #   max_depth: 1
-  #   include_patterns:
-  #     - "/student/kurser/program/CTFYS/"
+  # Per-entry knobs (defaults shown):
+  #   follow_links: false
+  #   max_depth: 1            # only used when follow_links: true (default
+  #                           # comes from url_ingest.default_max_depth)
+  #   include_patterns: []    # regex on URL path; '^'-anchor recommended
+  #                           # so `/student/studier/val/` does not also
+  #                           # match `/student/studier/val-foo/`.
   #   exclude_patterns: []
-  #   type_hint: auto
-  #   doc_title_override: ""
+  #   type_hint: auto         # html|pdf|auto
+  #   doc_title_override: ""  # use detected title if empty
+  #   max_pages:              # per-entry override of
+  #                           # url_ingest.max_pages_per_seed; raise this
+  #                           # for content-rich section trees.
 
- - url: https://www.kth.se/student/kurser/kurser-inom-program
-   follow_links: false
-   max_depth: 1
-   include_patterns: []
-   exclude_patterns: []
-   type_hint: auto
-   doc_title_override: ""
+  - url: https://www.kth.se/student/kurser/kurser-inom-program
+    follow_links: false
+    max_depth: 1
+    include_patterns: []
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
 
- - url: https://www.kth.se/utbildning/anmalan-antagning-behorighet/antagning
-   follow_links: false
-   max_depth: 1
-   include_patterns: []
-   exclude_patterns: []
-   type_hint: auto
-   doc_title_override: ""
+  - url: https://www.kth.se/utbildning/anmalan-antagning-behorighet/antagning
+    follow_links: false
+    max_depth: 1
+    include_patterns: []
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
 
- - url: https://www.kth.se/student/studier/administrera/administrera-dina-studier
-   follow_links: false
-   max_depth: 1
-   include_patterns: []
-   exclude_patterns: []
-   type_hint: auto
-   doc_title_override: ""
+  # Widened to follow_links so the index page's section sub-pages
+  # (studieuppehall, tillgodoraknande, …) are pulled automatically.
+  - url: https://www.kth.se/student/studier/administrera/administrera-dina-studier
+    follow_links: true
+    max_depth: 1
+    include_patterns:
+      - "^/student/studier/administrera/"
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
 
- - url: https://www.kth.se/student/studier/kurs/kurs-och-examination
-   follow_links: true
-   max_depth: 2
-   include_patterns: []
-   exclude_patterns: []
-   type_hint: auto
-   doc_title_override: ""
+  - url: https://www.kth.se/student/studier/kurs/kurs-och-examination
+    follow_links: true
+    max_depth: 2
+    include_patterns: []
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
 
- - url: https://www.kth.se/student/studier/val
-   follow_links: false
-   max_depth: 1
-   include_patterns: []
-   exclude_patterns: []
-   type_hint: auto
-   doc_title_override: ""
+  # Widened to follow_links so masterprogram and val-under-studierna land
+  # in the corpus without separate seeds.
+  - url: https://www.kth.se/student/studier/val
+    follow_links: true
+    max_depth: 1
+    include_patterns:
+      - "^/student/studier/val/"
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
 
- - url: https://www.kth.se/student/stod/studier/fusk
-   follow_links: false
-   max_depth: 1
-   include_patterns:
-   exclude_patterns: []
-   type_hint: auto
-   doc_title_override: ""
+  - url: https://www.kth.se/student/stod/studier/fusk
+    follow_links: false
+    max_depth: 1
+    include_patterns: []
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
+
+  # Exchange-studies tree — content-rich (~14 sub-pages including funding,
+  # eligibility, partner universities). Bumped max_pages so we don't hit
+  # the global 12-page cap mid-section.
+  - url: https://www.kth.se/student/studier/utlandsstudier/utbyte
+    follow_links: true
+    max_depth: 2
+    include_patterns:
+      - "^/student/studier/utlandsstudier/utbyte/"
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
+    max_pages: 20
+
+  - url: https://www.kth.se/student/studier/examensarbete
+    follow_links: true
+    max_depth: 1
+    include_patterns:
+      - "^/student/studier/examensarbete"
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
+
+  - url: https://www.kth.se/student/studier/examen
+    follow_links: true
+    max_depth: 1
+    include_patterns:
+      - "^/student/studier/examen"
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
+
+  - url: https://www.kth.se/student/studier/rattigheter-och-skyldigheter
+    follow_links: false
+    max_depth: 0
+    include_patterns: []
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
+
+  - url: https://www.kth.se/student/studier/schema/lasarsindelning-1.912374
+    follow_links: false
+    max_depth: 0
+    include_patterns: []
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""

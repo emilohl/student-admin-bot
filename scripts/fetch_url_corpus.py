@@ -42,6 +42,8 @@ class UrlSeed:
     exclude_patterns: list[str] | None = None
     type_hint: str = "auto"
     doc_title_override: str = ""
+    # Per-entry override of `cfg.url_ingest.max_pages_per_seed`. None = use global.
+    max_pages: int | None = None
 
 
 def _canonicalize_url(url: str) -> str:
@@ -76,6 +78,11 @@ def _load_manifest(path: Path, cfg: Config) -> list[UrlSeed]:
         include_list = include_raw if isinstance(include_raw, list) else []
         exclude_list = exclude_raw if isinstance(exclude_raw, list) else []
 
+        max_pages_raw = e.get("max_pages")
+        max_pages = (
+            int(max_pages_raw) if isinstance(max_pages_raw, int) and max_pages_raw > 0 else None
+        )
+
         out.append(
             UrlSeed(
                 url=_canonicalize_url(str(e["url"])),
@@ -85,6 +92,7 @@ def _load_manifest(path: Path, cfg: Config) -> list[UrlSeed]:
                 exclude_patterns=[str(x) for x in exclude_list] or None,
                 type_hint=str(e.get("type_hint", "auto")).lower(),
                 doc_title_override=str(e.get("doc_title_override", "")).strip(),
+                max_pages=max_pages,
             )
         )
     return out
@@ -160,11 +168,13 @@ def _extract_html_markdown(
         title = h1.get_text(" ", strip=True) or title
 
     lines: list[str] = []
-    for node in soup.select("h1,h2,h3,p,li,dt,dd"):
+    # H1 is captured into `title` above and re-emitted once by `_render_md`,
+    # so skip it here to avoid the page heading appearing twice in output.
+    for node in soup.select("h2,h3,p,li,dt,dd"):
         txt = _node_text_with_markdown_links(node, base_url, cfg)
         if not txt:
             continue
-        if node.name in ("h1", "h2", "h3"):
+        if node.name in ("h2", "h3"):
             lines.append(f"{'#' * int(node.name[1])} {txt}")
         else:
             lines.append(txt)
@@ -375,8 +385,9 @@ def main(limit_seeds: int | None) -> None:
         q: deque[tuple[str, int]] = deque([(seed.url, 0)])
         seen: set[str] = set()
         processed = 0
+        seed_cap = seed.max_pages or cfg.url_ingest.max_pages_per_seed
 
-        while q and processed < cfg.url_ingest.max_pages_per_seed:
+        while q and processed < seed_cap:
             url, depth = q.popleft()
             discovered_total += 1
             is_seed = depth == 0
