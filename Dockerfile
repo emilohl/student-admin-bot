@@ -35,6 +35,13 @@ COPY config.yaml ./
 COPY topics.yaml ./
 COPY data/dictionary.json ./data/dictionary.json
 
+# Surface the git version into the runtime env so the About page can show a
+# commit hash / release tag even though `.git/` is not copied into the image.
+# Pass at build time, e.g.
+#     docker compose build --build-arg STUDENT_BOT_VERSION=$(git rev-parse --short HEAD)
+ARG STUDENT_BOT_VERSION=""
+ENV STUDENT_BOT_VERSION=${STUDENT_BOT_VERSION}
+
 # Pre-cache the embedding + reranker models so the container is offline-ready.
 # Download happens at build time using the same library that loads them at runtime.
 ENV TRANSFORMERS_OFFLINE=0 \
