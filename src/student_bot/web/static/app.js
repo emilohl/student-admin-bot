@@ -5,6 +5,10 @@ const state = {
   sessionId: localStorage.getItem("session_id") || crypto.randomUUID(),
   name: localStorage.getItem("name") || "",
   optOut: localStorage.getItem("opt_out") === "1",
+  // In-memory conversation log, mirroring what's on screen. Captured client
+  // side because that's where every conversation exists in full (the server
+  // skips qa_log writes for opted-out users). Used by exportThreadMarkdown().
+  thread: [],
 };
 localStorage.setItem("session_id", state.sessionId);
 
@@ -55,7 +59,13 @@ el("#reset").addEventListener("click", async () => {
     body: JSON.stringify({ session_id: state.sessionId }),
   }).catch(() => {});
   messages.innerHTML = "";
+  state.thread = [];
+  refreshExportButton();
   statusEl.textContent = window.t ? window.t("chat.newthread") : "ny tråd";
+});
+
+el("#export").addEventListener("click", () => {
+  exportThreadMarkdown();
 });
 
 // Enter submits, Shift+Enter (and Cmd/Ctrl+Enter) inserts a newline.
@@ -75,8 +85,23 @@ composer.addEventListener("submit", async (e) => {
   el("#question").value = "";
   el("#send").disabled = true;
   appendUser(q);
+  state.thread.push({ role: "user", ts: Date.now(), text: q });
+  refreshExportButton();
 
   const botMsg = appendBot();
+  const botEntry = {
+    role: "bot",
+    ts: Date.now(),
+    raw: "",            // full streamed text (filled at end)
+    body: "",           // body after splitMessage strips badge/sources/tip
+    jargon: "",         // jargon transparency prefix (if any)
+    confidence: "",     // confidence label, e.g. "high" / "low"
+    confidenceText: "", // localized confidence text ("Tillförlitlighet: hög")
+    sources: [],        // numbered, cited-only references
+    reaction: "",       // "positive" | "negative" | "" (only if user clicked)
+  };
+  state.thread.push(botEntry);
+  botMsg.entry = botEntry;
   let firstToken = true;
   const reqStartedAt = performance.now();
   let firstTokenAt = null;
@@ -329,6 +354,8 @@ function decorateBot(botMsg, meta) {
   // actually cited inline appear in the references list, renumbered
   // in order of first appearance.
   const raw = botMsg.body.textContent;
+  const prefixEl = botMsg.body.querySelector(".msg-prefix");
+  const jargonText = (prefixEl?.textContent || "").trim();
   const { body, sources: allSources, tip } = splitMessage(raw);
   const serverSources = Array.isArray(meta.sources) ? meta.sources : [];
   const sourceCandidates = Array.isArray(meta.source_candidates) ? meta.source_candidates : [];
@@ -356,6 +383,21 @@ function decorateBot(botMsg, meta) {
   if (tip) html += renderTip(tip);
   botMsg.body.innerHTML = html;
 
+  // Snapshot the parts of the answer we want to keep in the exportable
+  // thread log. `body` retains markdown links and inline citation markers;
+  // the export converts those to numbered links against `sources`.
+  if (botMsg.entry) {
+    botMsg.entry.raw = raw;
+    botMsg.entry.body = body;
+    botMsg.entry.jargon = jargonText;
+    botMsg.entry.confidence = meta.confidence_level || "";
+    botMsg.entry.confidenceText = meta.confidence || "";
+    botMsg.entry.sources = (citedSourcesWithUrls && citedSourcesWithUrls.length)
+      ? citedSourcesWithUrls
+      : (serverSources || []);
+    refreshExportButton();
+  }
+
   // Feedback buttons (only if we have a qa id).
   if (meta.qa_id) {
     const actions = document.createElement("div");
@@ -374,6 +416,7 @@ function decorateBot(botMsg, meta) {
       up.classList.remove("active");
       down.classList.remove("active");
       btn.classList.add("active");
+      if (botMsg.entry) botMsg.entry.reaction = sentiment;
     };
     up.addEventListener("click", () => send("positive", up));
     down.addEventListener("click", () => send("negative", down));
@@ -842,6 +885,130 @@ function renderMarkdown(text) {
   flushPara();
   flushList();
   return html;
+}
+
+// -----------------------------------------------------------------------------
+// Conversation export — write the in-memory thread to a Markdown blob the user
+// can save. The format is hand-rolled (no JS dep) and consciously preserves:
+//   - Speaker labels with timestamps (date + HH:MM in local time)
+//   - In-message body formatting (Markdown already; copied verbatim)
+//   - Numbered sources list with URLs after each bot turn
+//   - Reactions only when the user actually clicked 👍/👎
+// And consciously excludes:
+//   - Literacy tip footers (.tip)
+//   - The 👍/👎 buttons themselves (we record `reaction` instead)
+//   - Thinking-phase / streaming-only UI
+
+function refreshExportButton() {
+  const btn = document.getElementById("export");
+  if (!btn) return;
+  const has = state.thread && state.thread.length > 0;
+  btn.hidden = !has;
+}
+
+function pad2(n) { return n < 10 ? `0${n}` : `${n}`; }
+
+function formatExportTs(ts) {
+  const d = new Date(ts);
+  return (
+    `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ` +
+    `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+  );
+}
+
+function exportFilename(firstTs) {
+  const d = new Date(firstTs || Date.now());
+  return (
+    `student-bot-conversation-${d.getFullYear()}-${pad2(d.getMonth() + 1)}-` +
+    `${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}.md`
+  );
+}
+
+function exportBotName() {
+  return botDisplayName();
+}
+
+function exportUserName() {
+  const fallback = (window.t && window.t("export.user_default")) || "Användare";
+  return state.name && state.name.trim() ? state.name.trim() : fallback;
+}
+
+function exportSourcesHeading() {
+  return (window.t && window.t("export.sources_heading")) || "Källor";
+}
+
+function exportSourceLine(src) {
+  // Mirror `parseSourceLabel` in renderSources: split " — Section" suffix and
+  // trailing ", s. N" page so the markdown text reads as in the chat bubble.
+  const m = (src.label || "").match(/,\s*(?:s|p)\.\s*(\d+)\s*$/);
+  let title = src.label || "";
+  let page = "";
+  if (m) { page = m[1]; title = title.slice(0, m.index).trim(); }
+  let section = "";
+  const sepIdx = title.indexOf(" — ");
+  if (sepIdx > -1) { section = title.slice(sepIdx + 3).trim(); title = title.slice(0, sepIdx).trim(); }
+  let body = title;
+  if (section) body += ` — ${section}`;
+  if (page) body += `, s. ${page}`;
+  const href = (src.url || "").trim();
+  return href ? `[${body}](${href})` : body;
+}
+
+function exportThreadMarkdown() {
+  if (!state.thread.length) return;
+  const lines = [];
+  const firstTs = state.thread[0].ts;
+  for (const entry of state.thread) {
+    if (entry.role === "user") {
+      lines.push(`### ${exportUserName()} · ${formatExportTs(entry.ts)}`);
+      lines.push("");
+      lines.push(entry.text);
+      lines.push("");
+      lines.push("---");
+      lines.push("");
+      continue;
+    }
+    // Bot turn
+    let header = `### ${exportBotName()} · ${formatExportTs(entry.ts)}`;
+    if (entry.confidenceText) header += ` · _${entry.confidenceText}_`;
+    lines.push(header);
+    lines.push("");
+    if (entry.jargon) {
+      lines.push(`> ${entry.jargon}`);
+      lines.push("");
+    }
+    if (entry.body) {
+      lines.push(entry.body);
+      lines.push("");
+    }
+    if (entry.reaction === "positive") { lines.push("👍"); lines.push(""); }
+    else if (entry.reaction === "negative") { lines.push("👎"); lines.push(""); }
+    if (entry.sources && entry.sources.length) {
+      lines.push(`**${exportSourcesHeading()}:**`);
+      const numbered = entry.sources
+        .slice()
+        .sort((a, b) => (Number(a.n) || 0) - (Number(b.n) || 0));
+      let n = 1;
+      for (const s of numbered) {
+        lines.push(`${n}. ${exportSourceLine(s)}`);
+        n += 1;
+      }
+      lines.push("");
+    }
+    lines.push("---");
+    lines.push("");
+  }
+  const md = lines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd() + "\n";
+  const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = exportFilename(firstTs);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Defer revoke so Safari has time to read the blob.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // Skip onboarding if name already set.
