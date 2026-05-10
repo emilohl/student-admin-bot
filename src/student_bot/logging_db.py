@@ -98,6 +98,10 @@ MIGRATIONS: list[tuple[str, str]] = [
     ("qa_log.question_expanded", "ALTER TABLE qa_log ADD COLUMN question_expanded TEXT"),
     # Comma-separated list of jargon term keys hit by this query.
     ("qa_log.jargon_hits", "ALTER TABLE qa_log ADD COLUMN jargon_hits TEXT"),
+    # Coarse token estimates (chars/4) captured at answer time. Historical
+    # rows may stay NULL until backfilled by scripts/backfill_tokens.py.
+    ("qa_log.prompt_tokens", "ALTER TABLE qa_log ADD COLUMN prompt_tokens INTEGER"),
+    ("qa_log.gen_tokens", "ALTER TABLE qa_log ADD COLUMN gen_tokens INTEGER"),
 ]
 
 
@@ -212,6 +216,8 @@ class LogDB:
         latency_ms: int,
         question_expanded: str | None = None,
         jargon_hits: list[str] | None = None,
+        prompt_tokens: int | None = None,
+        gen_tokens: int | None = None,
     ) -> int | None:
         """Record a Q&A row, or skip (returning None) when the user opted out.
 
@@ -230,8 +236,9 @@ class LogDB:
                     question, lang, retrieved_chunk_ids,
                     rerank_top1, rerank_meanK, distinct_sources,
                     gate_pass, gate_reason, answer, latency_ms,
-                    question_expanded, jargon_hits
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    question_expanded, jargon_hits,
+                    prompt_tokens, gen_tokens
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     int(time.time()),
@@ -252,6 +259,8 @@ class LogDB:
                     latency_ms,
                     question_expanded,
                     ",".join(jargon_hits or []) if jargon_hits else None,
+                    prompt_tokens,
+                    gen_tokens,
                 ),
             )
             conn.commit()
@@ -351,6 +360,69 @@ class LogDB:
             "avg_latency_ms": int(r[2] or 0),
             "anon": int(anon),
         }
+
+    def series_buckets(self, since_ts: int, bucket_seconds: int) -> list[dict]:
+        """Group qa_log into fixed-width time buckets for the stats page chart.
+
+        Returns one dict per bucket present in the window, sorted ascending by
+        timestamp. Buckets with zero rows are omitted; the front-end fills gaps.
+        Token columns coalesce NULL → 0 so old (pre-migration) rows count as
+        zero-token rather than breaking the SUM.
+        """
+        if bucket_seconds <= 0:
+            raise ValueError("bucket_seconds must be positive")
+        with self._lock, self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT
+                    (q.ts / ?) * ?                                AS bucket_ts,
+                    COUNT(*)                                      AS n,
+                    SUM(CASE WHEN q.gate_pass = 1 THEN 1 ELSE 0 END) AS n_answered,
+                    SUM(COALESCE(q.prompt_tokens, 0))             AS prompt_tokens,
+                    SUM(COALESCE(q.gen_tokens, 0))                AS gen_tokens,
+                    SUM(CASE WHEN f.sentiment = 'positive' THEN 1 ELSE 0 END) AS thumbs_up,
+                    SUM(CASE WHEN f.sentiment = 'negative' THEN 1 ELSE 0 END) AS thumbs_down
+                FROM qa_log q
+                LEFT JOIN feedback f ON f.qa_id = q.id
+                WHERE q.ts >= ?
+                GROUP BY bucket_ts
+                ORDER BY bucket_ts ASC
+                """,
+                (bucket_seconds, bucket_seconds, since_ts),
+            ).fetchall()
+        return [
+            {
+                "bucket_ts": int(r[0]),
+                "n": int(r[1] or 0),
+                "n_answered": int(r[2] or 0),
+                "prompt_tokens": int(r[3] or 0),
+                "gen_tokens": int(r[4] or 0),
+                "thumbs_up": int(r[5] or 0),
+                "thumbs_down": int(r[6] or 0),
+            }
+            for r in rows
+        ]
+
+    def activity_for_users(self, user_id_hashes: list[str], since_ts: int = 0) -> dict[str, dict]:
+        """Return {hash: {n_qa, last_ts}} for hashes with any qa_log rows.
+
+        Hashes with no activity in the window are omitted. Used by the stats
+        page to show which registered web users have actually used the bot.
+        """
+        if not user_id_hashes:
+            return {}
+        placeholders = ",".join("?" * len(user_id_hashes))
+        with self._lock, self._connect() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT user_id_hash, COUNT(*), MAX(ts)
+                FROM qa_log
+                WHERE ts >= ? AND user_id_hash IN ({placeholders})
+                GROUP BY user_id_hash
+                """,
+                (since_ts, *user_id_hashes),
+            ).fetchall()
+        return {r[0]: {"n_qa": int(r[1] or 0), "last_ts": int(r[2] or 0)} for r in rows}
 
 
 __all__ = ["LogDB"]

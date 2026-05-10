@@ -82,6 +82,27 @@
       "stats.th.avgms": "snitt ms",
       "stats.empty": "ingen data än",
       "stats.back": "← Tillbaka",
+      "stats.topics.title": "Per ämne",
+      "stats.users.title": "Registrerade webbanvändare",
+      "stats.users.summary": "{active} av {total} registrerade användare har testat boten",
+      "stats.users.th.username": "användare",
+      "stats.users.th.n": "frågor",
+      "stats.users.th.last": "senast",
+      "stats.range.72h": "72 h",
+      "stats.range.14d": "14 dagar",
+      "stats.range.90d": "90 dagar",
+      "stats.chart.requests": "Frågor över tid",
+      "stats.chart.tokens": "Tokens (in/ut)",
+      "stats.chart.feedback": "Andel 👍",
+      "stats.chart.logy": "log y",
+      "stats.chart.requests.total": "totalt",
+      "stats.chart.requests.answered": "besvarade",
+      "stats.chart.requests.refused": "avvisade",
+      "stats.chart.tokens.prompt": "prompt",
+      "stats.chart.tokens.gen": "genererat",
+      "stats.chart.feedback.ratio": "👍 / (👍+👎)",
+      "stats.chart.feedback.pos_total": "👍 / svar",
+      "stats.chart.feedback.neg_total": "👎 / svar",
     },
     en: {
       "brand.name": "Lux - adminbot",
@@ -157,6 +178,27 @@
       "stats.th.avgms": "avg ms",
       "stats.empty": "no data yet",
       "stats.back": "← Back",
+      "stats.topics.title": "By topic",
+      "stats.users.title": "Registered web users",
+      "stats.users.summary": "{active} of {total} registered users have tried the bot",
+      "stats.users.th.username": "username",
+      "stats.users.th.n": "questions",
+      "stats.users.th.last": "last seen",
+      "stats.range.72h": "72 h",
+      "stats.range.14d": "14 days",
+      "stats.range.90d": "90 days",
+      "stats.chart.requests": "Requests over time",
+      "stats.chart.tokens": "Tokens (in/out)",
+      "stats.chart.feedback": "👍 fraction",
+      "stats.chart.logy": "log y",
+      "stats.chart.requests.total": "total",
+      "stats.chart.requests.answered": "answered",
+      "stats.chart.requests.refused": "refused",
+      "stats.chart.tokens.prompt": "prompt",
+      "stats.chart.tokens.gen": "generated",
+      "stats.chart.feedback.ratio": "👍 / (👍+👎)",
+      "stats.chart.feedback.pos_total": "👍 / answers",
+      "stats.chart.feedback.neg_total": "👎 / answers",
     },
   };
 
@@ -209,6 +251,7 @@
     localStorage.setItem(STORE_KEY, lang);
     applyTranslations();
     updateSwitchUI();
+    document.dispatchEvent(new CustomEvent("i18n:langchange", { detail: { lang } }));
   }
 
   function wireSwitch() {

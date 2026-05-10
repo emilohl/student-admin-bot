@@ -404,6 +404,8 @@ class StudentBot:
             latency_ms=result.latency_ms,
             question_expanded=result.expanded_question or None,
             jargon_hits=[e.key for e in result.jargon_hits] or None,
+            prompt_tokens=result.context_tokens_est,
+            gen_tokens=result.gen_tokens_est,
         )
 
         # Topic classification runs AFTER the user has their answer so it

@@ -29,6 +29,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
+    JSONResponse,
     StreamingResponse,
 )
 from fastapi.staticfiles import StaticFiles
@@ -48,7 +49,7 @@ from student_bot.config import Config, get_config
 from student_bot.jargon import Jargon, _nfc_lower, _read_json, _write_json
 from student_bot.logging_db import LogDB
 from student_bot.version import get_version
-from student_bot.web.auth import require_access
+from student_bot.web.auth import list_usernames, require_access
 from student_bot.web.md_render import render_file
 
 
@@ -210,6 +211,11 @@ def create_app(cfg: Config | None = None) -> FastAPI:
     def stats(request: Request):
         require_access(request, cfg)
         return _stats_page(cfg, db, base_path)
+
+    @app.get(_join_base(base_path, "/stats/series"))
+    def stats_series(request: Request, range: str = "72h"):
+        require_access(request, cfg)
+        return _stats_series_response(db, range)
 
     @app.get(_join_base(base_path, "/glossary"), response_class=HTMLResponse)
     def glossary(request: Request):
@@ -460,6 +466,8 @@ def _stream_answer(
             latency_ms=result.latency_ms,
             question_expanded=result.expanded_question or None,
             jargon_hits=[e.key for e in result.jargon_hits] or None,
+            prompt_tokens=result.context_tokens_est,
+            gen_tokens=result.gen_tokens_est,
         )
 
         if qa_id is not None and cfg.topics.enabled:
@@ -684,8 +692,8 @@ _HEADER_HTML = """\
 # Loaded into <head> on every server-rendered page, before notice.js, so
 # data-i18n attributes are translated before any other scripts run.
 _NOTICE_SCRIPT = (
-    '<script src="{static_prefix}/i18n.js?v=22"></script>'
-    '<script src="{static_prefix}/notice.js?v=22" defer></script>'
+    '<script src="{static_prefix}/i18n.js?v=23"></script>'
+    '<script src="{static_prefix}/notice.js?v=23" defer></script>'
 )
 
 
@@ -704,7 +712,7 @@ def _about_page(cfg: Config, base_path: str = "") -> HTMLResponse:
     )
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="{static_prefix}/style.css?v=22">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<link rel="stylesheet" href="{static_prefix}/style.css?v=23">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
 <body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix)}<main>{_NOTICE_HTML}<div class="card">
 <h2 data-i18n="about.h2.what"></h2>
 <p data-i18n="about.what.body"></p>
@@ -746,7 +754,7 @@ def _glossary_page(cfg: Config, base_path: str = "") -> HTMLResponse:
     )
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="{static_prefix}/style.css?v=22">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<link rel="stylesheet" href="{static_prefix}/style.css?v=23">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
 <body>{_HEADER_HTML.format(tagline_html='<p class="tagline" data-i18n="glossary.tagline"></p>', static_prefix=static_prefix)}
 <main>{_NOTICE_HTML}<div class="card">
 <table border="1" cellpadding="6" cellspacing="0" style="width:100%; border-collapse: collapse;">
@@ -857,7 +865,7 @@ def _md_doc_page(cfg: Config, docs_dir: Path, rel_source: str, base_path: str = 
 
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>{_h(doc.title)}</title>
-<link rel="stylesheet" href="{static_prefix}/style.css?v=22">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<link rel="stylesheet" href="{static_prefix}/style.css?v=23">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
 <body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix)}
 <main><div class="card md-doc">
 <nav class="md-nav">
@@ -873,35 +881,158 @@ def _md_doc_page(cfg: Config, docs_dir: Path, rel_source: str, base_path: str = 
     return HTMLResponse(body)
 
 
+_STATS_RANGES: dict[str, tuple[int, int]] = {
+    # range key -> (bucket_seconds, span_seconds)
+    "72h": (3600, 72 * 3600),
+    "14d": (6 * 3600, 14 * 86400),
+    "90d": (86400, 90 * 86400),
+}
+
+
+def _stats_series_response(db: LogDB, range_key: str) -> JSONResponse:
+    spec = _STATS_RANGES.get(range_key)
+    if spec is None:
+        raise HTTPException(400, f"unknown range '{range_key}'")
+    bucket_seconds, span_seconds = spec
+    since = int(time.time()) - span_seconds
+    return JSONResponse(
+        {
+            "range": range_key,
+            "bucket_seconds": bucket_seconds,
+            "since_ts": since,
+            "now_ts": int(time.time()),
+            "buckets": db.series_buckets(since, bucket_seconds),
+        }
+    )
+
+
+def _format_relative_ts(now: int, ts: int) -> str:
+    """Compact relative time (e.g. '3h', '2d') for the user-activity table."""
+    if ts <= 0:
+        return "—"
+    delta = max(0, now - ts)
+    if delta < 60:
+        return "<1m"
+    if delta < 3600:
+        return f"{delta // 60}m"
+    if delta < 86400:
+        return f"{delta // 3600}h"
+    if delta < 30 * 86400:
+        return f"{delta // 86400}d"
+    return f"{delta // (30 * 86400)}mo"
+
+
 def _stats_page(cfg: Config, db: LogDB, base_path: str = "") -> HTMLResponse:
     overall = db.overall_counts()
     by_topic = db.stats_by_topic()
     static_prefix = _join_base(base_path, "/static")
     home = _join_base(base_path, "/") or "/"
-    rows = (
-        "".join(
-            f"<tr><td>{r['topic']}</td><td>{r['n']}</td><td>{r['answered']}</td>"
-            f"<td>{r['avg_latency_ms']}</td>"
-            f"<td>{r['thumbs_up']}</td><td>{r['thumbs_down']}</td></tr>"
+
+    # Registered web users → cross-reference qa_log via the same hash the bot
+    # already uses. No new schema; activity is derived per request.
+    registered = list_usernames(cfg)
+    hash_to_user = {db.hash_user(f"basic:{u}"): u for u in registered}
+    activity = db.activity_for_users(list(hash_to_user.keys())) if hash_to_user else {}
+    now_ts = int(time.time())
+    user_rows_data = [
+        {
+            "username": hash_to_user[h],
+            "n_qa": a["n_qa"],
+            "last_ts": a["last_ts"],
+        }
+        for h, a in activity.items()
+    ]
+    user_rows_data.sort(key=lambda r: (-r["n_qa"], r["username"]))
+    if user_rows_data:
+        user_rows = "".join(
+            f'<tr><td class="text">{_h(r["username"])}</td>'
+            f'<td class="num">{r["n_qa"]}</td>'
+            f'<td class="num">{_format_relative_ts(now_ts, r["last_ts"])}</td></tr>'
+            for r in user_rows_data
+        )
+    else:
+        user_rows = '<tr><td colspan="3" class="text" data-i18n="stats.empty"></td></tr>'
+    n_active = len(user_rows_data)
+    n_total = len(registered)
+
+    if by_topic:
+        topic_rows = "".join(
+            f'<tr><td class="text">{_h(r["topic"])}</td>'
+            f'<td class="num">{r["n"]}</td>'
+            f'<td class="num">{r["answered"]}</td>'
+            f'<td class="num">{r["avg_latency_ms"]}</td>'
+            f'<td class="num">{r["thumbs_up"]}</td>'
+            f'<td class="num">{r["thumbs_down"]}</td></tr>'
             for r in by_topic
         )
-        or '<tr><td colspan="6" data-i18n="stats.empty"></td></tr>'
-    )
+    else:
+        topic_rows = '<tr><td colspan="6" class="text" data-i18n="stats.empty"></td></tr>'
+
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="{static_prefix}/style.css?v=22">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
-<body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix)}<main>{_NOTICE_HTML}<div class="card">
-<p data-i18n="stats.summary"
+<link rel="stylesheet" href="{static_prefix}/style.css?v=23">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix)}<main>{_NOTICE_HTML}<div class="card stats-card">
+<h1 data-i18n="stats.title"></h1>
+<p class="stats-summary" data-i18n="stats.summary"
    data-logged="{overall["logged"]}"
    data-answered="{overall["answered"]}"
    data-latency="{overall["avg_latency_ms"]}"
    data-anon="{overall["anon"]}"></p>
-<table border="1" cellpadding="6" cellspacing="0">
-<thead><tr><th data-i18n="stats.th.topic"></th><th data-i18n="stats.th.n"></th><th data-i18n="stats.th.answered"></th>
-<th data-i18n="stats.th.avgms"></th><th>👍</th><th>👎</th></tr></thead>
-<tbody>{rows}</tbody></table>
+
+<section class="stats-charts">
+  <div class="stats-controls">
+    <div class="stats-ranges" role="group">
+      <button type="button" data-range="72h" data-i18n="stats.range.72h"></button>
+      <button type="button" data-range="14d" data-i18n="stats.range.14d"></button>
+      <button type="button" data-range="90d" data-i18n="stats.range.90d"></button>
+    </div>
+    <label class="stats-logy">
+      <input type="checkbox" id="stats-logy">
+      <span data-i18n="stats.chart.logy"></span>
+    </label>
+  </div>
+  <h3 data-i18n="stats.chart.requests"></h3>
+  <canvas id="chart-requests" height="220"></canvas>
+  <h3 data-i18n="stats.chart.tokens"></h3>
+  <canvas id="chart-tokens" height="220"></canvas>
+  <h3 data-i18n="stats.chart.feedback"></h3>
+  <canvas id="chart-feedback" height="160"></canvas>
+</section>
+
+<section class="stats-users">
+  <h2 data-i18n="stats.users.title"></h2>
+  <p class="stats-users-summary" data-i18n="stats.users.summary"
+     data-active="{n_active}" data-total="{n_total}"></p>
+  <table class="stats-table stats-users-table">
+    <thead><tr>
+      <th class="text" data-i18n="stats.users.th.username"></th>
+      <th class="num" data-i18n="stats.users.th.n"></th>
+      <th class="num" data-i18n="stats.users.th.last"></th>
+    </tr></thead>
+    <tbody>{user_rows}</tbody>
+  </table>
+</section>
+
+<section class="stats-topics">
+  <h2 data-i18n="stats.topics.title"></h2>
+  <table class="stats-table stats-topics-table">
+    <thead><tr>
+      <th class="text" data-i18n="stats.th.topic"></th>
+      <th class="num" data-i18n="stats.th.n"></th>
+      <th class="num" data-i18n="stats.th.answered"></th>
+      <th class="num" data-i18n="stats.th.avgms"></th>
+      <th class="num">👍</th>
+      <th class="num">👎</th>
+    </tr></thead>
+    <tbody>{topic_rows}</tbody>
+  </table>
+</section>
+
 <p><a href="{home}" data-i18n="stats.back"></a></p>
-</div></main></body></html>
+</div></main>
+<script src="{static_prefix}/vendor/chart.umd.min.js?v=23"></script>
+<script src="{static_prefix}/stats.js?v=23" defer></script>
+</body></html>
 """
     return HTMLResponse(body)
 

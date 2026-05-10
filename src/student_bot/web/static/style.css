@@ -229,3 +229,56 @@ button:disabled { opacity: 0.5; cursor: progress; }
    doc pages. `<html lang="...">` is kept in sync by i18n.js setLang. */
 html[lang="sv"] .lang-en { display: none; }
 html[lang="en"] .lang-sv { display: none; }
+
+/* --- /stats page --- */
+.stats-card { max-width: 980px; margin: 0 auto; }
+.stats-card h1 { margin-top: 0; }
+.stats-card h2 { margin-top: 1.6em; }
+.stats-card h3 { margin: 1em 0 0.4em; font-size: 14px; color: var(--muted); font-weight: 600; }
+.stats-summary { color: var(--muted); }
+
+.stats-table { width: 100%; border-collapse: collapse; margin: 0.4rem 0 0.8rem; }
+.stats-table th,
+.stats-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); }
+.stats-table thead th {
+  background: var(--kth-sand);
+  color: var(--fg);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+.stats-table tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--kth-sand) 35%, transparent);
+}
+.stats-table th.num,
+.stats-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.stats-table th.text,
+.stats-table td.text { text-align: left; }
+
+.stats-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 8px 0 4px;
+}
+.stats-ranges { display: inline-flex; gap: 4px; }
+.stats-ranges button {
+  background: var(--card);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  padding: 4px 12px;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.stats-ranges button:hover { border-color: var(--accent); }
+.stats-ranges button.active {
+  background: var(--accent);
+  color: var(--kth-white);
+  border-color: var(--accent);
+}
+.stats-logy { font-size: 13px; color: var(--muted); user-select: none; }
+.stats-logy input { vertical-align: middle; margin-right: 4px; }
+
+.stats-charts canvas { max-width: 100%; }
+.stats-users-summary { color: var(--muted); }

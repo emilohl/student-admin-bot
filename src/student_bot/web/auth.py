@@ -74,6 +74,14 @@ def verify_password(password: str, record: str) -> bool:
     return hmac.compare_digest(actual, expected)
 
 
+def list_usernames(cfg: Config) -> list[str]:
+    """Return registered web usernames (sorted), or [] if no file configured."""
+    if not cfg.web.users_file:
+        return []
+    users_path = cfg.absolute(Path(cfg.web.users_file))
+    return sorted(load_users_file(users_path).keys())
+
+
 def load_users_file(path: Path) -> dict[str, str]:
     """Parse '<user>:<password_record>' per line. Lines starting with # ignored."""
     users: dict[str, str] = {}
@@ -184,6 +192,7 @@ __all__ = [
     "hash_password",
     "verify_password",
     "load_users_file",
+    "list_usernames",
     "check_token_grant",
     "basic_auth",
     "require_access",
