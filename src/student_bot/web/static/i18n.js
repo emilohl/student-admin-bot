@@ -10,7 +10,7 @@
   const T = {
     sv: {
       "brand.name": "Lux - adminbot",
-      "header.tagline": "Administrativ Q&A-bot för KTH CTFYS · baserad på officiella styrdokument och FAQ",
+      "header.tagline": "Administrativ Q&A-bot för KTH · baserad på officiella styrdokument och FAQ",
 
       "notice.title": "Experimentell testtjänst.",
       "notice.body": " Servern har begränsade resurser och språkmodellen är liten — svar kan vara långsamma och inte alltid korrekta. Första frågan kan ta extra lång tid medan modellen laddas. Använd gärna 👍 eller 👎 på svaren — feedback hjälper oss att förbättra tjänsten.",
@@ -30,6 +30,10 @@
       "chat.thinking": "tänker…",
       "chat.thinking_phase": "funderar…",
       "chat.newthread": "ny tråd",
+      "chat.export": "Exportera",
+      "chat.export.title": "Ladda ner konversationen som Markdown",
+      "export.user_default": "Användare",
+      "export.sources_heading": "Källor",
       "perf.context": "Kontext",
       "perf.tokens": "Generering",
       "perf.system": "System",
@@ -112,7 +116,7 @@
     },
     en: {
       "brand.name": "Lux - adminbot",
-      "header.tagline": "Administrative Q&A bot for KTH CTFYS · grounded in official steering documents and FAQs",
+      "header.tagline": "Administrative Q&A bot for KTH · grounded in official steering documents and FAQs",
 
       "notice.title": "Experimental test service.",
       "notice.body": " The server has limited resources and the language model is small — responses may be slow and not always correct. The first question can take noticeably longer while the model loads. Please use 👍 or 👎 on the replies — feedback helps us improve the service.",
@@ -132,6 +136,10 @@
       "chat.thinking": "thinking…",
       "chat.thinking_phase": "is thinking…",
       "chat.newthread": "new thread",
+      "chat.export": "Export",
+      "chat.export.title": "Download the conversation as Markdown",
+      "export.user_default": "User",
+      "export.sources_heading": "Sources",
       "perf.context": "Context",
       "perf.tokens": "Generation",
       "perf.system": "System",

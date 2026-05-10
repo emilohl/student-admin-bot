@@ -672,14 +672,17 @@ _NOTICE_HTML = """\
 """
 
 # Shared header: centered brand cluster (KTH logo + title + Fraktur F)
-# with the language switch on the right. {tagline_html} is replaced per page.
+# with the language switch on the right. {tagline_html} is replaced per page;
+# {home} is the chat-home URL the brand title links back to.
 _HEADER_HTML = """\
 <header>
   <div class="brand">
     <img src="{static_prefix}/KTH_logo_RGB_bla.svg" alt="KTH" class="logo logo-kth">
-    <div class="brand-text">
-      <h1 data-i18n="brand.name"></h1>{tagline_html}
-    </div>
+    <a class="brand-link" href="{home}">
+      <div class="brand-text">
+        <h1 data-i18n="brand.name"></h1>{tagline_html}
+      </div>
+    </a>
     <img src="{static_prefix}/FrakturF2020.svg" alt="Fysiksektionen" class="logo logo-fyssek">
   </div>
   <div class="lang-switch" role="group" aria-label="Language">
@@ -692,8 +695,8 @@ _HEADER_HTML = """\
 # Loaded into <head> on every server-rendered page, before notice.js, so
 # data-i18n attributes are translated before any other scripts run.
 _NOTICE_SCRIPT = (
-    '<script src="{static_prefix}/i18n.js?v=26"></script>'
-    '<script src="{static_prefix}/notice.js?v=26" defer></script>'
+    '<script src="{static_prefix}/i18n.js?v=27"></script>'
+    '<script src="{static_prefix}/notice.js?v=27" defer></script>'
 )
 
 
@@ -705,15 +708,21 @@ def _about_page(cfg: Config, base_path: str = "") -> HTMLResponse:
     # server-side and append it after the translatable tip text.
     cl_html = f' (<a href="{link}">{link}</a>)' if link else ""
     version = get_version()
+    # Inline on the same row as the repo link, muted gray, so the version
+    # doesn't draw attention unless someone looks for it. Empty when
+    # `get_version()` can't determine anything (no STUDENT_BOT_VERSION env
+    # var, no `.git/` — typical inside Docker builds without the build arg).
     version_html = (
-        f' (<a href="{version.link}" target="_blank" rel="noopener">{version.display}</a>)'
+        f' <span class="version"> · '
+        f'<a href="{version.link}" target="_blank" rel="noopener">{version.display}</a>'
+        f"</span>"
         if version.display
         else ""
     )
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="{static_prefix}/style.css?v=26">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
-<body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix)}<main>{_NOTICE_HTML}<div class="card">
+<link rel="stylesheet" href="{static_prefix}/style.css?v=27">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix, home=home)}<main>{_NOTICE_HTML}<div class="card">
 <h2 data-i18n="about.h2.what"></h2>
 <p data-i18n="about.what.body"></p>
 
@@ -754,8 +763,8 @@ def _glossary_page(cfg: Config, base_path: str = "") -> HTMLResponse:
     )
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="{static_prefix}/style.css?v=26">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
-<body>{_HEADER_HTML.format(tagline_html='<p class="tagline" data-i18n="glossary.tagline"></p>', static_prefix=static_prefix)}
+<link rel="stylesheet" href="{static_prefix}/style.css?v=27">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<body>{_HEADER_HTML.format(tagline_html='<p class="tagline" data-i18n="glossary.tagline"></p>', static_prefix=static_prefix, home=home)}
 <main>{_NOTICE_HTML}<div class="card">
 <table border="1" cellpadding="6" cellspacing="0" style="width:100%; border-collapse: collapse;">
 <thead><tr><th data-i18n="glossary.th.term"></th><th data-i18n="glossary.th.meaning"></th><th data-i18n="glossary.th.def"></th><th data-i18n="glossary.th.lang"></th></tr></thead>
@@ -865,8 +874,8 @@ def _md_doc_page(cfg: Config, docs_dir: Path, rel_source: str, base_path: str = 
 
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>{_h(doc.title)}</title>
-<link rel="stylesheet" href="{static_prefix}/style.css?v=26">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
-<body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix)}
+<link rel="stylesheet" href="{static_prefix}/style.css?v=27">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix, home=home)}
 <main><div class="card md-doc">
 <nav class="md-nav">
   <a href="{home}"><span class="lang-sv">← Tillbaka till chatten</span><span class="lang-en">← Back to the chat</span></a>
@@ -1063,8 +1072,8 @@ def _stats_page(
 
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="{static_prefix}/style.css?v=26">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
-<body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix)}<main>{_NOTICE_HTML}<div class="card stats-card" data-channel="{channel}">
+<link rel="stylesheet" href="{static_prefix}/style.css?v=27">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix, home=home)}<main>{_NOTICE_HTML}<div class="card stats-card" data-channel="{channel}">
 <h1 data-i18n="stats.title"></h1>
 {channel_switch_html}
 <p class="stats-summary" data-i18n="stats.summary"
@@ -1123,8 +1132,8 @@ def _stats_page(
 
 <p><a href="{home}" data-i18n="stats.back"></a></p>
 </div></main>
-<script src="{static_prefix}/vendor/chart.umd.min.js?v=26"></script>
-<script src="{static_prefix}/stats.js?v=26" defer></script>
+<script src="{static_prefix}/vendor/chart.umd.min.js?v=27"></script>
+<script src="{static_prefix}/stats.js?v=27" defer></script>
 </body></html>
 """
     return HTMLResponse(body)

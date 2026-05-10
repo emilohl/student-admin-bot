@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="sv">
+
+<head>
+  <title>Civilingenjörsutbildning i farkostteknik (CFATE), Utbildningsplan kull HT2023, Årskurs 3 | KTH</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="">
+  <link rel="shortcut icon" id="favicon" href="/student/kurser/static/icon/favicon">
+
+
+  
+  
+  
+
+  <link href="/student/kurser/static/kth-style/css/kth-bootstrap.css?v=2.0.0-20260427.1_59b0" media="screen" rel="stylesheet">
+<link href="/student/kurser/assets/fonts.css?v=2.0.0-20260427.1_59b0" media="screen" rel="stylesheet">
+<link href="/student/kurser/static/app.css?v=2.0.0-20260427.1_59b0" media="screen" rel="stylesheet">
+
+    
+
+
+
+
+  <!-- Begin JavaScript contentId-1_1137647 -->
+  <script>var klaroConfig = {
+    testing: false,
+  acceptAll: true,
+  styling: {
+      theme: [],
+  },
+  htmlTexts: false,
+  groupByPurpose: false,
+  storageMethod: 'cookie',
+  cookieDomain: 'kth.se',
+  cookieExpiresAfterDays: 30,
+  hideDeclineAll: false,
+  translations: {
+      sv: {
+          service: {
+            disableAll: {
+              description: 'Använd detta reglage för att tillåta alla tjänster eller endast nödvändiga.',
+              title: 'Ändra för alla tjänster',
+            },
+          },
+          consentModal: {
+            description:
+              'Här kan du se och anpassa vilken information vi samlar om dig.',
+          },
+          privacyPolicy: {
+              name: 'kakor',
+              text: 'Läs mer om hur vi hanterar {privacyPolicy}.',
+          },
+          privacyPolicyUrl: 'https://www.kth.se/gemensamt/om-kakor-cookies-pa-kth-s-webbplats-1.844',
+          consentNotice: {
+              title: '',
+              testing: 'Observera att Klaro körs i testläge',
+              description: 'Denna webbplats använder tjänster som kan lagra information om dig och hur du använder denna webbplats. Vissa tjänster är nödvändiga för att webbplatsen ska fungera och andra är valbara.',
+              learnMore: 'Hantera valbara tjänster',
+          },
+          decline: 'Tillåt bara nödvändiga tjänster',
+          ok: 'Tillåt alla tjänster',
+          purposeItem: {
+              service: 'Tjänster'
+          },
+            contextualConsent:{
+                acceptAlways: 'Alltid',
+                acceptOnce: 'Ja',
+                description: 'Du har tidigare nekat visning av innehåll av typen "{title}". Vill du visa innehållet?',
+          }
+      },
+      en: {
+          service: {
+            disableAll: {
+              description: 'Use this slider to allow all cookies or only necessary.',
+              title: 'Change for all services',
+            },
+          },
+        consentModal: {
+            description:
+              'Here you can assess and customise the services we use on this website.',
+          },
+          privacyPolicy: {
+              name: 'cookies',
+              text: 'Find out more about our usage of {privacyPolicy}.',
+          },
+          privacyPolicyUrl: 'https://www.kth.se/en/gemensamt/om-kakor-cookies-pa-kth-s-webbplats-1.844',
+          consentNotice: {
+              title: '',
+              testing: 'Please note that Klaro is currently running in test mode',
+              description: 'This website uses services that may store information about you and how you use the website. Some services are necessary for the website to work, and others are optional.',
+              learnMore: 'Manage services',
+          },
+          decline: 'Accept only necessary services',
+          ok: 'Accept all services',
+          purposeItem: {
+              service: 'Services'
+          },
+            contextualConsent:{
+                acceptAlways: 'Always',
+                acceptOnce: 'Yes',
+                description: 'You have previously denied the display of content of the type "{title}". Do you want to show content?',
+          }
+      }
+  },
+  services: [
+      {
+          name: "required-consent",
+          default: true,
+          contextualConsentOnly: false,
+          required: true,
+          translations: {
+              zz: {
+                  title: 'Required Services',
+                  description: 'These services are necessary for the site to function and cannot be turned off. They are usually used when you utilise a function on the website that needs an answer, such as setting cookies, logging in, or filling in a form.'
+              },
+              sv: {
+                  title: 'Nödvändiga tjänster',
+                  description: 'Dessa tjänster är nödvändiga för att webbplatsen ska fungera och kan inte stängas av. De används främst när du nyttjar en funktion på webbplatsen som behöver ett svar, exempelvis ställer in kakor, loggar in eller fyller i formulär.'
+              },
+          },
+      },
+      {
+          name: "media-consent",
+          default: false,
+          translations: {
+              zz: {
+                  title: 'External media',
+                  description: 'Media on the site embedded from external providers like Youtube, Vimeo and Kaltura. When these are played, the providers may use cookies and local storage.'
+              },
+              sv: {
+                  title: 'Extern media',
+                  description: 'Inbäddad media från externa leverantörer som Youtube, Vimeo och Kaltura. När media spelas upp kan leverantörerna använda sig av kakor och lokal lagring.'
+              },
+          },
+      },
+      {
+        name: "service-consent",
+        default: false,
+        translations: {
+          zz: {
+            title: 'External Services',
+            description: 'Embedded services by external providers such as forms, maps, chat applications et c. When these are loaded, the providers may use cookies and local storage.'
+          },
+          sv: {
+            title: 'Externa tjänster',
+            description: 'Inbäddade tjänster från externa leverantörer såsom formulär, kartor, chat-funktion et c. När tjänsterna laddas in kan leverantörerna använda sig av kakor och lokal lagring.'
+          },
+        },
+      },
+      {
+          name: "analytics-consent",
+          default: false,
+          translations: {
+              zz: {
+                  title: 'Analytics and Tracking',
+                  description: 'The website uses Matomo to evaluate and improve the website content, experience and structure. The information collected is anonymised and only stored at KTH servers.'
+              },
+              sv: {
+                  title: 'Analys och spårning',
+                  description: 'Webbplatsen använder Matomo för att utvärdera och förbättra webbplatsens innehåll, upplevelse och struktur. Insamlandet av informationen anonymiseras och lagras enbart på KTH-servrar.'
+              },
+          },
+      },
+      {
+        name: "marketing-consent",
+        default: false,
+        translations: {
+            zz: {
+                title: 'Marketing',
+                description: 'The website contains pages that, via cookies, communicate with advertising services and social media.'
+            },
+            sv: {
+                title: 'Marknadsföring',
+                description: 'På webbplatsen förekommer sidor som via kakor kommunicerar med annonseringstjänster och sociala medier.'
+            },
+        },
+    }
+    
+  ]
+}</script>
+  
+  
+  <!-- End JavaScript contentId-1_1137647 -->
+
+
+
+    
+
+  
+  
+  
+  <script src="/student/kurser/static/kth-style/js/klaro-no-css.js?v=2.0.0-20260427.1_59b0"></script>
+<script src="/student/kurser/static/vendor.js?v=2.0.0-20260427.1_59b0"></script>
+<script src="/student/kurser/static/browserConfig?v=2.0.0-20260427.1_59b0"></script>
+<script src="/student/kurser/static/kth-style/js/backtotop.js?v=2.0.0-20260427.1_59b0"></script>
+
+  <script src="https://www.kth.se/social/toolbar/widget.js"></script>
+
+</head>
+
+<body>
+  <a class="skipToMainContent" href="#mainContent" tabindex="1">Hoppa till huvudinnehållet</a>
+  <!--indexOff: all-->
+  <header class="kth-header student-web">
+    <div class="kth-header__container">
+      <a href="/student" class="kth-logotype">
+        <figure>
+          <img class="blue" alt="Till KTH:s startsida" width="64" height="64" src="/student/kurser/assets/logotype/logotype-blue.svg">
+        </figure>
+      </a>      
+  
+  
+  
+  
+  
+    <nav class="kth-mega-menu" aria-label="Huvudmeny" data-ajax-path="/cm/1.1066510?l=sv&amp;contentIdPath=/2.75593/1.1066510/&amp;target=">
+      <ul>
+        
+          <li><button data-id="1.1066571" class="kth-menu-item dropdown">
+              <span>
+                Studier
+              </span>
+            </button>
+            <dialog class="kth-menu-panel">
+              <div class="kth-menu-panel__container">
+                <div class="kth-menu-panel__header">
+                  <div>
+                    <a href="/student/studier">
+                      <h2>
+                        Studier
+                      </h2>
+                    </a>
+                  </div>
+                  <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                    <span class="kth-visually-hidden">close</span>
+                  </button>
+                </div>
+                <div class="kth-menu-panel__content"></div>
+              </div>
+            </dialog>
+          </li>
+          <li><button data-id="1.1070324" class="kth-menu-item dropdown">
+              <span>
+                Stöd och vägledning
+              </span>
+            </button>
+            <dialog class="kth-menu-panel">
+              <div class="kth-menu-panel__container">
+                <div class="kth-menu-panel__header">
+                  <div>
+                    <a href="/student/stod">
+                      <h2>
+                        Stöd och vägledning
+                      </h2>
+                    </a>
+                  </div>
+                  <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                    <span class="kth-visually-hidden">close</span>
+                  </button>
+                </div>
+                <div class="kth-menu-panel__content"></div>
+              </div>
+            </dialog>
+          </li>
+          <li><button data-id="1.1178595" class="kth-menu-item dropdown">
+              <span>
+                IT och digitala tjänster
+              </span>
+            </button>
+            <dialog class="kth-menu-panel">
+              <div class="kth-menu-panel__container">
+                <div class="kth-menu-panel__header">
+                  <div>
+                    <a href="/student/it">
+                      <h2>
+                        IT och digitala tjänster
+                      </h2>
+                    </a>
+                  </div>
+                  <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                    <span class="kth-visually-hidden">close</span>
+                  </button>
+                </div>
+                <div class="kth-menu-panel__content"></div>
+              </div>
+            </dialog>
+          </li>
+          <li><button data-id="1.1178638" class="kth-menu-item dropdown">
+              <span>
+                Kontakt
+              </span>
+            </button>
+            <dialog class="kth-menu-panel">
+              <div class="kth-menu-panel__container">
+                <div class="kth-menu-panel__header">
+                  <div>
+                    <a href="/student/kontakt">
+                      <h2>
+                        Kontakt
+                      </h2>
+                    </a>
+                  </div>
+                  <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                    <span class="kth-visually-hidden">close</span>
+                  </button>
+                </div>
+                <div class="kth-menu-panel__content"></div>
+              </div>
+            </dialog>
+          </li>
+        
+      </ul>
+    </nav>
+  
+    <!-- Mobile menu -->
+    <nav class="kth-mega-menu--collapsable">
+      <dialog class="kth-mobile-menu">
+        <div class="kth-mobile-menu__navigation">
+          <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+            <span class="kth-visually-hidden">Close</span>
+          </button>
+        </div>
+        <div class="kth-mobile-menu__content">
+          <ul class="kth-mobile-menu__items">
+            <li>
+              <button class="kth-mobile-menu__item" data-id="1.1066571">
+                <span>
+                  Studier
+                </span>
+              </button>
+              <dialog class="kth-menu-panel--modal">
+                <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                  <span class="kth-visually-hidden">Close</span>
+                </button>
+                <div class="kth-menu-panel__content"></div>
+              </dialog>
+            </li>
+            <li>
+              <button class="kth-mobile-menu__item" data-id="1.1070324">
+                <span>
+                  Stöd och vägledning
+                </span>
+              </button>
+              <dialog class="kth-menu-panel--modal">
+                <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                  <span class="kth-visually-hidden">Close</span>
+                </button>
+                <div class="kth-menu-panel__content"></div>
+              </dialog>
+            </li>
+            <li>
+              <button class="kth-mobile-menu__item" data-id="1.1178595">
+                <span>
+                  IT och digitala tjänster
+                </span>
+              </button>
+              <dialog class="kth-menu-panel--modal">
+                <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                  <span class="kth-visually-hidden">Close</span>
+                </button>
+                <div class="kth-menu-panel__content"></div>
+              </dialog>
+            </li>
+            <li>
+              <button class="kth-mobile-menu__item" data-id="1.1178638">
+                <span>
+                  Kontakt
+                </span>
+              </button>
+              <dialog class="kth-menu-panel--modal">
+                <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                  <span class="kth-visually-hidden">Close</span>
+                </button>
+                <div class="kth-menu-panel__content"></div>
+              </dialog>
+            </li>
+          </ul>
+        </div>
+      </dialog>
+      <dialog class="kth-mobile-menu details" data-id="1.1066571">
+        <div class="kth-mobile-menu__navigation">
+          <button class="kth-button back">Huvudmeny</button>
+          <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+            <span class="kth-visually-hidden">Close</span>
+          </button>
+        </div>
+        <div class="kth-mobile-menu__header">
+          <a href="/student/studier">
+            <h2>
+              Studier
+            </h2>
+          </a>
+        </div>
+        <div class="kth-mobile-menu__content">
+          <div class="kth-mobile-menu__cortina-content"></div>
+        </div>
+      </dialog><dialog class="kth-mobile-menu details" data-id="1.1070324">
+        <div class="kth-mobile-menu__navigation">
+          <button class="kth-button back">Huvudmeny</button>
+          <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+            <span class="kth-visually-hidden">Close</span>
+          </button>
+        </div>
+        <div class="kth-mobile-menu__header">
+          <a href="/student/stod">
+            <h2>
+              Stöd och vägledning
+            </h2>
+          </a>
+        </div>
+        <div class="kth-mobile-menu__content">
+          <div class="kth-mobile-menu__cortina-content"></div>
+        </div>
+      </dialog><dialog class="kth-mobile-menu details" data-id="1.1178595">
+        <div class="kth-mobile-menu__navigation">
+          <button class="kth-button back">Huvudmeny</button>
+          <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+            <span class="kth-visually-hidden">Close</span>
+          </button>
+        </div>
+        <div class="kth-mobile-menu__header">
+          <a href="/student/it">
+            <h2>
+              IT och digitala tjänster
+            </h2>
+          </a>
+        </div>
+        <div class="kth-mobile-menu__content">
+          <div class="kth-mobile-menu__cortina-content"></div>
+        </div>
+      </dialog><dialog class="kth-mobile-menu details" data-id="1.1178638">
+        <div class="kth-mobile-menu__navigation">
+          <button class="kth-button back">Huvudmeny</button>
+          <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+            <span class="kth-visually-hidden">Close</span>
+          </button>
+        </div>
+        <div class="kth-mobile-menu__header">
+          <a href="/student/kontakt">
+            <h2>
+              Kontakt
+            </h2>
+          </a>
+        </div>
+        <div class="kth-mobile-menu__content">
+          <div class="kth-mobile-menu__cortina-content"></div>
+        </div>
+      </dialog>
+    </nav>
+    <!-- Mobile menu -->
+  
+    
+    <script>/* eslint-disable no-unused-expressions, no-unused-vars, no-undef */"use strict";window.addEventListener("load",(()=>{function e(e){return document.querySelector(".kth-mega-menu[data-ajax-path]")?.getAttribute("data-ajax-path")+e}function t(){document.querySelectorAll("dialog").forEach((e=>e.close()))}function n(e){const n=e.querySelector(".kth-icon-button.close");e.addEventListener("keydown",(t=>{"Escape"===t.key&&e.close()})),n instanceof HTMLButtonElement&&n.addEventListener("click",(()=>{t()}))}function o(e,o){n(e),o.addEventListener("click",(n=>{n.preventDefault(),e.open?t():(t(),e.show())})),document.addEventListener("click",(n=>{!e.open||n.composedPath().includes(o)||n.composedPath().includes(e)||(n.preventDefault(),t())}))}function c(e,o,c){const i=e.querySelector(".kth-button.back");n(e),o.addEventListener("click",(n=>{n.preventDefault(),t(),e.showModal()})),i instanceof HTMLButtonElement&&i.addEventListener("click",(()=>{e.close(),c&&c.showModal()}))}var i,l;document.querySelectorAll(".kth-menu-item[data-id], .kth-menu-item--modal[data-id]").forEach((t=>{const n=t.nextElementSibling,o=n?.querySelector(".kth-menu-panel__content");if(!(t instanceof HTMLElement))return;if(!(n instanceof HTMLDialogElement))return;const c=t.dataset.id;let i;function l(){o instanceof HTMLElement&&(i||(i=fetch(e(c)).then((e=>e.text()))),i.then((e=>{o.innerHTML=e})))}t.addEventListener("mouseover",l),t.addEventListener("click",l)})),document.querySelectorAll(".kth-mobile-menu__item[data-id]").forEach((t=>{if(!(t instanceof HTMLElement))return;const n=t.dataset.id,o=document.querySelector(`.kth-mobile-menu[data-id='${n}']`),c=o?.querySelector(".kth-mobile-menu__cortina-content");if(!(o instanceof HTMLDialogElement))return;let i;t.addEventListener("click",(function(){c instanceof HTMLElement&&(i||(i=fetch(e(n)).then((e=>e.text()))),i.then((e=>{c.innerHTML=e})))}))})),function(e,n){if(e){for(const e of n){if(!(e instanceof HTMLElement))continue;const t=e.nextElementSibling;t instanceof HTMLDialogElement&&o(t,e)}e.addEventListener("focusout",(function(n){const o=n.relatedTarget;o&&o instanceof Node&&!e.contains(o)&&t()}))}}(document.querySelector(".kth-header"),document.querySelectorAll(".kth-mega-menu .kth-menu-item")),i=document.querySelector(".kth-menu-item.collapsable"),l=document.querySelector(".kth-mobile-menu"),i instanceof HTMLElement&&l instanceof HTMLDialogElement&&c(l,i),function(e,t){if(!t||t instanceof HTMLDialogElement)for(const n of e){if(!(n instanceof HTMLElement))continue;const e=n.getAttribute("data-id"),o=document.querySelector(`.kth-mobile-menu[data-id='${e}']`);if(!(o instanceof HTMLDialogElement))return;c(o,n,t)}}(document.querySelectorAll(".kth-mobile-menu__item"),document.querySelector(".kth-mobile-menu"))})),window.addEventListener("load",(()=>{const e={threshold:32,className:"collapsed"};function t(e,{threshold:t,className:n}){window.scrollY>t?e?.classList.add(n):e?.classList.remove(n)}!function(n,o=e){t(n,o),window.addEventListener("scroll",(()=>{t(n,o)}))}(document.querySelector(".kth-header"))}));</script>
+  
+  
+  
+      <ul class="kth-header__tools">
+        <li><button class="kth-menu-item search">
+      <span>Sök</span>
+  </button>
+  <dialog class="kth-menu-panel">
+      <div class="kth-menu-panel__container search">
+          <button class="kth-icon-button close">
+              <span class="kth-visually-hidden">Stäng</span>
+          </button>
+          <div class="kth-menu-panel__content">
+                  
+  
+  
+  
+  
+    <div class="block search mainWidget default-size" data-cid="1.1066521" lang="sv">
+      <div id="widget_yhnutasc" class="searchWidgetContainer"><div class="searchWidget"><div class="searchInputBar"><form class="searchInputForm" method="GET" role="search" action="https://www.kth.se/search"><div class="searchAutoCompleteField kth-search"><label for="widget_yhnutasc_search__Field">Sök på Studentwebben</label><input id="widget_yhnutasc_search__Field" name="q" autoComplete="off" type="text" maxLength="1024" value=""/><button type="submit"><span class="kth-visually-hidden">Sök</span></button></div><input type="hidden" name="urlFilter" value="https://www.kth.se/student"/><input type="hidden" name="entityFilter" value="kth-profile,kth-course,kth-place,kth-program,kth-system"/><input type="hidden" name="metaSystemFilter" value=""/><input type="hidden" name="documentFilter" value=""/><input type="hidden" name="filterLabel" value="Sök på Studentwebben"/><input type="hidden" name="l" value="sv"/><input type="hidden" name="noscript" class="noscriptInput" value=""/></form></div><div class="searchAlternativesWidget"><div class="searchAlternativesWidgetLinks"><a href="https://www.kth.se/search?l=sv">Sök på KTH:s webbplats</a><a href="https://intra.kth.se/search?l=sv">Sök på KTH Intranät</a></div></div></div></div>
+  
+  <script>
+    (() => {
+      const SCRIPT_PATH = 'https://www.kth.se/search/static/widget.js?v=2.0.0-20250606.1_9d7abae6'
+      const STYLE_PATH = 'https://www.kth.se/search/static/widget.css?v=2.0.0-20250606.1_9d7abae6'
+      const DATA_PATH = 'https://www.kth.se/search/widgetData.js?widgetId=widget_yhnutasc&filterLabel=S%C3%B6k%20p%C3%A5%20Studentwebben&placeholder=S%C3%B6k%20p%C3%A5%20KTH%3As%20webbplats&urlFilter=https%3A%2F%2Fwww.kth.se%2Fstudent&isFilterRemovable=false&entityFilter=kth-profile%2Ckth-course%2Ckth-place%2Ckth-program%2Ckth-system&l=sv&includeLinks=true'
+      const WIDGET_ID = 'widget_yhnutasc'
+      const scriptAnchor = document.currentScript
+  
+      const observer = new IntersectionObserver((entries, observer) => {
+  
+        if (entries[0].target?.checkVisibility?.()) {
+  
+          if (!window.searchWidgetIsLoaded) {
+  
+            const styleElement = document.createElement('link')
+            styleElement.href = STYLE_PATH
+            styleElement.media = "screen"
+            styleElement.rel = "stylesheet"
+            styleElement.async = 1
+            scriptAnchor.after(styleElement)
+  
+            const scriptElement = document.createElement('script')
+            scriptElement.src = SCRIPT_PATH
+            scriptElement.async = 1
+            scriptAnchor.after(scriptElement)
+          }
+  
+          const dataElement = document.createElement('script')
+          dataElement.src = DATA_PATH
+          dataElement.async = 1
+          scriptAnchor.after(dataElement)
+  
+          window.searchWidgetIsLoaded = true
+          observer.disconnect()
+        }
+      }).observe(document.getElementById(WIDGET_ID))
+    })()
+  </script>
+      
+      <script>/* eslint-disable no-unused-expressions, no-unused-vars, no-undef */"use strict";!function(){function e(){document.querySelectorAll("dialog").forEach((e=>e.close()))}window.addEventListener("load",(function(){document.querySelectorAll(".block.search").forEach((t=>{t.parentElement.className.includes("kth-menu-panel__content")&&function(t,n){if(!(n instanceof HTMLElement))return;const c=n.nextElementSibling;if(!(c instanceof HTMLDialogElement))return;c.addEventListener("keydown",(t=>{"Escape"===t.key&&e()}));const o=c.querySelector(".close");o instanceof HTMLButtonElement&&o.addEventListener("click",(()=>{e()})),n.addEventListener("click",(n=>{n.preventDefault(),c.open?e():(e(),c.show(),function(e){const t=e.querySelector("template");if(null===t)return;const n=t.content;t.replaceWith(n)}(t),function(e){const t=e.querySelector(".searchAutoCompleteField")?.querySelector("input");t&&t.focus()}(c))})),document.addEventListener("click",(t=>{!c.open||t.composedPath().includes(n)||t.composedPath().includes(c)||(t.preventDefault(),e())}))}(t,document.querySelector(".kth-menu-item.search"))}))}))}();</script>
+    </div>
+  
+  
+  
+          </div>
+      </div>
+  </dialog></li>
+        <li><a class="kth-menu-item language" hreflang="en-US" href="?l=en">English</a></li>
+      </ul>
+      <button class="kth-menu-item menu collapsable">
+        <span>Meny</span>
+      </button>
+    </div>
+  </header>
+  <div class="kth-content articleNavigation">
+    <div class="row justify-content-between">
+      
+    <nav id="breadcrumbs" aria-label="Brödsmulor" class="kth-breadcrumbs">
+      <ol class="kth-breadcrumbs__list">
+        <li><a href="/student">Studentwebben</a></li><li><a href="/student/studier">Studier</a></li><li><a href="/student/kurser/kurser-inom-program">Kurs- och programkatalogen</a></li><li><a href="/student/kurser/program/CFATE">Civilingenjörsutbildning i farkostteknik</a></li>
+      </ol>
+    </nav>
+   
+    </div>
+  </div>
+  <!--indexOn: all-->  <div class="kth-content">
+    <div class="row">
+        <script>window.__compressedApplicationStore__ = "%7B%22browserConfig%22%3A%7B%22proxyPrefixPath%22%3A%7B%22uri%22%3A%22%2Fstudent%2Fkurser%22%2C%22searchPage%22%3A%22%2Fstudent%2Fkurser%2Fsokkurs%22%2C%22searchResult%22%3A%22%2Fstudent%2Fkurser%2Fsokkurs%2Fresultat%22%2C%22courseSearchInternApi%22%3A%22%2Fstudent%2Fkurser%2Fintern-api%2Fsok%22%2C%22department%22%3A%22%2Fstudent%2Fkurser%2Forg%22%2C%22programme%22%3A%22%2Fstudent%2Fkurser%2Fprogram%22%2C%22programmesList%22%3A%22%2Fstudent%2Fkurser%2Fkurser-inom-program%22%2C%22schoolsList%22%3A%22%2Fstudent%2Fkurser%2Fprogram%22%2C%22studyHandbook%22%3A%22%2Fstudent%2Fprogram%2Fshb%22%2C%22thirdCycleCourseSearch%22%3A%22%2Futbildning%2Fforskarutbildning%2Fkurser%2Fsok%22%2C%22thirdCycleCourseSearchResult%22%3A%22%2Futbildning%2Fforskarutbildning%2Fkurser%2Fsok%2Fresultat%22%2C%22thirdCycleSchoolsAndDepartments%22%3A%22%2Futbildning%2Fforskarutbildning%2Fkurser%2Favdelning%22%2C%22thirdCycleCoursesPerDepartment%22%3A%22%2Futbildning%2Fforskarutbildning%2Fkurser%2Forg%22%2C%22programmeSyllabusPDF%22%3A%22%2Fstudent%2Fkurser%2Fintern-api%2FPDFRenderFunction%22%7D%2C%22redirectProxyPath%22%3A%7B%22studentRoot%22%3A%22%2Fstudent%2Fkurser%22%2C%22thirdCycleRoot%22%3A%22%2Futbildning%2Fforskarutbildning%2Fkurser%22%2C%22coursesPerDepartment%22%3A%22%2Fstudent%2Fkurser%2Fkurser-per-avdelning%22%2C%22departmentCourses%22%3A%22%2Fstudent%2Fkurser%2Favdelning%2F%3AdepartmentCode%2Fkurser%2F%22%7D%2C%22markHtmlFromKopps%22%3Afalse%2C%22markHtmlFromLadok%22%3Afalse%2C%22env%22%3A%22prod%22%7D%2C%22statusCode%22%3A200%2C%22language%22%3A%22sv%22%2C%22languageIndex%22%3A1%2C%22programmeCode%22%3A%22CFATE%22%2C%22programmeName%22%3A%22Civilingenj%C3%B6rsutbildning%20i%20farkostteknik%22%2C%22owningSchoolCode%22%3A%22SCI%2FSkolan%20f%C3%B6r%20teknikvetenskap%22%2C%22term%22%3A%2220232%22%2C%22studyYear%22%3A%223%22%2C%22curriculums%22%3A%5B%7B%22studyYears%22%3A%5B%7B%22yearNumber%22%3A1%2C%22courses%22%3A%22%3Ch3%20id%3D%5C%22gemensammakurser%5C%22%3EGemensamma%20kurser%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22obligatoriskakurser%5C%22%3EObligatoriska%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1331%3C%2Ftd%3E%5Cn%3Ctd%3EGrundl%C3%A4ggande%20programmering%3C%2Ftd%3E%5Cn%3Ctd%3E5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESD1002%3C%2Ftd%3E%5Cn%3Ctd%3EFarkostteknik%3C%2Ftd%3E%5Cn%3Ctd%3E7%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1626%3C%2Ftd%3E%5Cn%3Ctd%3EFlervariabelanalys%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1668%3C%2Ftd%3E%5Cn%3Ctd%3EMatematisk%20och%20numerisk%20analys%20I%3C%2Ftd%3E%5Cn%3Ctd%3E10%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1694%3C%2Ftd%3E%5Cn%3Ctd%3ETill%C3%A4mpad%20linj%C3%A4r%20algebra%3C%2Ftd%3E%5Cn%3Ctd%3E10.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESG1132%3C%2Ftd%3E%5Cn%3Ctd%3EMekanik%20I%20med%20projekt%3C%2Ftd%3E%5Cn%3Ctd%3E11%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESK1112%3C%2Ftd%3E%5Cn%3Ctd%3EFysik%20I%3C%2Ftd%3E%5Cn%3Ctd%3E9%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22valfriakurser%5C%22%3EValfria%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1301%3C%2Ftd%3E%5Cn%3Ctd%3EDatorintroduktion%3C%2Ftd%3E%5Cn%3Ctd%3E1.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%22%2C%22freeTexts%22%3A%5B%5D%7D%2C%7B%22yearNumber%22%3A2%2C%22courses%22%3A%22%3Ch3%20id%3D%5C%22gemensammakurser%5C%22%3EGemensamma%20kurser%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22obligatoriskakurser%5C%22%3EObligatoriska%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EMF1024%3C%2Ftd%3E%5Cn%3Ctd%3EProduktutveckling%3C%2Ftd%3E%5Cn%3Ctd%3E11%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESD1120%3C%2Ftd%3E%5Cn%3Ctd%3ELjud%20och%20vibrationer%3C%2Ftd%3E%5Cn%3Ctd%3E9%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESE1010%3C%2Ftd%3E%5Cn%3Ctd%3EH%C3%A5llfasthetsl%C3%A4ra%2C%20grundkurs%20med%20projekt%3C%2Ftd%3E%5Cn%3Ctd%3E12%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1682%3C%2Ftd%3E%5Cn%3Ctd%3EAnalytiska%20och%20numeriska%20metoder%20f%C3%B6r%20differentialekvationer%3C%2Ftd%3E%5Cn%3Ctd%3E11%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESG1140%3C%2Ftd%3E%5Cn%3Ctd%3EMekanik%20II%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESG1216%3C%2Ftd%3E%5Cn%3Ctd%3ETermodynamik%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESG1217%3C%2Ftd%3E%5Cn%3Ctd%3EStr%C3%B6mningsmekanik%2C%20grundkurs%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%22%2C%22freeTexts%22%3A%5B%5D%7D%2C%7B%22yearNumber%22%3A3%2C%22courses%22%3A%5B%7B%22utbildningsinstansUid%22%3A%2235cf364c-9eba-11eb-b121-4a7c58ae420f%22%2C%22uid%22%3A%22cd4af35a-bb9f-11ef-9553-beecfac44351%22%2C%22tillfalleskod%22%3A%2250485%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2222%22%2C%22code%22%3A%222007GKURS%22%2C%22name%22%3A%22Kurs%2C%20grundniv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20First-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%221%22%2C%22name%22%3A%22Grundniv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A6%2C%22formattedWithUnit%22%3A%226%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22HT2025%22%2C%22startDay%22%3A%222025-08-25%22%2C%22lastDay%22%3A%222026-01-12%22%2C%22inDigits%22%3A%2220252%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222025-10-23%22%2C%22ForstaUndervisningsdatum%22%3A%222025-10-27%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P2%22%2C%22Omfattningsvarde%22%3A6%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A6%2C%22SistaRegistreringsdatum%22%3A%222025-11-03%22%2C%22SistaUndervisningsdatum%22%3A%222026-01-12%22%7D%5D%2C%22kod%22%3A%22EL1010%22%2C%22benamning%22%3A%22Reglerteknik%2C%20allm%C3%A4n%20kurs%22%2C%22Valvillkor%22%3A%22O%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%222811fdec-5d08-11e9-b67f-a77d6cb34fef%22%2C%22uid%22%3A%22f327814b-b888-11ef-9553-beecfac44351%22%2C%22tillfalleskod%22%3A%2250329%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2222%22%2C%22code%22%3A%222007GKURS%22%2C%22name%22%3A%22Kurs%2C%20grundniv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20First-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%221%22%2C%22name%22%3A%22Grundniv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A6%2C%22formattedWithUnit%22%3A%226%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22HT2025%22%2C%22startDay%22%3A%222025-08-25%22%2C%22lastDay%22%3A%222026-01-12%22%2C%22inDigits%22%3A%2220252%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222025-08-21%22%2C%22ForstaUndervisningsdatum%22%3A%222025-08-25%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P1%22%2C%22Omfattningsvarde%22%3A6%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A6%2C%22SistaRegistreringsdatum%22%3A%222025-09-01%22%2C%22SistaUndervisningsdatum%22%3A%222025-10-24%22%7D%5D%2C%22kod%22%3A%22MF1017%22%2C%22benamning%22%3A%22Elektroteknik%22%2C%22Valvillkor%22%3A%22O%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%227c11c735-73d8-11e8-b4e0-063f9afb40e3%22%2C%22uid%22%3A%22a5ae4629-bbae-11ef-9553-beecfac44351%22%2C%22tillfalleskod%22%3A%2251600%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2224%22%2C%22code%22%3A%222007AKURS%22%2C%22name%22%3A%22Kurs%2C%20avancerad%20niv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20Second-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%222%22%2C%22name%22%3A%22Avancerad%20niv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A6%2C%22formattedWithUnit%22%3A%226%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22HT2025%22%2C%22startDay%22%3A%222025-08-25%22%2C%22lastDay%22%3A%222026-01-12%22%2C%22inDigits%22%3A%2220252%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222025-10-23%22%2C%22ForstaUndervisningsdatum%22%3A%222025-10-27%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P2%22%2C%22Omfattningsvarde%22%3A6%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A6%2C%22SistaRegistreringsdatum%22%3A%222025-11-03%22%2C%22SistaUndervisningsdatum%22%3A%222026-01-12%22%7D%5D%2C%22kod%22%3A%22SD2125%22%2C%22benamning%22%3A%22Signaler%20och%20mekaniska%20system%22%2C%22Valvillkor%22%3A%22O%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%228045d3b8-73d8-11e8-b4e0-063f9afb40e3%22%2C%22uid%22%3A%221a8948bb-ce68-11ef-9bca-bbbddaff469b%22%2C%22tillfalleskod%22%3A%2250468%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2222%22%2C%22code%22%3A%222007GKURS%22%2C%22name%22%3A%22Kurs%2C%20grundniv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20First-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%221%22%2C%22name%22%3A%22Grundniv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A6%2C%22formattedWithUnit%22%3A%226%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22HT2025%22%2C%22startDay%22%3A%222025-08-25%22%2C%22lastDay%22%3A%222026-01-12%22%2C%22inDigits%22%3A%2220252%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222025-08-21%22%2C%22ForstaUndervisningsdatum%22%3A%222025-08-25%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P1%22%2C%22Omfattningsvarde%22%3A6%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A6%2C%22SistaRegistreringsdatum%22%3A%222025-09-01%22%2C%22SistaUndervisningsdatum%22%3A%222025-10-24%22%7D%5D%2C%22kod%22%3A%22SF1914%22%2C%22benamning%22%3A%22Sannolikhetsteori%20och%20statistik%22%2C%22Valvillkor%22%3A%22O%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%22b48a52a5-dd0c-11e8-bb7a-19f8cd1a470e%22%2C%22uid%22%3A%226728b9be-ce5c-11ef-9bca-bbbddaff469b%22%2C%22tillfalleskod%22%3A%2260889%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2222%22%2C%22code%22%3A%222007GKURS%22%2C%22name%22%3A%22Kurs%2C%20grundniv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20First-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%221%22%2C%22name%22%3A%22Grundniv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A15%2C%22formattedWithUnit%22%3A%2215%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22VT2026%22%2C%22startDay%22%3A%222026-01-13%22%2C%22lastDay%22%3A%222026-06-01%22%2C%22inDigits%22%3A%2220261%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222026-01-08%22%2C%22ForstaUndervisningsdatum%22%3A%222026-01-13%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P4%22%2C%22Omfattningsvarde%22%3A7.5%2C%22link%22%3A%5B%5D%7D%2C%7B%22Lasperiodskod%22%3A%22P3%22%2C%22Omfattningsvarde%22%3A7.5%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A15%2C%22SistaRegistreringsdatum%22%3A%222026-01-19%22%2C%22SistaUndervisningsdatum%22%3A%222026-06-01%22%7D%5D%2C%22kod%22%3A%22EF112X%22%2C%22benamning%22%3A%22Examensarbete%20inom%20elektroteknik%2C%20grundniv%C3%A5%22%2C%22Valvillkor%22%3A%22VV%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%22edcaf516-f0ec-11e9-9646-c1b6f8c04be9%22%2C%22uid%22%3A%22b5f7630d-cccf-11ef-9e07-d56117ae456b%22%2C%22tillfalleskod%22%3A%2260217%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2224%22%2C%22code%22%3A%222007AKURS%22%2C%22name%22%3A%22Kurs%2C%20avancerad%20niv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20Second-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%222%22%2C%22name%22%3A%22Avancerad%20niv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A6%2C%22formattedWithUnit%22%3A%226%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22VT2026%22%2C%22startDay%22%3A%222026-01-13%22%2C%22lastDay%22%3A%222026-06-01%22%2C%22inDigits%22%3A%2220261%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222026-03-12%22%2C%22ForstaUndervisningsdatum%22%3A%222026-03-16%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P4%22%2C%22Omfattningsvarde%22%3A6%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A6%2C%22SistaRegistreringsdatum%22%3A%222026-03-23%22%2C%22SistaUndervisningsdatum%22%3A%222026-06-01%22%7D%5D%2C%22kod%22%3A%22ME2163%22%2C%22benamning%22%3A%22Ledarskap%20och%20organisering%20i%20olika%20milj%C3%B6er%22%2C%22Valvillkor%22%3A%22VV%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%2239295141-b577-11f0-aa27-85c3b3d64a85%22%2C%22uid%22%3A%22a6d6499d-b88f-11ef-9553-beecfac44351%22%2C%22tillfalleskod%22%3A%2260552%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2222%22%2C%22code%22%3A%222007GKURS%22%2C%22name%22%3A%22Kurs%2C%20grundniv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20First-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%221%22%2C%22name%22%3A%22Grundniv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A15%2C%22formattedWithUnit%22%3A%2215%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22VT2026%22%2C%22startDay%22%3A%222026-01-13%22%2C%22lastDay%22%3A%222026-06-01%22%2C%22inDigits%22%3A%2220261%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222026-01-08%22%2C%22ForstaUndervisningsdatum%22%3A%222026-01-13%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P4%22%2C%22Omfattningsvarde%22%3A7.5%2C%22link%22%3A%5B%5D%7D%2C%7B%22Lasperiodskod%22%3A%22P3%22%2C%22Omfattningsvarde%22%3A7.5%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A15%2C%22SistaRegistreringsdatum%22%3A%222026-01-19%22%2C%22SistaUndervisningsdatum%22%3A%222026-06-01%22%7D%5D%2C%22kod%22%3A%22MF130X%22%2C%22benamning%22%3A%22Examensarbete%20inom%20maskinkonstruktion%2C%20grundniv%C3%A5%22%2C%22Valvillkor%22%3A%22VV%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%226bca254c-73d8-11e8-b4e0-063f9afb40e3%22%2C%22uid%22%3A%22b3a1e3b9-b88f-11ef-9553-beecfac44351%22%2C%22tillfalleskod%22%3A%2260553%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2222%22%2C%22code%22%3A%222007GKURS%22%2C%22name%22%3A%22Kurs%2C%20grundniv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20First-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%221%22%2C%22name%22%3A%22Grundniv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A15%2C%22formattedWithUnit%22%3A%2215%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22VT2026%22%2C%22startDay%22%3A%222026-01-13%22%2C%22lastDay%22%3A%222026-06-01%22%2C%22inDigits%22%3A%2220261%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222026-01-08%22%2C%22ForstaUndervisningsdatum%22%3A%222026-01-13%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P4%22%2C%22Omfattningsvarde%22%3A7.5%2C%22link%22%3A%5B%5D%7D%2C%7B%22Lasperiodskod%22%3A%22P3%22%2C%22Omfattningsvarde%22%3A7.5%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A15%2C%22SistaRegistreringsdatum%22%3A%222026-01-19%22%2C%22SistaUndervisningsdatum%22%3A%222026-06-01%22%7D%5D%2C%22kod%22%3A%22MF131X%22%2C%22benamning%22%3A%22Examensarbete%20inom%20integrerad%20produktutveckling%2C%20grundniv%C3%A5%22%2C%22Valvillkor%22%3A%22VV%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%226bca254d-73d8-11e8-b4e0-063f9afb40e3%22%2C%22uid%22%3A%22d9e5ba75-b88f-11ef-9553-beecfac44351%22%2C%22tillfalleskod%22%3A%2260567%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2222%22%2C%22code%22%3A%222007GKURS%22%2C%22name%22%3A%22Kurs%2C%20grundniv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20First-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%221%22%2C%22name%22%3A%22Grundniv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A15%2C%22formattedWithUnit%22%3A%2215%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22VT2026%22%2C%22startDay%22%3A%222026-01-13%22%2C%22lastDay%22%3A%222026-06-01%22%2C%22inDigits%22%3A%2220261%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222026-01-08%22%2C%22ForstaUndervisningsdatum%22%3A%222026-01-13%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P4%22%2C%22Omfattningsvarde%22%3A7.5%2C%22link%22%3A%5B%5D%7D%2C%7B%22Lasperiodskod%22%3A%22P3%22%2C%22Omfattningsvarde%22%3A7.5%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A15%2C%22SistaRegistreringsdatum%22%3A%222026-01-19%22%2C%22SistaUndervisningsdatum%22%3A%222026-06-01%22%7D%5D%2C%22kod%22%3A%22MF133X%22%2C%22benamning%22%3A%22Examensarbete%20inom%20mekatronik%2C%20grundniv%C3%A5%22%2C%22Valvillkor%22%3A%22VV%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%2274b7c24b-73d8-11e8-b4e0-063f9afb40e3%22%2C%22uid%22%3A%22ef4a518c-bb8e-11ef-9553-beecfac44351%22%2C%22tillfalleskod%22%3A%2260993%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2222%22%2C%22code%22%3A%222007GKURS%22%2C%22name%22%3A%22Kurs%2C%20grundniv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20First-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%221%22%2C%22name%22%3A%22Grundniv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A15%2C%22formattedWithUnit%22%3A%2215%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22VT2026%22%2C%22startDay%22%3A%222026-01-13%22%2C%22lastDay%22%3A%222026-06-01%22%2C%22inDigits%22%3A%2220261%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222026-01-08%22%2C%22ForstaUndervisningsdatum%22%3A%222026-01-13%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P4%22%2C%22Omfattningsvarde%22%3A7.5%2C%22link%22%3A%5B%5D%7D%2C%7B%22Lasperiodskod%22%3A%22P3%22%2C%22Omfattningsvarde%22%3A7.5%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A15%2C%22SistaRegistreringsdatum%22%3A%222026-01-19%22%2C%22SistaUndervisningsdatum%22%3A%222026-06-01%22%7D%5D%2C%22kod%22%3A%22MJ146X%22%2C%22benamning%22%3A%22Examensarbete%20inom%20h%C3%A5llbar%20energiteknik%2C%20grundniv%C3%A5%22%2C%22Valvillkor%22%3A%22VV%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%228b930de6-96a2-11ea-a1f9-cb69981448b1%22%2C%22uid%22%3A%22c78e245e-b2e9-11ef-9c22-4dfcae5d4bc4%22%2C%22tillfalleskod%22%3A%2260368%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2222%22%2C%22code%22%3A%222007GKURS%22%2C%22name%22%3A%22Kurs%2C%20grundniv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20First-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%221%22%2C%22name%22%3A%22Grundniv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A15%2C%22formattedWithUnit%22%3A%2215%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22VT2026%22%2C%22startDay%22%3A%222026-01-13%22%2C%22lastDay%22%3A%222026-06-01%22%2C%22inDigits%22%3A%2220261%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222026-01-08%22%2C%22ForstaUndervisningsdatum%22%3A%222026-01-13%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P4%22%2C%22Omfattningsvarde%22%3A7.5%2C%22link%22%3A%5B%5D%7D%2C%7B%22Lasperiodskod%22%3A%22P3%22%2C%22Omfattningsvarde%22%3A7.5%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A15%2C%22SistaRegistreringsdatum%22%3A%222026-01-19%22%2C%22SistaUndervisningsdatum%22%3A%222026-06-01%22%7D%5D%2C%22kod%22%3A%22SA115X%22%2C%22benamning%22%3A%22Examensarbete%20inom%20farkostteknik%2C%20grundniv%C3%A5%22%2C%22Valvillkor%22%3A%22VV%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%228410be34-73d8-11e8-b4e0-063f9afb40e3%22%2C%22uid%22%3A%2247f95929-bbab-11ef-9553-beecfac44351%22%2C%22tillfalleskod%22%3A%2260157%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2222%22%2C%22code%22%3A%222007GKURS%22%2C%22name%22%3A%22Kurs%2C%20grundniv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20First-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%221%22%2C%22name%22%3A%22Grundniv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A6%2C%22formattedWithUnit%22%3A%226%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22VT2026%22%2C%22startDay%22%3A%222026-01-13%22%2C%22lastDay%22%3A%222026-06-01%22%2C%22inDigits%22%3A%2220261%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222026-03-12%22%2C%22ForstaUndervisningsdatum%22%3A%222026-03-16%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P4%22%2C%22Omfattningsvarde%22%3A6%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A6%2C%22SistaRegistreringsdatum%22%3A%222026-03-23%22%2C%22SistaUndervisningsdatum%22%3A%222026-06-01%22%7D%5D%2C%22kod%22%3A%22SI1155%22%2C%22benamning%22%3A%22Teoretisk%20fysik%22%2C%22Valvillkor%22%3A%22VV%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%227d972e0c-73d8-11e8-b4e0-063f9afb40e3%22%2C%22uid%22%3A%226388b604-beb0-11ef-9c9e-74b5caef4769%22%2C%22tillfalleskod%22%3A%2260358%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2222%22%2C%22code%22%3A%222007GKURS%22%2C%22name%22%3A%22Kurs%2C%20grundniv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20First-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%221%22%2C%22name%22%3A%22Grundniv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A6%2C%22formattedWithUnit%22%3A%226%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22VT2026%22%2C%22startDay%22%3A%222026-01-13%22%2C%22lastDay%22%3A%222026-06-01%22%2C%22inDigits%22%3A%2220261%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222026-01-08%22%2C%22ForstaUndervisningsdatum%22%3A%222026-01-13%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P3%22%2C%22Omfattningsvarde%22%3A6%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A6%2C%22SistaRegistreringsdatum%22%3A%222026-01-19%22%2C%22SistaUndervisningsdatum%22%3A%222026-03-13%22%7D%5D%2C%22kod%22%3A%22SE1025%22%2C%22benamning%22%3A%22FEM%20f%C3%B6r%20ingenj%C3%B6rstill%C3%A4mpningar%22%2C%22Valvillkor%22%3A%22O%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%228010e0d4-73d8-11e8-b4e0-063f9afb40e3%22%2C%22uid%22%3A%22fa9003b2-ce67-11ef-9bca-bbbddaff469b%22%2C%22tillfalleskod%22%3A%2260884%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2222%22%2C%22code%22%3A%222007GKURS%22%2C%22name%22%3A%22Kurs%2C%20grundniv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20First-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%221%22%2C%22name%22%3A%22Grundniv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A6%2C%22formattedWithUnit%22%3A%226%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22VT2026%22%2C%22startDay%22%3A%222026-01-13%22%2C%22lastDay%22%3A%222026-06-01%22%2C%22inDigits%22%3A%2220261%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222026-03-12%22%2C%22ForstaUndervisningsdatum%22%3A%222026-03-16%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P4%22%2C%22Omfattningsvarde%22%3A6%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A6%2C%22SistaRegistreringsdatum%22%3A%222026-03-23%22%2C%22SistaUndervisningsdatum%22%3A%222026-06-01%22%7D%5D%2C%22kod%22%3A%22SF1861%22%2C%22benamning%22%3A%22Optimeringsl%C3%A4ra%22%2C%22Valvillkor%22%3A%22O%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%226187815e-9ebd-11eb-b121-4a7c58ae420f%22%2C%22uid%22%3A%225f10a575-b3ba-11ef-9bd4-11b99f1f4d85%22%2C%22tillfalleskod%22%3A%2250425%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2222%22%2C%22code%22%3A%222007GKURS%22%2C%22name%22%3A%22Kurs%2C%20grundniv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20First-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%221%22%2C%22name%22%3A%22Grundniv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A6%2C%22formattedWithUnit%22%3A%226%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22HT2025%22%2C%22startDay%22%3A%222025-08-25%22%2C%22lastDay%22%3A%222026-01-12%22%2C%22inDigits%22%3A%2220252%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222025-08-21%22%2C%22ForstaUndervisningsdatum%22%3A%222025-08-25%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P2%22%2C%22Omfattningsvarde%22%3A1%2C%22link%22%3A%5B%5D%7D%2C%7B%22Lasperiodskod%22%3A%22P1%22%2C%22Omfattningsvarde%22%3A5%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A6%2C%22SistaRegistreringsdatum%22%3A%222025-09-01%22%2C%22SistaUndervisningsdatum%22%3A%222026-01-12%22%7D%5D%2C%22kod%22%3A%22DD1320%22%2C%22benamning%22%3A%22Till%C3%A4mpad%20datalogi%22%2C%22Valvillkor%22%3A%22VV%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%225e38f5dd-6042-11e9-b67f-a77d6cb34fef%22%2C%22uid%22%3A%22e2a70a9a-bb8f-11ef-9553-beecfac44351%22%2C%22tillfalleskod%22%3A%2250852%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2222%22%2C%22code%22%3A%222007GKURS%22%2C%22name%22%3A%22Kurs%2C%20grundniv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20First-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%221%22%2C%22name%22%3A%22Grundniv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A6%2C%22formattedWithUnit%22%3A%226%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22HT2025%22%2C%22startDay%22%3A%222025-08-25%22%2C%22lastDay%22%3A%222026-01-12%22%2C%22inDigits%22%3A%2220252%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222025-10-23%22%2C%22ForstaUndervisningsdatum%22%3A%222025-10-27%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P2%22%2C%22Omfattningsvarde%22%3A6%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A6%2C%22SistaRegistreringsdatum%22%3A%222025-11-03%22%2C%22SistaUndervisningsdatum%22%3A%222026-01-12%22%7D%5D%2C%22kod%22%3A%22MJ1401%22%2C%22benamning%22%3A%22V%C3%A4rme%C3%B6verf%C3%B6ring%22%2C%22Valvillkor%22%3A%22VV%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%2282c467d4-73d8-11e8-b4e0-063f9afb40e3%22%2C%22uid%22%3A%229ade5891-bba7-11ef-9553-beecfac44351%22%2C%22tillfalleskod%22%3A%2251382%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2222%22%2C%22code%22%3A%222007GKURS%22%2C%22name%22%3A%22Kurs%2C%20grundniv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20First-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%221%22%2C%22name%22%3A%22Grundniv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A4%2C%22formattedWithUnit%22%3A%224%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22HT2025%22%2C%22startDay%22%3A%222025-08-25%22%2C%22lastDay%22%3A%222026-01-12%22%2C%22inDigits%22%3A%2220252%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222025-10-23%22%2C%22ForstaUndervisningsdatum%22%3A%222025-10-27%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P2%22%2C%22Omfattningsvarde%22%3A4%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A4%2C%22SistaRegistreringsdatum%22%3A%222025-11-03%22%2C%22SistaUndervisningsdatum%22%3A%222026-01-12%22%7D%5D%2C%22kod%22%3A%22SH1014%22%2C%22benamning%22%3A%22Modern%20fysik%22%2C%22Valvillkor%22%3A%22VV%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%2284079666-73d8-11e8-b4e0-063f9afb40e3%22%2C%22uid%22%3A%220deb231b-bbab-11ef-9553-beecfac44351%22%2C%22tillfalleskod%22%3A%2250258%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2222%22%2C%22code%22%3A%222007GKURS%22%2C%22name%22%3A%22Kurs%2C%20grundniv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20First-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%221%22%2C%22name%22%3A%22Grundniv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A4%2C%22formattedWithUnit%22%3A%224%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22HT2025%22%2C%22startDay%22%3A%222025-08-25%22%2C%22lastDay%22%3A%222026-01-12%22%2C%22inDigits%22%3A%2220252%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222025-08-21%22%2C%22ForstaUndervisningsdatum%22%3A%222025-08-25%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P1%22%2C%22Omfattningsvarde%22%3A4%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A4%2C%22SistaRegistreringsdatum%22%3A%222025-09-01%22%2C%22SistaUndervisningsdatum%22%3A%222025-10-24%22%7D%5D%2C%22kod%22%3A%22SI1146%22%2C%22benamning%22%3A%22Vektoranalys%22%2C%22Valvillkor%22%3A%22VV%22%2C%22type%22%3A%22instance%22%7D%2C%7B%22utbildningsinstansUid%22%3A%222d4a5ec2-eab6-11ee-b995-37dc0139489a%22%2C%22uid%22%3A%22b46217a3-bc69-11ef-9553-beecfac44351%22%2C%22tillfalleskod%22%3A%2250316%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%2C%22utbildningstyp%22%3A%7B%22id%22%3A%2222%22%2C%22code%22%3A%222007GKURS%22%2C%22name%22%3A%22Kurs%2C%20grundniv%C3%A5%22%2C%22nameOther%22%3A%22Course%2C%20First-cycle%22%2C%22creditsUnit%22%3A%7B%22code%22%3A%22HP%22%2C%22sv%22%3A%22H%C3%B6gskolepo%C3%A4ng%22%2C%22en%22%3A%22Credits%22%7D%2C%22level%22%3A%7B%22code%22%3A%221%22%2C%22name%22%3A%22Grundniv%C3%A5%22%7D%7D%2C%22omfattning%22%3A%7B%22number%22%3A6%2C%22formattedWithUnit%22%3A%226%2C0%20hp%22%7D%2C%22startperiod%22%3A%7B%22code%22%3A%22HT2025%22%2C%22startDay%22%3A%222025-08-25%22%2C%22lastDay%22%3A%222026-01-12%22%2C%22inDigits%22%3A%2220252%22%7D%2C%22Tillfallesperioder%22%3A%5B%7B%22ForstaRegistreringsdatum%22%3A%222025-08-21%22%2C%22ForstaUndervisningsdatum%22%3A%222025-08-25%22%2C%22Lasperiodsfordelning%22%3A%5B%7B%22Lasperiodskod%22%3A%22P1%22%2C%22Omfattningsvarde%22%3A6%2C%22link%22%3A%5B%5D%7D%5D%2C%22Omfattningsvarde%22%3A6%2C%22SistaRegistreringsdatum%22%3A%222025-09-01%22%2C%22SistaUndervisningsdatum%22%3A%222025-10-24%22%7D%5D%2C%22kod%22%3A%22ME1003%22%2C%22benamning%22%3A%22Industriell%20ekonomi%2C%20grundkurs%22%2C%22Valvillkor%22%3A%22VV%22%2C%22type%22%3A%22instance%22%7D%5D%2C%22freeTexts%22%3A%5B%5D%2C%22supplementaryInfo%22%3A%22%3Cp%3E%3Cstrong%3EUtbildningens%20tv%C3%A5%20sista%20%C3%A5r%20l%C3%A4ses%20inom%20ramen%20f%C3%B6r%20ett%20masterprogram.%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EF%C3%B6r%20information%20om%20kurser%20i%20%C3%A5k%204-5%2C%20se%26nbsp%3Bmasterprogrammen%20i%20-%20prelimin%C3%A4r%3A%3C%2Fp%3E%5Cn%3Cp%3EFlyg-%20och%20rymdteknik%2C%20Fordonsteknik%2C%20H%C3%A5llbar%20energiteknik%2C%20Industriell%20ekonomi%2C%20Maskinkonstruktion%2C%20Integrerad%20produktdesign%26nbsp%3B(endast%20sp%C3%A5r%20Innovationsledning%20och%20produktutveckling)%2C%26nbsp%3BK%C3%A4rnenergiteknik%2C%20Marina%20system%2C%20Teknisk%20mekanik%2C%20Teknisk%20fysik%2C%20Till%C3%A4mpad%20matematik%20och%20ber%C3%A4kningsmatematik%2C%20Mekatronik.%3C%2Fp%3E%22%2C%22conditionallyElectiveCoursesInfo%22%3A%22%3Cp%3EBeh%C3%B6righetsgivande%20kurser%20till%20masterprogram%3C%2Fp%3E%5Cn%3Cp%3EH%C3%A5llbar%20energiteknik%20(TSUEM)%3C%2Fp%3E%5Cn%3Cp%3EKurs%20som%20kr%C3%A4vs%3A%20MJ1401%3C%2Fp%3E%5Cn%3Cp%3ETeknisk%20fysik%20(TTFYM)%3A%3C%2Fp%3E%5Cn%3Cp%3EKurser%20som%20kr%C3%A4vs%3A%20SI1146%20och%20SH1014%3C%2Fp%3E%5Cn%3Cp%3ESamt%20SI1155%20f%C3%B6r%20tre%20av%20sp%C3%A5ren%3A%20TFYA%2C%20TFYB%20och%20TFYG%3C%2Fp%3E%5Cn%3Cp%3EIndustriell%20ekonomi%20(TINEM)%3C%2Fp%3E%5Cn%3Cp%3EKursen%20som%20kr%C3%A4vs%3A%20ME1003%20och%20ME2163%3C%2Fp%3E%5Cn%3Cp%3EK%C3%A4rnenergiteknik%20(TNEEM)%3C%2Fp%3E%5Cn%3Cp%3EKurs%20som%20kr%C3%A4vs%3A%20SH1012%3C%2Fp%3E%5Cn%3Cp%3EMekatronik%20(TMEKM)%3C%2Fp%3E%5Cn%3Cp%3EKurs%20som%20kr%C3%A4vs%3A%20DD1320%3C%2Fp%3E%5Cn%3Cp%3ESystemteknik%20och%20robotik%20(TSCRM)%3C%2Fp%3E%5Cn%3Cp%3EKurs%20som%20kr%C3%A4vs%3A%20DD1320%3C%2Fp%3E%5Cn%3Cp%3EMaskinkonstruktion%20(TMSKM)%3C%2Fp%3E%22%7D%2C%7B%22yearNumber%22%3A4%2C%22courses%22%3A%5B%5D%2C%22freeTexts%22%3A%5B%5D%2C%22supplementaryInfo%22%3A%22%3Cp%3E%3Cstrong%3EUtbildningens%20tv%C3%A5%20sista%20%C3%A5r%20l%C3%A4ses%20inom%20ramen%20f%C3%B6r%20ett%20masterprogram.%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EF%C3%B6r%20kurser%20inom%20%C3%A5rskurs%204%2C%20se%20l%C3%A4s%C3%A5rsplan%20f%C3%B6r%20%C3%A5rskurs%201%20inom%20det%20masterprogram%20du%20har%20valt.%3C%2Fp%3E%5Cn%3Cp%3EValbara%20masterprogram%20som%20leder%20till%20civilingenj%C3%B6rsexamen%20i%20Farkostteknik%20%C3%A4r%20(prelinim%C3%A4r)%3A%3C%2Fp%3E%5Cn%3Cul%3E%5Cn%3Cli%3EFlyg-%20och%20rymdteknik%3C%2Fli%3E%5Cn%3Cli%3EFordonsteknik%3C%2Fli%3E%5Cn%3Cli%3EH%C3%A5llbar%20energiteknik%3C%2Fli%3E%5Cn%3Cli%3EIndustriell%20ekonomi%3C%2Fli%3E%5Cn%3Cli%3EMaskinkonstruktion%3C%2Fli%3E%5Cn%3Cli%3EIntegrerad%20produktdesign%26nbsp%3B%3C%2Fli%3E%5Cn%3Cli%3EK%C3%A4rnenergiteknik%3C%2Fli%3E%5Cn%3Cli%3EMarina%20system%3C%2Fli%3E%5Cn%3Cli%3ESystemteknik%20och%20robotik%3C%2Fli%3E%5Cn%3Cli%3ETeknisk%20fysik%3C%2Fli%3E%5Cn%3Cli%3ETeknisk%20mekanik%3C%2Fli%3E%5Cn%3Cli%3ETill%C3%A4mpad%20matematik%20och%20ber%C3%A4kningsmatematik.%3C%2Fli%3E%5Cn%3Cli%3EMekatronik%3C%2Fli%3E%5Cn%3C%2Ful%3E%22%7D%2C%7B%22yearNumber%22%3A5%2C%22courses%22%3A%5B%5D%2C%22freeTexts%22%3A%5B%5D%2C%22supplementaryInfo%22%3A%22%3Cp%3E%3Cstrong%3EUtbildningens%20tv%C3%A5%20sista%20%C3%A5r%20l%C3%A4ses%20inom%20ramen%20f%C3%B6r%20ett%20masterprogram.%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EF%C3%B6r%20kurser%20inom%20%C3%A5rskurs%205%2C%20se%20l%C3%A4s%C3%A5rsplan%20f%C3%B6r%20%C3%A5rskurs%202%20inom%20det%20masterprogram%20du%20har%20valt.%3C%2Fp%3E%5Cn%3Cp%3EValbara%20masterprogram%20som%20leder%20till%20civilingenj%C3%B6rsexamen%20i%20Farkostteknik%20%C3%A4r%20(prelinim%C3%A4r)%3A%3C%2Fp%3E%5Cn%3Cul%3E%5Cn%3Cli%3EFlyg-%20och%20rymdteknik%3C%2Fli%3E%5Cn%3Cli%3EFordonsteknik%3C%2Fli%3E%5Cn%3Cli%3EH%C3%A5llbar%20energiteknik%3C%2Fli%3E%5Cn%3Cli%3EIndustriell%20ekonomi%3C%2Fli%3E%5Cn%3Cli%3EMaskinkonstruktion%3C%2Fli%3E%5Cn%3Cli%3EIntegrerad%20produktdesign%26nbsp%3B%3C%2Fli%3E%5Cn%3Cli%3EK%C3%A4rnenergiteknik%3C%2Fli%3E%5Cn%3Cli%3EMarina%20system%3C%2Fli%3E%5Cn%3Cli%3ESystemteknik%20och%20robotik%3C%2Fli%3E%5Cn%3Cli%3ETeknisk%20fysik%3C%2Fli%3E%5Cn%3Cli%3ETeknisk%20mekanik%3C%2Fli%3E%5Cn%3Cli%3ETill%C3%A4mpad%20matematik%20och%20ber%C3%A4kningsmatematik.%3C%2Fli%3E%5Cn%3C%2Ful%3E%22%7D%5D%7D%5D%2C%22errorType%22%3A%7B%22MISSING_ADMISSION%22%3A%22missing_admission%22%7D%2C%22error%22%3Anull%2C%22curriculumInfos%22%3A%5B%7B%22code%22%3A%22%22%2C%22specializationName%22%3Anull%2C%22isCommon%22%3Atrue%2C%22participations%22%3A%7B%22O%22%3A%5B%7B%22course%22%3A%7B%22courseCode%22%3A%22EL1010%22%2C%22title%22%3A%22Reglerteknik%2C%20allm%C3%A4n%20kurs%22%2C%22credits%22%3A6%2C%22formattedCredits%22%3A%226%2C0%20hp%22%2C%22educationalLevel%22%3A%22Grundniv%C3%A5%22%2C%22electiveCondition%22%3A%22O%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2250485%22%2C%22term%22%3A%2220252%22%2C%22creditsPerPeriod%22%3A%5B0%2C0%2C6%2C0%2C0%2C0%5D%7D%2C%7B%22course%22%3A%7B%22courseCode%22%3A%22MF1017%22%2C%22title%22%3A%22Elektroteknik%22%2C%22credits%22%3A6%2C%22formattedCredits%22%3A%226%2C0%20hp%22%2C%22educationalLevel%22%3A%22Grundniv%C3%A5%22%2C%22electiveCondition%22%3A%22O%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2250329%22%2C%22term%22%3A%2220252%22%2C%22creditsPerPeriod%22%3A%5B0%2C6%2C0%2C0%2C0%2C0%5D%7D%2C%7B%22course%22%3A%7B%22courseCode%22%3A%22SD2125%22%2C%22title%22%3A%22Signaler%20och%20mekaniska%20system%22%2C%22credits%22%3A6%2C%22formattedCredits%22%3A%226%2C0%20hp%22%2C%22educationalLevel%22%3A%22Avancerad%20niv%C3%A5%22%2C%22electiveCondition%22%3A%22O%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2251600%22%2C%22term%22%3A%2220252%22%2C%22creditsPerPeriod%22%3A%5B0%2C0%2C6%2C0%2C0%2C0%5D%7D%2C%7B%22course%22%3A%7B%22courseCode%22%3A%22SF1914%22%2C%22title%22%3A%22Sannolikhetsteori%20och%20statistik%22%2C%22credits%22%3A6%2C%22formattedCredits%22%3A%226%2C0%20hp%22%2C%22educationalLevel%22%3A%22Grundniv%C3%A5%22%2C%22electiveCondition%22%3A%22O%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2250468%22%2C%22term%22%3A%2220252%22%2C%22creditsPerPeriod%22%3A%5B0%2C6%2C0%2C0%2C0%2C0%5D%7D%2C%7B%22course%22%3A%7B%22courseCode%22%3A%22SE1025%22%2C%22title%22%3A%22FEM%20f%C3%B6r%20ingenj%C3%B6rstill%C3%A4mpningar%22%2C%22credits%22%3A6%2C%22formattedCredits%22%3A%226%2C0%20hp%22%2C%22educationalLevel%22%3A%22Grundniv%C3%A5%22%2C%22electiveCondition%22%3A%22O%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2260358%22%2C%22term%22%3A%2220261%22%2C%22creditsPerPeriod%22%3A%5B0%2C0%2C0%2C6%2C0%2C0%5D%7D%2C%7B%22course%22%3A%7B%22courseCode%22%3A%22SF1861%22%2C%22title%22%3A%22Optimeringsl%C3%A4ra%22%2C%22credits%22%3A6%2C%22formattedCredits%22%3A%226%2C0%20hp%22%2C%22educationalLevel%22%3A%22Grundniv%C3%A5%22%2C%22electiveCondition%22%3A%22O%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2260884%22%2C%22term%22%3A%2220261%22%2C%22creditsPerPeriod%22%3A%5B0%2C0%2C0%2C0%2C6%2C0%5D%7D%5D%2C%22VV%22%3A%5B%7B%22course%22%3A%7B%22courseCode%22%3A%22DD1320%22%2C%22title%22%3A%22Till%C3%A4mpad%20datalogi%22%2C%22credits%22%3A6%2C%22formattedCredits%22%3A%226%2C0%20hp%22%2C%22educationalLevel%22%3A%22Grundniv%C3%A5%22%2C%22electiveCondition%22%3A%22VV%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2250425%22%2C%22term%22%3A%2220252%22%2C%22creditsPerPeriod%22%3A%5B0%2C5%2C1%2C0%2C0%2C0%5D%7D%2C%7B%22course%22%3A%7B%22courseCode%22%3A%22MJ1401%22%2C%22title%22%3A%22V%C3%A4rme%C3%B6verf%C3%B6ring%22%2C%22credits%22%3A6%2C%22formattedCredits%22%3A%226%2C0%20hp%22%2C%22educationalLevel%22%3A%22Grundniv%C3%A5%22%2C%22electiveCondition%22%3A%22VV%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2250852%22%2C%22term%22%3A%2220252%22%2C%22creditsPerPeriod%22%3A%5B0%2C0%2C6%2C0%2C0%2C0%5D%7D%2C%7B%22course%22%3A%7B%22courseCode%22%3A%22SH1014%22%2C%22title%22%3A%22Modern%20fysik%22%2C%22credits%22%3A4%2C%22formattedCredits%22%3A%224%2C0%20hp%22%2C%22educationalLevel%22%3A%22Grundniv%C3%A5%22%2C%22electiveCondition%22%3A%22VV%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2251382%22%2C%22term%22%3A%2220252%22%2C%22creditsPerPeriod%22%3A%5B0%2C0%2C4%2C0%2C0%2C0%5D%7D%2C%7B%22course%22%3A%7B%22courseCode%22%3A%22SI1146%22%2C%22title%22%3A%22Vektoranalys%22%2C%22credits%22%3A4%2C%22formattedCredits%22%3A%224%2C0%20hp%22%2C%22educationalLevel%22%3A%22Grundniv%C3%A5%22%2C%22electiveCondition%22%3A%22VV%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2250258%22%2C%22term%22%3A%2220252%22%2C%22creditsPerPeriod%22%3A%5B0%2C4%2C0%2C0%2C0%2C0%5D%7D%2C%7B%22course%22%3A%7B%22courseCode%22%3A%22ME1003%22%2C%22title%22%3A%22Industriell%20ekonomi%2C%20grundkurs%22%2C%22credits%22%3A6%2C%22formattedCredits%22%3A%226%2C0%20hp%22%2C%22educationalLevel%22%3A%22Grundniv%C3%A5%22%2C%22electiveCondition%22%3A%22VV%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2250316%22%2C%22term%22%3A%2220252%22%2C%22creditsPerPeriod%22%3A%5B0%2C6%2C0%2C0%2C0%2C0%5D%7D%2C%7B%22course%22%3A%7B%22courseCode%22%3A%22EF112X%22%2C%22title%22%3A%22Examensarbete%20inom%20elektroteknik%2C%20grundniv%C3%A5%22%2C%22credits%22%3A15%2C%22formattedCredits%22%3A%2215%2C0%20hp%22%2C%22educationalLevel%22%3A%22Grundniv%C3%A5%22%2C%22electiveCondition%22%3A%22VV%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2260889%22%2C%22term%22%3A%2220261%22%2C%22creditsPerPeriod%22%3A%5B0%2C0%2C0%2C7.5%2C7.5%2C0%5D%7D%2C%7B%22course%22%3A%7B%22courseCode%22%3A%22ME2163%22%2C%22title%22%3A%22Ledarskap%20och%20organisering%20i%20olika%20milj%C3%B6er%22%2C%22credits%22%3A6%2C%22formattedCredits%22%3A%226%2C0%20hp%22%2C%22educationalLevel%22%3A%22Avancerad%20niv%C3%A5%22%2C%22electiveCondition%22%3A%22VV%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2260217%22%2C%22term%22%3A%2220261%22%2C%22creditsPerPeriod%22%3A%5B0%2C0%2C0%2C0%2C6%2C0%5D%7D%2C%7B%22course%22%3A%7B%22courseCode%22%3A%22MF130X%22%2C%22title%22%3A%22Examensarbete%20inom%20maskinkonstruktion%2C%20grundniv%C3%A5%22%2C%22credits%22%3A15%2C%22formattedCredits%22%3A%2215%2C0%20hp%22%2C%22educationalLevel%22%3A%22Grundniv%C3%A5%22%2C%22electiveCondition%22%3A%22VV%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2260552%22%2C%22term%22%3A%2220261%22%2C%22creditsPerPeriod%22%3A%5B0%2C0%2C0%2C7.5%2C7.5%2C0%5D%7D%2C%7B%22course%22%3A%7B%22courseCode%22%3A%22MF131X%22%2C%22title%22%3A%22Examensarbete%20inom%20integrerad%20produktutveckling%2C%20grundniv%C3%A5%22%2C%22credits%22%3A15%2C%22formattedCredits%22%3A%2215%2C0%20hp%22%2C%22educationalLevel%22%3A%22Grundniv%C3%A5%22%2C%22electiveCondition%22%3A%22VV%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2260553%22%2C%22term%22%3A%2220261%22%2C%22creditsPerPeriod%22%3A%5B0%2C0%2C0%2C7.5%2C7.5%2C0%5D%7D%2C%7B%22course%22%3A%7B%22courseCode%22%3A%22MF133X%22%2C%22title%22%3A%22Examensarbete%20inom%20mekatronik%2C%20grundniv%C3%A5%22%2C%22credits%22%3A15%2C%22formattedCredits%22%3A%2215%2C0%20hp%22%2C%22educationalLevel%22%3A%22Grundniv%C3%A5%22%2C%22electiveCondition%22%3A%22VV%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2260567%22%2C%22term%22%3A%2220261%22%2C%22creditsPerPeriod%22%3A%5B0%2C0%2C0%2C7.5%2C7.5%2C0%5D%7D%2C%7B%22course%22%3A%7B%22courseCode%22%3A%22MJ146X%22%2C%22title%22%3A%22Examensarbete%20inom%20h%C3%A5llbar%20energiteknik%2C%20grundniv%C3%A5%22%2C%22credits%22%3A15%2C%22formattedCredits%22%3A%2215%2C0%20hp%22%2C%22educationalLevel%22%3A%22Grundniv%C3%A5%22%2C%22electiveCondition%22%3A%22VV%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2260993%22%2C%22term%22%3A%2220261%22%2C%22creditsPerPeriod%22%3A%5B0%2C0%2C0%2C7.5%2C7.5%2C0%5D%7D%2C%7B%22course%22%3A%7B%22courseCode%22%3A%22SA115X%22%2C%22title%22%3A%22Examensarbete%20inom%20farkostteknik%2C%20grundniv%C3%A5%22%2C%22credits%22%3A15%2C%22formattedCredits%22%3A%2215%2C0%20hp%22%2C%22educationalLevel%22%3A%22Grundniv%C3%A5%22%2C%22electiveCondition%22%3A%22VV%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2260368%22%2C%22term%22%3A%2220261%22%2C%22creditsPerPeriod%22%3A%5B0%2C0%2C0%2C7.5%2C7.5%2C0%5D%7D%2C%7B%22course%22%3A%7B%22courseCode%22%3A%22SI1155%22%2C%22title%22%3A%22Teoretisk%20fysik%22%2C%22credits%22%3A6%2C%22formattedCredits%22%3A%226%2C0%20hp%22%2C%22educationalLevel%22%3A%22Grundniv%C3%A5%22%2C%22electiveCondition%22%3A%22VV%22%2C%22status%22%3A%7B%22code%22%3A%22S3%22%2C%22nameSv%22%3A%22Komplett%22%2C%22nameEn%22%3A%22Complete%22%7D%7D%2C%22applicationCode%22%3A%2260157%22%2C%22term%22%3A%2220261%22%2C%22creditsPerPeriod%22%3A%5B0%2C0%2C0%2C0%2C6%2C0%5D%7D%5D%7D%2C%22supplementaryInformation%22%3A%22%3Cp%3E%3Cstrong%3EUtbildningens%20tv%C3%A5%20sista%20%C3%A5r%20l%C3%A4ses%20inom%20ramen%20f%C3%B6r%20ett%20masterprogram.%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EF%C3%B6r%20information%20om%20kurser%20i%20%C3%A5k%204-5%2C%20se%26nbsp%3Bmasterprogrammen%20i%20-%20prelimin%C3%A4r%3A%3C%2Fp%3E%5Cn%3Cp%3EFlyg-%20och%20rymdteknik%2C%20Fordonsteknik%2C%20H%C3%A5llbar%20energiteknik%2C%20Industriell%20ekonomi%2C%20Maskinkonstruktion%2C%20Integrerad%20produktdesign%26nbsp%3B(endast%20sp%C3%A5r%20Innovationsledning%20och%20produktutveckling)%2C%26nbsp%3BK%C3%A4rnenergiteknik%2C%20Marina%20system%2C%20Teknisk%20mekanik%2C%20Teknisk%20fysik%2C%20Till%C3%A4mpad%20matematik%20och%20ber%C3%A4kningsmatematik%2C%20Mekatronik.%3C%2Fp%3E%22%2C%22conditionallyElectiveCoursesInformation%22%3A%22%3Cp%3EBeh%C3%B6righetsgivande%20kurser%20till%20masterprogram%3C%2Fp%3E%5Cn%3Cp%3EH%C3%A5llbar%20energiteknik%20(TSUEM)%3C%2Fp%3E%5Cn%3Cp%3EKurs%20som%20kr%C3%A4vs%3A%20MJ1401%3C%2Fp%3E%5Cn%3Cp%3ETeknisk%20fysik%20(TTFYM)%3A%3C%2Fp%3E%5Cn%3Cp%3EKurser%20som%20kr%C3%A4vs%3A%20SI1146%20och%20SH1014%3C%2Fp%3E%5Cn%3Cp%3ESamt%20SI1155%20f%C3%B6r%20tre%20av%20sp%C3%A5ren%3A%20TFYA%2C%20TFYB%20och%20TFYG%3C%2Fp%3E%5Cn%3Cp%3EIndustriell%20ekonomi%20(TINEM)%3C%2Fp%3E%5Cn%3Cp%3EKursen%20som%20kr%C3%A4vs%3A%20ME1003%20och%20ME2163%3C%2Fp%3E%5Cn%3Cp%3EK%C3%A4rnenergiteknik%20(TNEEM)%3C%2Fp%3E%5Cn%3Cp%3EKurs%20som%20kr%C3%A4vs%3A%20SH1012%3C%2Fp%3E%5Cn%3Cp%3EMekatronik%20(TMEKM)%3C%2Fp%3E%5Cn%3Cp%3EKurs%20som%20kr%C3%A4vs%3A%20DD1320%3C%2Fp%3E%5Cn%3Cp%3ESystemteknik%20och%20robotik%20(TSCRM)%3C%2Fp%3E%5Cn%3Cp%3EKurs%20som%20kr%C3%A4vs%3A%20DD1320%3C%2Fp%3E%5Cn%3Cp%3EMaskinkonstruktion%20(TMSKM)%3C%2Fp%3E%22%2C%22isFirstSpec%22%3Afalse%2C%22hasInfo%22%3Atrue%2C%22freeTexts%22%3A%5B%5D%7D%5D%2C%22lengthInStudyYears%22%3A5%2C%22thisHostBaseUrl%22%3Anull%7D";</script>
+
+<!---->
+
+  <div id="app"></div>
+    </div>
+  </div>
+  <!--indexOff: all-->
+  <!-- add "scroll-to-top" button when scrolled down -->
+  <div id="back-to-top" role="link" aria-label="Till sidans topp"></div>
+  <footer class="kth-footer student-web">
+      <div class="kth-footer__content">
+              
+  
+  
+  
+  
+    <div class="columnSplitterWrapper" data-cid="1.1066523" lang="sv">
+      
+      <div class="columnSplitter  using4Columns ">
+        <div class="col c1">
+          
+  
+  
+  
+  
+    <div class="block list links" data-cid="1.1066524" lang="sv">
+      <h2>Studentwebben</h2>
+      
+      <ul>
+        <li><a href="/student/studier">Studier</a></li>
+        <li><a href="/student/stod">Stöd och vägledning</a></li>
+        <li><a href="/student/it">IT och digitala tjänster</a></li>
+        <li><a href="/student/kontakt">Kontakt</a></li>
+      </ul>
+    </div>
+  
+  
+  
+        </div>
+        <div class="col c2">
+          
+  
+  
+  
+  
+    <div class="block list links" data-cid="1.1066531" lang="sv">
+      <h2>Tjänster</h2>
+      
+      <ul>
+        <li><a href="/student/studier/schema">Schema</a></li>
+        <li><a href="https://canvas.kth.se/">Canvas</a></li>
+        <li><a href="http://webmail.kth.se">Webbmejl</a></li>
+        <li><a href="/student/it/studenttjanster/personligamenyn">Personliga menyn</a></li>
+        <li><a href="https://www.student.ladok.se/student/app/studentwebb/">Ladok för studenter</a></li>
+      </ul>
+    </div>
+  
+  
+  
+        </div>
+        <div class="col c3">
+          
+  
+  
+  
+  
+    <div class="block list links" data-cid="1.1066534" lang="sv">
+      <h2>Kontakt</h2>
+      
+      <ul>
+        <li><a href="/student/kontakt/kontaktuppgifter/kontakta-utbildningsprogram-1.1170401">Kontakta utbildningsprogram</a></li>
+        <li><a href="/student/kontakt/kontaktuppgifter/kontakta-kurs-1.1171899">Kontakta kurs</a></li>
+        <li><a href="/student/it/contact">IT-support</a></li>
+        <li><a href="/student/kontakt/campus/kth-entre">KTH Entré</a></li>
+        <li><a href="/student/kontakt/campus/kth-biblioteket-1.2479">KTH Biblioteket</a></li>
+      </ul>
+    </div>
+  
+  
+  
+        </div>
+        <div class="col c4">
+          
+  
+  
+  
+  
+    <article class="block teaser top white" data-cid="1.1083631" lang="sv">
+      
+      <div class="teaserBody   ">
+        
+        
+        <div class="lead">
+          
+          
+        
+          
+          <p><strong>KTH</strong><br> <em>100 44 Stockholm<br> +46 8 790 60 00<br>
+        
+      
+        
+          
+  
+  
+  
+  
+    <a class="block link" data-cid="1.1083633" lang="sv" href="mailto:info@kth.se">info@kth.se</a>
+  
+  
+  
+          
+        
+      
+        
+          
+          </em><br> &nbsp;</p>
+        
+      
+        </div>
+        
+      </div>
+    </article>
+  
+  
+  
+        </div>
+      </div>
+    </div>
+  
+  
+  
+      </div>
+  </footer>
+  <!--indexOn: all-->  <script src="/student/kurser/static/app.js?v=2.0.0-20260427.1_59b0"></script>
+</body>
+
+</html>

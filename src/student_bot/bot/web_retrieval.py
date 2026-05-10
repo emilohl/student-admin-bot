@@ -1335,6 +1335,30 @@ def _studyplan_chunks_from_year_page(
     raw_courses = target.get("courses")
     out: list[RetrievedChunk] = []
 
+    # If this year's page carries a "behörighetsgivande kurser per
+    # masterprogram" block, emit it as a dedicated, high-priority chunk so
+    # retrieval doesn't bury it inside the per-Valvillkor course tables.
+    elig_text = _eligibility_text_from_store(store)
+    if elig_text:
+        title_prefix = programme_name.strip() if programme_name else "Studieplan"
+        elig_body = (
+            f"## Årskurs {year} – behörighetsgivande kurser per masterprogram\n\n{elig_text}"
+        )
+        try:
+            out.append(
+                _build_studyplan_chunk(
+                    text=elig_body,
+                    page_url=page_url,
+                    fragment=f"arskurs{year}-behorighet-master",
+                    section_path=(f"Årskurs {year} – behörighetsgivande kurser per masterprogram"),
+                    doc_title=f"{title_prefix} årskurs {year}: behörighetsgivande kurser",
+                    fetched_at=fetched_at,
+                    is_stale=is_stale,
+                )
+            )
+        except ValueError:
+            pass
+
     # Some programs (e.g. CINEK arskurs1) ship the year-N course list as an
     # HTML string instead of a structured list. We can't bucket by Valvillkor
     # without parsing the HTML, so emit a single chunk preserving the markup
@@ -1555,6 +1579,198 @@ def _compressed_application_store(html: str) -> dict | None:
         return json.loads(unquote(m.group(1)))
     except (json.JSONDecodeError, ValueError):
         return None
+
+
+# Eligibility ("behörighetsgivande kurser") block extraction.
+#
+# Two formats observed on KTH study-plan pages, both expressing the same
+# information — which courses a student must complete to be eligible for a
+# given master programme. The block is critical for "what do I take in year 3
+# to qualify for the X master?" questions, but it doesn't always exist (some
+# programmes don't carry it; some terms have stopped including it). We extract
+# it as a dedicated, high-rank chunk so retrieval doesn't bury it in the
+# arskursN bucket-list noise — and so the cross-cohort fallback (when a year
+# is missing the block) has a clean payload to surface from a prior term.
+_ELIGIBILITY_RE = re.compile(r"(?im)beh[öo]righetsgivande\s+kurs(?:er|en)?\b")
+
+
+def _eligibility_text_from_store(store: dict | None) -> str | None:
+    """Return the cleanest behörighetsgivande block text in the SPA store.
+
+    Walks every string field, picks the longest one matching the regex (the
+    longer form usually has more master-programme entries), and strips HTML
+    to readable text. Returns None when no block exists.
+    """
+    if not isinstance(store, dict):
+        return None
+    candidates: list[str] = []
+
+    def _walk(node: object) -> None:
+        if isinstance(node, dict):
+            for v in node.values():
+                _walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                _walk(v)
+        elif isinstance(node, str) and _ELIGIBILITY_RE.search(node):
+            candidates.append(node)
+
+    _walk(store)
+    if not candidates:
+        return None
+    candidates.sort(key=len, reverse=True)
+    text = _strip_html_to_text(candidates[0])
+    return text.strip() or None
+
+
+def _term_label_sv(term: str) -> str:
+    """KTH 5-digit programme term -> Swedish label, e.g. '20232' -> 'HT2023'."""
+    if not (isinstance(term, str) and re.fullmatch(r"\d{5}", term)):
+        return term or ""
+    season = "HT" if term[4] == "2" else "VT"
+    return f"{season}{term[:4]}"
+
+
+def _prior_term_year_urls(
+    programme_code: str,
+    current_term: str,
+    year: int,
+    store: dict | None,
+    *,
+    limit: int = 3,
+) -> list[str]:
+    """Year-page URLs for prior terms, most recent first. Used as fallback when
+    the requested term's page lacks the eligibility block."""
+    if not (programme_code and re.fullmatch(r"\d{5}", current_term or "")):
+        return []
+    base = f"https://www.kth.se/student/kurser/program/{programme_code}"
+    candidates: list[str] = []
+    # Prefer terms the page itself advertises (programmeTerms).
+    for t in _normalized_programme_terms_from_store(store):
+        if t < current_term:
+            candidates.append(f"{base}/{t}/arskurs{year}")
+    # Heuristic backstop: if the store had nothing useful, step back through
+    # plausible KTH term codes (same season N years prior, then opposite season).
+    if not candidates:
+        try:
+            yr = int(current_term[:4])
+            season = current_term[4]
+            for delta in (1, 2, 3):
+                candidates.append(f"{base}/{yr - delta}{season}/arskurs{year}")
+        except (ValueError, IndexError):
+            pass
+    # Dedupe preserving order
+    seen: set[str] = set()
+    out: list[str] = []
+    for u in candidates:
+        if u not in seen:
+            seen.add(u)
+            out.append(u)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _maybe_emit_fallback_eligibility(
+    *,
+    html: str,
+    final_url: str,
+    structured: list,
+    cfg: Config,
+    patterns,
+    cache,
+    visited: set,
+    chunks: list,
+    source_urls: list,
+) -> None:
+    """If a programme /arskursN page lacks an eligibility chunk, look back to
+    the most recent prior cohort that has one and append it as a labeled,
+    caveated chunk. No-op when the page already has the block, isn't a year
+    page, or no prior term yields a block.
+
+    Caps at one successful fallback fetch per call. Failed fetches log and
+    move on; we never raise out of this best-effort enrichment.
+    """
+    m = re.search(r"/program/([A-Z]{5})/(\d{5})/arskurs(\d+)/?$", urlsplit(final_url).path)
+    if not m:
+        return
+    if any(("behörighetsgivande" in (c.section_path or "").lower()) for c in structured):
+        return
+    programme_code, current_term, year_str = m.group(1), m.group(2), m.group(3)
+    try:
+        year = int(year_str)
+    except ValueError:
+        return
+    store = _compressed_application_store(html)
+    candidates = _prior_term_year_urls(programme_code, current_term, year, store, limit=3)
+    requested_label = _term_label_sv(current_term)
+    for prior_url in candidates:
+        if prior_url in visited:
+            continue
+        if not _is_allowed_url(prior_url, cfg, patterns):
+            continue
+        visited.add(prior_url)
+        try:
+            p_final, p_html = _fetch_html(prior_url, cfg)
+        except Exception as e:
+            log.info("eligibility-fallback: fetch failed for %s: %s", prior_url, e)
+            continue
+        if not _is_allowed_url(p_final, cfg, patterns):
+            continue
+        p_store = _compressed_application_store(p_html)
+        elig_text = _eligibility_text_from_store(p_store)
+        if not elig_text:
+            log.info("eligibility-fallback: no block on %s", p_final)
+            continue
+        # Resolve the prior term's label from the URL itself so the citation
+        # tells the user exactly which cohort the block came from.
+        pm = re.search(r"/program/[A-Z]{5}/(\d{5})/arskurs", urlsplit(p_final).path)
+        prior_term = pm.group(1) if pm else current_term
+        prior_label = _term_label_sv(prior_term)
+        programme_name = ""
+        if isinstance(p_store, dict):
+            programme_name = str(p_store.get("programmeName") or "").strip()
+        title_prefix = programme_name or "Studieplan"
+        # The caveat is intentionally bilingual-light Swedish only because
+        # the underlying corpus block is Swedish. The bot's reply prompt
+        # then renders this content in either lang.
+        body = (
+            "## Årskurs {year} – behörighetsgivande kurser per masterprogram "
+            "(från läsåret {prior})\n\n"
+            "**OBS!** Listan nedan är hämtad från utbildningsplanen för **{prior}** "
+            "eftersom **{requested}** ännu inte innehåller motsvarande avsnitt. "
+            "Reglerna är ofta stabila mellan årgångar men kan ha ändrats. "
+            "Verifiera mot ditt eget läsår eller med studievägledaren.\n\n"
+            "{elig}"
+        ).format(year=year, prior=prior_label, requested=requested_label, elig=elig_text)
+        now = int(time.time())
+        cache.put(CachedPage(url=p_final, title=title_prefix, content=body, fetched_at=now))
+        try:
+            chunk = _build_studyplan_chunk(
+                text=body,
+                page_url=p_final,
+                fragment=f"arskurs{year}-behorighet-master-fallback",
+                section_path=(
+                    f"Årskurs {year} – behörighetsgivande kurser per masterprogram "
+                    f"(läsår {prior_label})"
+                ),
+                doc_title=(
+                    f"{title_prefix} årskurs {year}: behörighetsgivande kurser ({prior_label})"
+                ),
+                fetched_at=now,
+                is_stale=False,
+            )
+        except ValueError:
+            continue
+        chunks.append(chunk)
+        if p_final not in source_urls:
+            source_urls.append(p_final)
+        log.info(
+            "eligibility-fallback: emitted block from %s -> requested %s",
+            prior_label,
+            requested_label,
+        )
+        return  # cap at one successful fallback
 
 
 def _normalized_programme_terms_from_store(store: dict | None) -> list[str]:
@@ -2187,6 +2403,23 @@ def maybe_fetch_dynamic_web(
                     "dynamic-web: emitted %d structured chunks from %s",
                     len(structured),
                     final_url,
+                )
+                # Cross-cohort fallback: if this is a /arskursN page that
+                # didn't yield an eligibility chunk for the requested term,
+                # fetch the most recent prior term that has one and surface
+                # its block as a labeled, caveated chunk. This handles the
+                # case where the läsårsplan for a fresh term hasn't been
+                # populated with the "behörighetsgivande kurser" section yet.
+                _maybe_emit_fallback_eligibility(
+                    html=html,
+                    final_url=final_url,
+                    structured=structured,
+                    cfg=cfg,
+                    patterns=patterns,
+                    cache=cache,
+                    visited=visited,
+                    chunks=chunks,
+                    source_urls=source_urls,
                 )
             else:
                 source_urls.append(final_url)

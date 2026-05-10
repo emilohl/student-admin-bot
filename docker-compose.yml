@@ -1,6 +1,9 @@
 services:
   bot:
-    build: .
+    build:
+      context: .
+      args:
+        STUDENT_BOT_VERSION: ${STUDENT_BOT_VERSION:-}
     image: student-bot:latest
     container_name: student-bot
     restart: unless-stopped
@@ -25,7 +28,10 @@ services:
 
   # Beta web UI (authenticated). Start alone: docker compose up -d beta-web
   beta-web:
-    build: .
+    build:
+      context: .
+      args:
+        STUDENT_BOT_VERSION: ${STUDENT_BOT_VERSION:-}
     image: student-bot:latest
     container_name: student-bot-beta-web
     restart: unless-stopped
