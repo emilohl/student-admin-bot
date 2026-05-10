@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "_comment": "Curated colloquial program names. Each entry maps a phrase to the candidate program codes a current student could plausibly mean. Used as a backstop when alias scoring in web_retrieval.py fails to narrow to a single code. Add entries when conversation logs surface a recurring informal term that the official KTH alias list cannot resolve cleanly.",
+  "entries": {
+    "teknisk fysik": {
+      "candidates": ["CTFYS", "TTFYM"],
+      "lang": "sv",
+      "note": "Vanligen civilingenjörsprogrammet CTFYS (5 år) eller masterprogrammet TTFYM (2 år). TFEPM (fusionsenergi och teknisk fysik) avvecklades 2010 och tas bara med om användaren skriver koden eller \"fusionsenergi\" uttryckligen."
+    },
+    "engineering physics": {
+      "candidates": ["CTFYS", "TTFYM"],
+      "lang": "en",
+      "note": "Usually the 5-year civilingenjör (CTFYS) or the 2-year master (TTFYM). TFEPM (nuclear fusion science and engineering physics) was discontinued in 2010."
+    }
+  }
+}

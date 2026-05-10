@@ -143,6 +143,10 @@ class AnswerResult:
     gen_tokens_est: int | None = None
     ttft_ms: int | None = None
     gen_tps: float | None = None
+    # Five-letter KTH code resolved during this turn, when exactly one program
+    # was narrowed to. Callers should persist this in conversation memory so
+    # follow-up turns can reuse it as a prior (see ConversationMemory.set_program_code).
+    program_code: str | None = None
 
 
 def _estimate_tokens(text: str) -> int:
@@ -259,6 +263,7 @@ def answer(
     on_thinking=None,
     on_jargon_prefix=None,
     rate_limit_key: str | None = None,
+    program_prior: str | None = None,
 ) -> AnswerResult:
     cfg = cfg or get_config()
     history = history or []
@@ -319,7 +324,8 @@ def answer(
             )
             jargon_note = jargon.transparency_note(jargon_hits, lang)
 
-    web_result = maybe_fetch_dynamic_web(cfg, expanded_q, lang)
+    web_result = maybe_fetch_dynamic_web(cfg, expanded_q, lang, program_prior=program_prior)
+    resolved_program_code = web_result.resolved_program_code if web_result else None
     source_urls: list[str] = []
     stale_cache_days: int | None = None
     if web_result and web_result.clarification:
@@ -337,6 +343,7 @@ def answer(
             latency_ms=int((time.monotonic() - t0) * 1000),
             expanded_question=expanded_q,
             jargon_hits=jargon_hits,
+            program_code=resolved_program_code,
         )
     if web_result and web_result.missing_kth_course:
         msg = web_result.missing_kth_course[0] if lang == "sv" else web_result.missing_kth_course[1]
@@ -597,6 +604,7 @@ def answer(
         gen_tokens_est=gen_tokens_est or None,
         ttft_ms=ttft_ms,
         gen_tps=gen_tps,
+        program_code=resolved_program_code,
     )
 
 
@@ -699,13 +707,16 @@ def _repl(cfg: Config, console: Console, *, show_context: bool):
             sys.stdout.flush()
             printed_any = True
 
-        result = answer(q, history=history, cfg=cfg, on_token=on_tok)
+        program_prior = memory.get_program_code(user_id, thread_id)
+        result = answer(q, history=history, cfg=cfg, on_token=on_tok, program_prior=program_prior)
         if printed_any:
             sys.stdout.write("\n")
 
         if result.answered or result.meta_fallback:
             memory.append(user_id, thread_id, "user", q)
             memory.append(user_id, thread_id, "assistant", result.answer)
+        if result.program_code:
+            memory.set_program_code(user_id, thread_id, result.program_code)
 
         console.print(
             f"[dim]lang={result.lang}  gate={result.gate.reason}  "

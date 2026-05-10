@@ -136,7 +136,7 @@ dynamic_web:
   max_links_followed: 24
   cache_db: data/web_cache.sqlite
   program_aliases_file: data/program_aliases.json
-  program_aliases_ttl_hours: 24
+  program_aliases_ttl_hours: 48
   program_aliases: {}
 
 # URL/PDF corpus ingestion from a manifest.

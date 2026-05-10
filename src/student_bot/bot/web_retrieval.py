@@ -178,7 +178,13 @@ def _parse_programme_year_level(q: str) -> int | None:
 
 def program_study_intent_question(q: str) -> bool:
     lower = (q or "").lower()
-    if "program" in lower or "utbildningsplan" in lower or "study plan" in lower:
+    if (
+        "program" in lower
+        or "utbildningsplan" in lower
+        or "study plan" in lower
+        or "curriculum" in lower
+        or "kurslista" in lower
+    ):
         return True
     return _parse_programme_year_level(q or "") is not None
 
@@ -250,22 +256,49 @@ def is_programme_clarification_assistant_message(content: str) -> bool:
     )
 
 
+def is_multi_program_clarification_assistant_message(content: str) -> bool:
+    """True if this assistant text is our 'which program code do you mean?' list."""
+    c = (content or "").lower()
+    return "ditt program är inte entydigt" in c or "your program reference is ambiguous" in c
+
+
+def _is_clarification_followup_anchor(content: str) -> bool:
+    return is_programme_clarification_assistant_message(
+        content
+    ) or is_multi_program_clarification_assistant_message(content)
+
+
 def merge_programme_clarification_followup(question: str, history: list[dict] | None) -> str:
-    """If the user is answering our admission-year question, fuse with the prior user ask."""
+    """If the user is answering our admission-year or program-pick question, fuse with the prior user ask."""
     hist = history or []
     if len(hist) < 2:
         return question
     last = hist[-1]
     if last.get("role") != "assistant":
         return question
-    if not is_programme_clarification_assistant_message(last.get("content", "")):
+    last_content = last.get("content", "")
+    is_round = is_programme_clarification_assistant_message(last_content)
+    is_pick = is_multi_program_clarification_assistant_message(last_content)
+    if not (is_round or is_pick):
         return question
 
     qstrip = question.strip()
-    hints = parse_program_admission_hints(question)
-    bare_year = bool(re.fullmatch(r"20\d{2}", qstrip))
-    if not (hints.exact_term or hints.year_prefix or bare_year):
-        return question
+    if is_round:
+        hints = parse_program_admission_hints(question)
+        bare_year = bool(re.fullmatch(r"20\d{2}", qstrip))
+        if not (hints.exact_term or hints.year_prefix or bare_year):
+            return question
+    else:
+        # Program pick: require either a 5-letter code or an explicit "I mean X"
+        # / "jag menar X" anchor. A bare short message could just be a topic
+        # shift, so we don't fuse on length alone.
+        has_code = bool(_PROGRAM_CODE_RE.search(qstrip))
+        has_pick_anchor = bool(
+            re.search(r"\b(?:jag\s+menar|menar)\b", qstrip, re.IGNORECASE)
+            or re.search(r"\bi\s+mean\b", qstrip, re.IGNORECASE)
+        )
+        if not (has_code or has_pick_anchor):
+            return question
 
     prev_user = ""
     for entry in reversed(hist[:-1]):
@@ -275,7 +308,10 @@ def merge_programme_clarification_followup(question: str, history: list[dict] | 
     if not prev_user:
         return question
     merged = f"{prev_user}\n\n{qstrip}"
-    log.info("dynamic-web: merged programme clarification follow-up with prior user question")
+    log.info(
+        "dynamic-web: merged %s clarification follow-up with prior user question",
+        "admission-round" if is_round else "program-pick",
+    )
     return merged
 
 
@@ -285,7 +321,7 @@ def history_without_programme_clarification_tail(
     """Drop the last user+assistant pair when folded into the current user prompt."""
     if not programme_followup_merged or len(history) < 2 or history[-1].get("role") != "assistant":
         return history
-    if not is_programme_clarification_assistant_message(history[-1].get("content", "")):
+    if not _is_clarification_followup_anchor(history[-1].get("content", "")):
         return history
     return history[:-2]
 
@@ -297,11 +333,15 @@ class WebFetchResult:
     used_stale_cache: bool = False
     stale_age_days: int = 0
     failure_url: str = ""
-    # Bilingual clarification when cohort (programme period) can't be inferred.
+    # Bilingual clarification when cohort (programme period) can't be inferred,
+    # or when a colloquial program reference matched several KTH codes.
     clarification: tuple[str, str] | None = None
     # KTH may return 200 + empty SPA shell (h1 «undefined …») for non-existent codes.
     missing_kth_course: tuple[str, str] | None = None
     missing_kth_program: tuple[str, str] | None = None
+    # Five-letter KTH code resolved by this fetch, when exactly one program was
+    # narrowed to. Surfaced so the pipeline can persist it in conversation memory.
+    resolved_program_code: str | None = None
 
 
 def _compiled_patterns(cfg: Config) -> list[re.Pattern[str]]:
@@ -524,11 +564,248 @@ def _get_program_aliases(cfg: Config) -> dict[str, str]:
     return aliases
 
 
+def _alias_strong_tokens(alias: str) -> set[str]:
+    """Discriminative tokens of an alias: length ≥ 4, not in the generic block-list."""
+    tokens = set(re.findall(r"[a-z0-9åäö]+", alias))
+    return {t for t in tokens if len(t) >= 4 and t not in _GENERIC_ALIAS_TOKENS}
+
+
+def _alias_score(alias: str, qn: str, q_tokens: set[str]) -> tuple[float, bool]:
+    """Score a normalised alias against a normalised question.
+
+    Score = fraction of the alias's discriminative ('strong') tokens present
+    in the question, plus 0.5 if the full alias phrase appears verbatim.
+    Returns (score, verbatim_phrase_present). Score 0 = no match.
+    """
+    if not alias:
+        return 0.0, False
+    strong = _alias_strong_tokens(alias)
+    if not strong:
+        # Aliases that are entirely generic (e.g. the lowercased code "ctfys")
+        # only count when the question contains the alias verbatim.
+        return (1.5, True) if alias and alias == qn else (0.0, False)
+    inter = strong & q_tokens
+    if not inter:
+        return 0.0, False
+    coverage = len(inter) / len(strong)
+    verbatim = alias in qn
+    return coverage + (0.5 if verbatim else 0.0), verbatim
+
+
+def _program_level(code: str) -> str:
+    """KTH program codes encode level via the leading letters and final letter."""
+    if not code or len(code) != 5:
+        return "other"
+    if code[0] == "C":
+        return "civilingenjor"
+    if code.startswith("TI"):
+        return "hogskoleingenjor"
+    if code[0] == "T" and code[4] == "M":
+        return "master"
+    if code[0] == "T":
+        return "bachelor"
+    return "other"
+
+
+def _level_prior_from_question(question: str) -> set[str] | None:
+    """Infer which program levels the user is asking about. None = no signal."""
+    qn = _norm(question)
+    year = _parse_programme_year_level(question)
+    has_civ = "civilingenjör" in qn or "civilingenjor" in qn or "civil engineering" in qn
+    has_master = (
+        "masterprogram" in qn
+        or "master's programme" in qn
+        or "master programme" in qn
+        or "master's program" in qn
+        or "master program" in qn
+    )
+    has_hogskole = "högskoleingenjör" in qn or "hogskoleingenjor" in qn
+    has_bachelor = "kandidatprogram" in qn or "bachelor" in qn
+
+    if year is not None and year <= 3:
+        if has_civ:
+            return {"civilingenjor"}
+        if has_hogskole:
+            return {"hogskoleingenjor"}
+        if has_bachelor:
+            return {"bachelor"}
+        # Year ≤ 3 + master keyword: the student is in the civilingenjör phase
+        # asking about future master options. Anchor to the current program.
+        if has_master:
+            return {"civilingenjor"}
+        return {"civilingenjor", "hogskoleingenjor", "bachelor"}
+    if year is not None and year >= 4:
+        if has_civ:
+            return {"civilingenjor"}
+        if has_master:
+            return {"master"}
+        return {"civilingenjor", "master"}
+    if has_civ and not has_master:
+        return {"civilingenjor"}
+    if has_master and not has_civ:
+        return {"master"}
+    if has_hogskole:
+        return {"hogskoleingenjor"}
+    if has_bachelor:
+        return {"bachelor"}
+    return None
+
+
+_program_nicknames_cache: dict[str, tuple[float, dict[str, list[str]]]] = {}
+_PROGRAM_NICKNAMES_TTL_SECONDS = 300.0  # mtime check cadence
+
+
+def _load_program_nicknames(cfg: Config) -> dict[str, list[str]]:
+    """Load curated colloquial-name -> [program codes] map. Empty on missing file."""
+    path = cfg.absolute(Path(cfg.dynamic_web.program_nicknames_file))
+    key = str(path)
+    now = time.time()
+    cached = _program_nicknames_cache.get(key)
+    if cached and now - cached[0] < _PROGRAM_NICKNAMES_TTL_SECONDS:
+        return cached[1]
+    out: dict[str, list[str]] = {}
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        _program_nicknames_cache[key] = (now, out)
+        return out
+    except (OSError, json.JSONDecodeError) as e:
+        log.warning("program nicknames load failed for %s: %s", path, e)
+        _program_nicknames_cache[key] = (now, out)
+        return out
+    entries = data.get("entries", {}) if isinstance(data, dict) else {}
+    if not isinstance(entries, dict):
+        _program_nicknames_cache[key] = (now, out)
+        return out
+    for key_phrase, entry in entries.items():
+        if not isinstance(entry, dict):
+            continue
+        cands = entry.get("candidates", [])
+        if not isinstance(cands, list):
+            continue
+        codes = [c for c in (str(x).strip().upper() for x in cands) if re.fullmatch(r"[A-Z]{5}", c)]
+        if codes:
+            out[_norm(str(key_phrase))] = codes
+    _program_nicknames_cache[key] = (now, out)
+    return out
+
+
+@dataclass
+class _ProgramCandidate:
+    code: str
+    score: float
+    matched_alias: str
+    verbatim: bool  # True when the user typed the 5-letter code or the alias verbatim
+
+
+def _extract_program_candidates(
+    question: str, cfg: Config, *, program_prior: str | None = None
+) -> tuple[list[_ProgramCandidate], list[str]]:
+    """Score program candidates from the question. Returns (candidates, verbatim_codes).
+
+    Candidates are deduped per code (best-scoring alias kept) and narrowed by
+    a level prior (civilingenjör / master / etc.) when the question has a clear
+    level signal. Verbatim-typed codes always survive narrowing.
+    """
+    aliases = _get_program_aliases(cfg)
+    known_codes = {
+        v
+        for v in aliases.values()
+        if re.fullmatch(r"[A-Z]{5}", v.upper() if isinstance(v, str) else "")
+    }
+    qn = _norm(question)
+    q_tokens = set(re.findall(r"[a-z0-9åäö]+", qn))
+
+    verbatim_codes: list[str] = []
+    for code in _PROGRAM_CODE_RE.findall(question):
+        if known_codes and code not in known_codes:
+            continue
+        if code not in verbatim_codes:
+            verbatim_codes.append(code)
+
+    by_code: dict[str, _ProgramCandidate] = {}
+    for code in verbatim_codes:
+        by_code[code] = _ProgramCandidate(code=code, score=2.0, matched_alias=code, verbatim=True)
+
+    min_score = cfg.dynamic_web.alias_min_score
+    for alias, code in aliases.items():
+        if not isinstance(code, str) or not re.fullmatch(r"[A-Z]{5}", code):
+            continue
+        # Skip aliases that are themselves the lowercased 5-letter code; the
+        # verbatim-codes pass above handles those.
+        if alias and alias.upper() == code:
+            continue
+        score, verbatim = _alias_score(alias, qn, q_tokens)
+        if score < min_score:
+            continue
+        prev = by_code.get(code)
+        if prev is None or score > prev.score:
+            by_code[code] = _ProgramCandidate(
+                code=code,
+                score=score,
+                matched_alias=alias,
+                verbatim=verbatim or (prev.verbatim if prev else False),
+            )
+        elif verbatim and not prev.verbatim:
+            prev.verbatim = True
+
+    if not by_code:
+        # Backstop: curated colloquial names ("teknisk fysik" -> [CTFYS, TTFYM])
+        nicknames = _load_program_nicknames(cfg)
+        for phrase, codes in nicknames.items():
+            if phrase and phrase in qn:
+                for c in codes:
+                    if c not in by_code:
+                        by_code[c] = _ProgramCandidate(
+                            code=c,
+                            score=0.8,
+                            matched_alias=f"<nickname:{phrase}>",
+                            verbatim=False,
+                        )
+                break  # one nickname phrase is enough; avoid stacking entries
+
+    if not by_code and program_prior and re.fullmatch(r"[A-Z]{5}", program_prior):
+        # Conversation prior: use the last resolved program when the current
+        # turn produced no candidates. Score below alias matches so a fresh
+        # signal in this turn would always win.
+        by_code[program_prior] = _ProgramCandidate(
+            code=program_prior,
+            score=0.7,
+            matched_alias="<prior>",
+            verbatim=False,
+        )
+
+    candidates = list(by_code.values())
+
+    # If the user typed any 5-letter code verbatim, it is the unambiguous
+    # signal — drop alias-only matches so they don't pull the resolver into
+    # the multi-candidate path. (Multiple verbatim codes still produce a
+    # multi-candidate clarification.)
+    if verbatim_codes:
+        verbatim_set = set(verbatim_codes)
+        candidates = [c for c in candidates if c.code in verbatim_set]
+
+    levels = _level_prior_from_question(question)
+    if levels and len(candidates) > 1:
+        narrowed = [c for c in candidates if _program_level(c.code) in levels]
+        if narrowed:
+            verbatim_extras = [
+                c for c in candidates if c.verbatim and c.code not in {n.code for n in narrowed}
+            ]
+            candidates = narrowed + verbatim_extras
+
+    candidates.sort(key=lambda c: (-c.score, c.code))
+    return candidates, verbatim_codes
+
+
 def _extract_targets(question: str) -> list[str]:
     raise RuntimeError("_extract_targets requires cfg; use _extract_targets_with_cfg")
 
 
-def _extract_targets_with_cfg(question: str, cfg: Config) -> list[str]:
+def _extract_targets_with_cfg(
+    question: str, cfg: Config, *, program_prior: str | None = None
+) -> list[str]:
     urls: list[str] = []
     for code in _COURSE_CODE_RE.findall(question.upper()):
         urls.append(f"https://{_KTH_HOST}/student/kurser/kurs/{code}")
@@ -536,67 +813,41 @@ def _extract_targets_with_cfg(question: str, cfg: Config) -> list[str]:
     # Program lookup is triggered by explicit program intent words OR explicit
     # study-year phrasing (e.g. "år 2", "second year").
     lower = question.lower()
-    if (
+    program_intent = (
         "program" in lower
         or "utbildningsplan" in lower
         or "study plan" in lower
+        or "curriculum" in lower
+        or "kurslista" in lower
         or _parse_programme_year_level(question) is not None
-    ):
+        or bool(_PROGRAM_CODE_RE.search(question))
+    )
+
+    if program_intent:
         aliases = _get_program_aliases(cfg)
-        known_codes = {v for v in aliases.values() if re.fullmatch(r"[A-Z]{5}", v)}
-        # Only accept explicit program codes when the user wrote them in code form
-        # (uppercase token, e.g. CTFYS). Avoid interpreting lowercase words like
-        # "fysik" as a code.
-        for code in _PROGRAM_CODE_RE.findall(question):
-            # Fallback: when alias/code snapshot is empty (e.g. fetch outage), still
-            # probe explicit uppercase code tokens and validate by fetching KTH root.
-            if not known_codes:
+        candidates, verbatim_codes = _extract_program_candidates(
+            question, cfg, program_prior=program_prior
+        )
+        # Cold-cache fallback: when the alias snapshot is empty AND no
+        # candidate scored, still probe verbatim-typed codes via the KTH root.
+        if not aliases and not candidates:
+            for code in _PROGRAM_CODE_RE.findall(question):
                 log.warning(
                     "dynamic-web: programme code list empty; "
                     "probing bare token %s directly via KTH root page",
                     code,
                 )
                 urls.append(f"https://{_KTH_HOST}/student/kurser/program/{code}")
-                continue
-            if code not in known_codes:
-                log.info("dynamic-web: ignoring unknown program-like token %s", code)
-                continue
-            urls.append(f"https://{_KTH_HOST}/student/kurser/program/{code}")
-        qn = _norm(question)
-        q_tokens = set(re.findall(r"[a-z0-9åäö]+", qn))
+        for cand in candidates:
+            urls.append(f"https://{_KTH_HOST}/student/kurser/program/{cand.code}")
+        if candidates:
+            log.info(
+                "dynamic-web: program candidates=%s",
+                [(c.code, round(c.score, 2), c.matched_alias) for c in candidates],
+            )
+        elif verbatim_codes:
+            log.info("dynamic-web: verbatim-only program codes=%s", verbatim_codes)
 
-        matched_aliases: list[tuple[str, str]] = []
-
-        def alias_match(alias: str) -> bool:
-            if not alias:
-                return False
-            alias_tokens = set(re.findall(r"[a-z0-9åäö]+", alias))
-            strong = {t for t in alias_tokens if len(t) >= 4 and t not in _GENERIC_ALIAS_TOKENS}
-            if alias == qn:
-                return True
-            if alias in qn:
-                # Avoid matching broad labels like "masterprogram" or single
-                # subject words like "fysik" in multi-word questions.
-                if len(strong) < 2:
-                    return False
-                return strong.issubset(q_tokens)
-            # Also allow semantic token overlap when the full alias phrase isn't
-            # present verbatim (e.g. "masterprogrammet i teknisk fysik" should
-            # hit alias "civilingenjörsutbildning i teknisk fysik").
-            if len(strong) >= 2 and len(strong.intersection(q_tokens)) >= 2:
-                return True
-            return False
-
-        # Prefer longest aliases first so "teknisk fysik" wins over "fysik".
-        for alias in sorted(aliases.keys(), key=len, reverse=True):
-            if alias_match(alias):
-                code = aliases[alias]
-                if re.fullmatch(r"[A-Z]{5}", code):
-                    matched_aliases.append((alias, code))
-                    urls.append(f"https://{_KTH_HOST}/student/kurser/program/{code}")
-        if matched_aliases:
-            log.info("dynamic-web: matched program aliases=%s", matched_aliases)
-    # Stable dedupe
     out: list[str] = []
     seen: set[str] = set()
     for u in urls:
@@ -904,6 +1155,378 @@ def _programme_page_text_with_store(html: str, visible_body: str, page_url: str 
     return f"{base}\n\n{appendix}".strip()
 
 
+# ---------------------------------------------------------------------------
+# Structured per-section chunking for KTH programme pages.
+#
+# The legacy single-chunk-per-page approach (capped at _MAX_DYNAMIC_WEB_CHUNK_CHARS)
+# meant year-1 content dominated the LLM prompt budget; later year info and
+# the studyProgramme narrative often got crowded out. Instead we walk the
+# SPA store and emit one chunk per logical section, labelled via the curated
+# atlas (data/study_plan_atlas.yaml) so retrieval can rank on user intent.
+# ---------------------------------------------------------------------------
+
+_MAX_STUDYPLAN_CHUNK_CHARS = 6_000  # per-field cap; avoids one giant blob
+_MAX_STUDYPLAN_CHUNKS_PER_PAGE = 30  # belt-and-braces against pathological pages
+
+_VALVILLKOR_BUCKET_LABELS_SV: dict[str, str] = {
+    "O": "Obligatoriska",
+    "V": "Valbara",
+    "VV": "Villkorligt valbara",
+    "K": "Kompletterande",
+    "KV": "Konditionsvalfria",
+    "VK": "Villkorligt valbara",
+    "R": "Rekommenderade",
+}
+
+
+def _strip_html_to_text(value: str) -> str:
+    """Cheap HTML-to-text — programme freetext fields are short and well-formed."""
+    if not value:
+        return ""
+    soup = BeautifulSoup(value, "lxml")
+    text = soup.get_text(" ", strip=True)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _flatten_text(value: object) -> str:
+    """Best-effort flatten of a studyProgramme field into plain text."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return _strip_html_to_text(value)
+    if isinstance(value, list):
+        parts: list[str] = []
+        for item in value:
+            if isinstance(item, str):
+                t = _strip_html_to_text(item)
+                if t:
+                    parts.append(t)
+            elif isinstance(item, dict):
+                # specialisations / similar: pick code + label + description.
+                kod = item.get("kod") or item.get("code") or ""
+                ben = item.get("benamning") or item.get("name") or item.get("title") or ""
+                besk = item.get("beskrivning") or item.get("description") or ""
+                head = " ".join(b for b in [str(kod), str(ben)] if b).strip()
+                body = _strip_html_to_text(str(besk)) if besk else ""
+                if head and body:
+                    parts.append(f"{head}: {body}")
+                elif head:
+                    parts.append(head)
+                elif body:
+                    parts.append(body)
+        return "\n".join(p for p in parts if p)
+    if isinstance(value, dict):
+        # Rare — flatten nested string values.
+        return "\n".join(
+            _strip_html_to_text(v) for v in value.values() if isinstance(v, str) and v.strip()
+        )
+    return ""
+
+
+def _truncate_studyplan_text(text: str) -> str:
+    if len(text) <= _MAX_STUDYPLAN_CHUNK_CHARS:
+        return text
+    return text[:_MAX_STUDYPLAN_CHUNK_CHARS].rstrip() + "\n…"
+
+
+def _build_studyplan_chunk(
+    *,
+    text: str,
+    page_url: str,
+    fragment: str,
+    section_path: str,
+    doc_title: str,
+    fetched_at: int,
+    is_stale: bool = False,
+) -> RetrievedChunk:
+    if not text:
+        raise ValueError("empty chunk text")
+    rel_source = f"{page_url}#{fragment}" if fragment else page_url
+    chunk_id = f"web:{rel_source}"
+    return RetrievedChunk(
+        chunk_id=chunk_id,
+        text=_truncate_studyplan_text(text),
+        rel_source=rel_source,
+        doc_title=doc_title,
+        doc_type="html",
+        language="sv",
+        section_path=section_path,
+        chunk_index=0,
+        chroma_distance=0.0,
+        rerank_score=2.5 if is_stale else 3.5,
+        source_url=page_url,
+        fetched_at=fetched_at,
+        is_stale=is_stale,
+    )
+
+
+def _studyplan_chunks_from_studyprogramme(
+    sp: dict,
+    *,
+    programme_name: str,
+    page_url: str,
+    fetched_at: int,
+    is_stale: bool,
+    lang: str = "sv",
+) -> list[RetrievedChunk]:
+    """One chunk per non-empty studyProgramme.<field>. Atlas labels the section."""
+    from student_bot.bot.study_plan_atlas import get_atlas
+
+    atlas = get_atlas()
+    out: list[RetrievedChunk] = []
+    for key, raw in sp.items():
+        text = _flatten_text(raw)
+        if len(text) < 20:  # skip empty / boilerplate stubs
+            continue
+        topic_label = atlas.label_for_field(key, lang) or key
+        section_path = f"{topic_label} (studieplan, fält: {key})"
+        title_prefix = programme_name.strip() if programme_name else "Studieplan"
+        doc_title = f"{title_prefix} studieplan: {topic_label}"
+        try:
+            out.append(
+                _build_studyplan_chunk(
+                    text=text,
+                    page_url=page_url,
+                    fragment=key,
+                    section_path=section_path,
+                    doc_title=doc_title,
+                    fetched_at=fetched_at,
+                    is_stale=is_stale,
+                )
+            )
+        except ValueError:
+            continue
+        if len(out) >= _MAX_STUDYPLAN_CHUNKS_PER_PAGE:
+            break
+    return out
+
+
+def _studyplan_chunks_from_year_page(
+    store: dict,
+    *,
+    programme_name: str,
+    year: int,
+    page_url: str,
+    fetched_at: int,
+    is_stale: bool,
+) -> list[RetrievedChunk]:
+    """Per-bucket chunks from /arskursN — one per non-empty Valvillkor group."""
+    curriculums = store.get("curriculums") if isinstance(store, dict) else None
+    if not isinstance(curriculums, list) or not curriculums:
+        return []
+    cy0 = curriculums[0]
+    if not isinstance(cy0, dict):
+        return []
+    study_years = cy0.get("studyYears") or []
+    target = next(
+        (y for y in study_years if isinstance(y, dict) and int(y.get("yearNumber") or 0) == year),
+        None,
+    )
+    if not isinstance(target, dict):
+        return []
+
+    free_text_lines: list[str] = []
+    for ft in target.get("freeTexts") or []:
+        if isinstance(ft, dict):
+            tx = ft.get("Text")
+            if isinstance(tx, str) and tx.strip():
+                free_text_lines.append(_strip_html_to_text(tx))
+
+    raw_courses = target.get("courses")
+    out: list[RetrievedChunk] = []
+
+    # Some programs (e.g. CINEK arskurs1) ship the year-N course list as an
+    # HTML string instead of a structured list. We can't bucket by Valvillkor
+    # without parsing the HTML, so emit a single chunk preserving the markup
+    # text. Years 2+ on the same program switch to structured lists, which the
+    # bucket loop below handles normally.
+    if isinstance(raw_courses, str) and raw_courses.strip():
+        text_body = _strip_html_to_text(raw_courses)
+        if len(text_body) >= 20:
+            lines: list[str] = [f"## Årskurs {year} – kurslista"]
+            if free_text_lines:
+                lines.append("\n".join(f"_Notis:_ {t}" for t in free_text_lines))
+            lines.append("")
+            lines.append(text_body)
+            text = "\n".join(lines).strip()
+            title_prefix = programme_name.strip() if programme_name else "Årskurs"
+            try:
+                out.append(
+                    _build_studyplan_chunk(
+                        text=text,
+                        page_url=page_url,
+                        fragment=f"arskurs{year}",
+                        section_path=f"Årskurs {year} – kurslista",
+                        doc_title=f"{title_prefix} årskurs {year}",
+                        fetched_at=fetched_at,
+                        is_stale=is_stale,
+                    )
+                )
+            except ValueError:
+                pass
+        return out
+
+    buckets: dict[str, list[dict]] = defaultdict(list)
+    for c in raw_courses or []:
+        if not isinstance(c, dict):
+            continue
+        raw_vv = c.get("Valvillkor") or c.get("valvillkor") or "?"
+        vv = raw_vv.strip() if isinstance(raw_vv, str) else "?"
+        if not vv:
+            vv = "?"
+        buckets[vv].append(c)
+
+    for vv in _sort_valvillkor_keys(list(buckets.keys())):
+        bucket_label = _VALVILLKOR_BUCKET_LABELS_SV.get(vv, f"Valvillkor {vv}")
+        rows: list[str] = []
+        for c in sorted(buckets[vv], key=lambda x: str(x.get("kod") or "")):
+            row = _markdown_course_line_from_curriculum_row(c)
+            if row:
+                rows.append(row)
+        if not rows:
+            continue
+        lines: list[str] = [f"## Årskurs {year} – {bucket_label} ({vv})"]
+        if free_text_lines:
+            lines.append("\n".join(f"_Notis:_ {t}" for t in free_text_lines))
+        lines.append("")
+        lines.extend(rows)
+        text = "\n".join(lines).strip()
+        title_prefix = programme_name.strip() if programme_name else "Årskurs"
+        try:
+            out.append(
+                _build_studyplan_chunk(
+                    text=text,
+                    page_url=page_url,
+                    fragment=f"arskurs{year}-{vv}",
+                    section_path=f"Årskurs {year} – {bucket_label} ({vv})",
+                    doc_title=f"{title_prefix} årskurs {year} ({bucket_label})",
+                    fetched_at=fetched_at,
+                    is_stale=is_stale,
+                )
+            )
+        except ValueError:
+            continue
+        if len(out) >= _MAX_STUDYPLAN_CHUNKS_PER_PAGE:
+            break
+    return out
+
+
+def _studyplan_chunks_from_specializations(
+    store: dict,
+    *,
+    programme_name: str,
+    page_url: str,
+    fetched_at: int,
+    is_stale: bool,
+) -> list[RetrievedChunk]:
+    sp_field = store.get("specializations") if isinstance(store, dict) else None
+    if not isinstance(sp_field, list) or not sp_field:
+        # Some programs put specializations under studyProgramme.specialisations.
+        sp_obj = store.get("studyProgramme") if isinstance(store, dict) else None
+        if isinstance(sp_obj, dict):
+            sp_field = sp_obj.get("specialisations")
+    if not isinstance(sp_field, list) or not sp_field:
+        return []
+    out: list[RetrievedChunk] = []
+    for item in sp_field:
+        if not isinstance(item, dict):
+            continue
+        kod = str(item.get("kod") or item.get("code") or "").strip()
+        ben = str(item.get("benamning") or item.get("name") or "").strip()
+        besk = _strip_html_to_text(str(item.get("beskrivning") or item.get("description") or ""))
+        body_lines: list[str] = []
+        head = " ".join(b for b in [kod, ben] if b)
+        if head:
+            body_lines.append(f"## {head}")
+        if besk:
+            body_lines.append(besk)
+        text = "\n\n".join(body_lines).strip()
+        if len(text) < 10:
+            continue
+        title_prefix = programme_name.strip() if programme_name else "Inriktning"
+        try:
+            out.append(
+                _build_studyplan_chunk(
+                    text=text,
+                    page_url=page_url,
+                    fragment=f"inriktning-{kod or 'x'}",
+                    section_path=f"Inriktning: {kod} {ben}".strip(),
+                    doc_title=f"{title_prefix} inriktning: {kod} {ben}".strip(),
+                    fetched_at=fetched_at,
+                    is_stale=is_stale,
+                )
+            )
+        except ValueError:
+            continue
+        if len(out) >= _MAX_STUDYPLAN_CHUNKS_PER_PAGE:
+            break
+    return out
+
+
+def _studyplan_chunks_from_html(
+    html: str,
+    *,
+    final_url: str,
+    fetched_at: int,
+    lang: str = "sv",
+    is_stale: bool = False,
+) -> list[RetrievedChunk]:
+    """Walk the SPA store on a /student/kurser/program/... page and emit one
+    chunk per logical section (studyProgramme field, year-bucket, or
+    specialisation). Returns ``[]`` when the store is missing — callers fall
+    back to the legacy single-chunk path.
+    """
+    store = _compressed_application_store(html)
+    if not isinstance(store, dict):
+        return []
+    programme_name = str(store.get("programmeName") or "").strip()
+    path = urlsplit(final_url).path
+    is_omfattning_or_genomforande = path.endswith("/omfattning") or path.endswith("/genomforande")
+    is_inriktningar = path.endswith("/inriktningar")
+    year = _program_page_year_from_url(final_url)
+
+    chunks: list[RetrievedChunk] = []
+
+    if is_omfattning_or_genomforande:
+        sp = store.get("studyProgramme")
+        if isinstance(sp, dict):
+            chunks.extend(
+                _studyplan_chunks_from_studyprogramme(
+                    sp,
+                    programme_name=programme_name,
+                    page_url=final_url,
+                    fetched_at=fetched_at,
+                    is_stale=is_stale,
+                    lang=lang,
+                )
+            )
+
+    if year is not None:
+        chunks.extend(
+            _studyplan_chunks_from_year_page(
+                store,
+                programme_name=programme_name,
+                year=year,
+                page_url=final_url,
+                fetched_at=fetched_at,
+                is_stale=is_stale,
+            )
+        )
+
+    if is_inriktningar:
+        chunks.extend(
+            _studyplan_chunks_from_specializations(
+                store,
+                programme_name=programme_name,
+                page_url=final_url,
+                fetched_at=fetched_at,
+                is_stale=is_stale,
+            )
+        )
+
+    return chunks[:_MAX_STUDYPLAN_CHUNKS_PER_PAGE]
+
+
 def _program_links(html: str, base_url: str) -> list[str]:
     soup = BeautifulSoup(html, "lxml")
     out: list[str] = []
@@ -999,6 +1622,221 @@ def _clarify_program_terms_sv(program_code: str, terms: list[str]) -> str:
         "vilken antagningsomgång som gäller. Skriv gärna t.ex. **HT2024** eller **VT2025**."
         f"{span_line}"
     )
+
+
+_PROGRAM_TERMS_CACHE: dict[str, tuple[float, list[str]]] = {}
+_PROGRAM_TERMS_CACHE_TTL_SECONDS = 6 * 3600.0
+
+
+def _cached_terms_for_code(cfg: Config, code: str) -> list[str]:
+    """Fetch the programme root once per code (6h TTL) and parse its terms list.
+
+    Used by the multi-candidate disambiguator to decide whether each candidate
+    is currently active. Errors are cached as empty so a transient outage does
+    not silently mark a program as discontinued.
+    """
+    now = time.time()
+    cached = _PROGRAM_TERMS_CACHE.get(code)
+    if cached and now - cached[0] < _PROGRAM_TERMS_CACHE_TTL_SECONDS:
+        return cached[1]
+    url = _canonicalize(f"https://{_KTH_HOST}/student/kurser/program/{code}")
+    try:
+        _, html = _fetch_html(url, cfg)
+    except Exception as e:
+        log.warning("dynamic-web: terms fetch failed for %s: %s", code, e)
+        _PROGRAM_TERMS_CACHE[code] = (now, [])
+        return []
+    store = _compressed_application_store(html)
+    terms = _normalized_programme_terms_from_store(store)
+    _PROGRAM_TERMS_CACHE[code] = (now, terms)
+    return terms
+
+
+def _level_label_sv(level: str) -> str:
+    return {
+        "civilingenjor": "civilingenjör, 5 år",
+        "master": "masterprogram, 2 år",
+        "hogskoleingenjor": "högskoleingenjör, 3 år",
+        "bachelor": "kandidatprogram, 3 år",
+    }.get(level, "")
+
+
+def _level_label_en(level: str) -> str:
+    return {
+        "civilingenjor": "Master of Science in Engineering, 5 years",
+        "master": "Master's programme, 2 years",
+        "hogskoleingenjor": "Bachelor of Science in Engineering, 3 years",
+        "bachelor": "Bachelor's programme, 3 years",
+    }.get(level, "")
+
+
+def _canonical_alias_for_code(aliases: dict[str, str], code: str, lang: str) -> str:
+    """Pick the most informative human-readable alias for this code."""
+    matches = [a for a, c in aliases.items() if c == code and a and a.upper() != code]
+    if not matches:
+        return code
+    if lang == "en":
+        prefs = ("degree programme", "master's programme", "master programme", "bachelor")
+        en_likely = [a for a in matches if any(p in a for p in prefs)]
+        if en_likely:
+            return max(en_likely, key=len)
+    sv_prefs = (
+        "civilingenjörsutbildning",
+        "masterprogram",
+        "kandidatprogram",
+        "högskoleingenjörsutbildning",
+    )
+    sv_likely = [a for a in matches if any(a.startswith(p) for p in sv_prefs)]
+    if sv_likely:
+        return max(sv_likely, key=len)
+    return max(matches, key=len)
+
+
+def _build_multi_program_clarification(
+    candidates: list[tuple[str, list[str], str]], aliases: dict[str, str]
+) -> tuple[str, str]:
+    """Bilingual 'which program do you mean?' message. `candidates` items are
+    (code, terms, status) where status is 'current' or 'historical'."""
+
+    def _line_sv(code: str, terms: list[str], status: str) -> str:
+        name = _canonical_alias_for_code(aliases, code, "sv")
+        if name and name != code:
+            name = name[:1].upper() + name[1:]
+        level = _level_label_sv(_program_level(code))
+        bits = [f"**{code}**"]
+        if name and name != code:
+            bits.append(name)
+        if level:
+            bits.append(f"({level})")
+        if status == "historical":
+            span = _intake_year_bounds_from_terms(terms)
+            bits.append(
+                f"– avvecklat, senaste antagning {span[1]}" if span else "– avvecklat program"
+            )
+        return "- " + " ".join(bits)
+
+    def _line_en(code: str, terms: list[str], status: str) -> str:
+        name = _canonical_alias_for_code(aliases, code, "en")
+        if name and name != code:
+            name = name[:1].upper() + name[1:]
+        level = _level_label_en(_program_level(code))
+        bits = [f"**{code}**"]
+        if name and name != code:
+            bits.append(name)
+        if level:
+            bits.append(f"({level})")
+        if status == "historical":
+            span = _intake_year_bounds_from_terms(terms)
+            bits.append(f"– discontinued, last intake {span[1]}" if span else "– discontinued")
+        return "- " + " ".join(bits)
+
+    sv = (
+        "Ditt program är inte entydigt. Vilket av följande menar du? "
+        "Svara gärna med koden eller hela namnet:\n"
+        + "\n".join(_line_sv(c, t, s) for c, t, s in candidates)
+    )
+    en = (
+        "Your program reference is ambiguous. Which one do you mean? "
+        "Reply with the code or the full name:\n"
+        + "\n".join(_line_en(c, t, s) for c, t, s in candidates)
+    )
+    return sv, en
+
+
+@dataclass
+class _MultiCandidateResolution:
+    queue_urls: list[str] = field(default_factory=list)
+    clarification_sv: str = ""
+    clarification_en: str = ""
+    resolved_code: str | None = None
+
+
+def _current_calendar_year() -> int:
+    import datetime as _dt
+
+    return _dt.datetime.now().year
+
+
+def _resolve_multi_program_candidates(
+    cfg: Config, question: str, prog_roots: list[str]
+) -> _MultiCandidateResolution:
+    """Decide between several candidate program codes by intake-year recency
+    and discriminative-token bypass. Returns either a narrowed program list
+    or a 'which one?' clarification."""
+    qn = _norm(question)
+    q_tokens = set(re.findall(r"[a-z0-9åäö]+", qn))
+    aliases = _get_program_aliases(cfg)
+
+    cutoff = _current_calendar_year() - cfg.dynamic_web.historical_program_years
+    candidates: list[tuple[str, list[str], str]] = []
+    seen: set[str] = set()
+    for root in prog_roots:
+        code = _program_segment_code(root)
+        if not code or code in seen:
+            continue
+        seen.add(code)
+        terms = _cached_terms_for_code(cfg, code)
+        candidates.append((code, terms, ""))
+
+    if not candidates:
+        return _MultiCandidateResolution(queue_urls=list(prog_roots))
+
+    def is_current(terms: list[str]) -> bool:
+        bounds = _intake_year_bounds_from_terms(terms)
+        if not bounds:
+            return True  # unknown — treat as current
+        return bounds[1] >= cutoff
+
+    has_current = any(is_current(t) for _, t, _ in candidates)
+
+    verbatim_typed = set(_PROGRAM_CODE_RE.findall(question))
+
+    def discriminator_present(code: str) -> bool:
+        """User typed at least one of the alias's discriminative tokens.
+
+        Used to override the historical-program suppression: e.g. typing
+        'fusionsenergi' keeps TFEPM in the disambiguation list even though
+        its last intake is older than the cutoff.
+        """
+        for alias, c in aliases.items():
+            if c != code or not alias:
+                continue
+            strong = _alias_strong_tokens(alias)
+            if strong and len(strong & q_tokens) == len(strong):
+                return True
+        return False
+
+    if has_current:
+        kept: list[tuple[str, list[str], str]] = []
+        dropped: list[str] = []
+        for code, terms, _ in candidates:
+            if is_current(terms):
+                kept.append((code, terms, "current"))
+            elif code in verbatim_typed or discriminator_present(code):
+                kept.append((code, terms, "historical"))
+            else:
+                dropped.append(code)
+        if dropped:
+            log.info(
+                "dynamic-web: hid historical candidates with last intake < %d: %s",
+                cutoff,
+                dropped,
+            )
+        candidates = kept
+    else:
+        candidates = [(c, t, "historical") for c, t, _ in candidates]
+
+    if len(candidates) == 0:
+        return _MultiCandidateResolution(queue_urls=list(prog_roots))
+    if len(candidates) == 1:
+        code = candidates[0][0]
+        return _MultiCandidateResolution(
+            queue_urls=[f"https://{_KTH_HOST}/student/kurser/program/{code}"],
+            resolved_code=code,
+        )
+
+    sv, en = _build_multi_program_clarification(candidates, aliases)
+    return _MultiCandidateResolution(clarification_sv=sv, clarification_en=en)
 
 
 def _clarify_program_terms_en(program_code: str, terms: list[str]) -> str:
@@ -1125,17 +1963,28 @@ def _dedupe_urls(urls: list[str]) -> list[str]:
 
 
 def _programme_term_bundle_urls(url: str) -> list[str]:
-    """For /program/<CODE>/<TERM>(/arskursN), return a stable study-plan bundle:
-    base term page + year pages + common sidebar pages."""
+    """For /program/<CODE>/<TERM>(/arskursN), return a stable study-plan bundle.
+
+    Order matters: the fetcher visits URLs in this order and stops at
+    ``max_pages_per_query``. ``/omfattning`` carries the full
+    ``studyProgramme.*`` payload that the per-section chunker expands into
+    ~25 small chunks, so it comes right after the base term page. Year
+    pages follow with their concrete Valvillkor data. ``/genomforande``
+    embeds the same ``studyProgramme`` object as ``/omfattning`` and is
+    placed late as a defensive fallback only.
+    """
     path = urlsplit(_canonicalize(url)).path
     m = _PROGRAM_TERM_RE.fullmatch(path)
     if not m:
         return [_canonicalize(url)]
     code, term, _year = m.group(1).upper(), m.group(2), m.group(3)
     base = _canonicalize(f"https://{_KTH_HOST}/student/kurser/program/{code}/{term}")
+    primary_sidebar = ("omfattning",)
+    other_sidebar = tuple(slug for slug in _PROGRAM_SIDEBAR_SLUGS if slug not in primary_sidebar)
     out: list[str] = [base]
+    out.extend([f"{base}/{slug}" for slug in primary_sidebar])
     out.extend([f"{base}/arskurs{n}" for n in range(1, 6)])
-    out.extend([f"{base}/{slug}" for slug in _PROGRAM_SIDEBAR_SLUGS])
+    out.extend([f"{base}/{slug}" for slug in other_sidebar])
     return _dedupe_urls(out)
 
 
@@ -1177,6 +2026,8 @@ def maybe_fetch_dynamic_web(
     cfg: Config,
     question: str,
     _lang: str = "sv",
+    *,
+    program_prior: str | None = None,
 ) -> WebFetchResult | None:
     if not cfg.dynamic_web.enabled:
         return None
@@ -1187,9 +2038,20 @@ def maybe_fetch_dynamic_web(
             missing_kth_program=_bilingual_missing_kth_program_message(unknown_codes),
         )
 
+    # Local import to avoid a circular dependency at module load time
+    # (course_resolver imports a couple of helpers from this module).
+    from student_bot.bot.course_resolver import (
+        question_has_course_intent,
+        question_has_explicit_course_code,
+        resolve_course_intent,
+    )
+
     patterns = _compiled_patterns(cfg)
-    targets = _extract_targets_with_cfg(question, cfg)
-    if not targets:
+    targets = _extract_targets_with_cfg(question, cfg, program_prior=program_prior)
+    course_intent_no_code = question_has_course_intent(
+        question
+    ) and not question_has_explicit_course_code(question)
+    if not targets and not (course_intent_no_code and program_prior):
         return None
     log.info("dynamic-web: targets=%s", targets)
 
@@ -1198,7 +2060,21 @@ def maybe_fetch_dynamic_web(
     hints = parse_program_admission_hints(question)
     year_level = _parse_programme_year_level(question)
 
+    # When the question's wording matches more than one program code, decide
+    # between them by intake-year recency before asking about admission round
+    # for any single candidate. Otherwise we'd silently pick (and ask about)
+    # whichever code happened to be sorted first — possibly a discontinued one.
+    if len(prog_roots) > 1:
+        multi = _resolve_multi_program_candidates(cfg, question, prog_roots)
+        if multi.clarification_sv:
+            return WebFetchResult(
+                clarification=(multi.clarification_sv, multi.clarification_en),
+            )
+        if multi.queue_urls:
+            prog_roots = list(multi.queue_urls)
+
     queue: list[str] = list(course_urls)
+    resolved_program_code: str | None = None
     for root in prog_roots:
         res = _resolve_program_root_targets(cfg, root, hints, year_level=year_level)
         if res.missing_program_codes:
@@ -1210,9 +2086,35 @@ def maybe_fetch_dynamic_web(
         if res.clarification_sv:
             return WebFetchResult(
                 clarification=(res.clarification_sv, res.clarification_en),
+                resolved_program_code=_program_segment_code(root),
             )
         for u in res.queue_urls:
             queue.extend(_programme_term_bundle_urls(u))
+        if resolved_program_code is None:
+            resolved_program_code = _program_segment_code(root)
+
+    # Course-without-code path. Triggers when the question references a course
+    # by name (no explicit code) and a program code is known — either
+    # established this turn or carried over via program_prior.
+    if course_intent_no_code:
+        course_res = resolve_course_intent(
+            cfg,
+            question,
+            program_prior=program_prior,
+            program_now=resolved_program_code,
+        )
+        if course_res is not None:
+            if course_res.clarification_sv:
+                return WebFetchResult(
+                    clarification=(
+                        course_res.clarification_sv,
+                        course_res.clarification_en,
+                    ),
+                    resolved_program_code=resolved_program_code,
+                )
+            for cu in course_res.course_urls:
+                if cu not in queue:
+                    queue.append(cu)
 
     queue = _dedupe_urls(queue)
     if not queue:
@@ -1270,25 +2172,42 @@ def maybe_fetch_dynamic_web(
             now = int(time.time())
             cache.put(CachedPage(url=final_url, title=title, content=content, fetched_at=now))
             log.info("dynamic-web: cached %s", final_url)
-            source_urls.append(final_url)
-            section = _program_page_section_label(final_url)
-            chunks.append(
-                RetrievedChunk(
-                    chunk_id=f"web:{final_url}",
-                    text=content,
-                    rel_source=final_url,
-                    doc_title=title,
-                    doc_type="html",
-                    language="sv",
-                    section_path=section,
-                    chunk_index=0,
-                    chroma_distance=0.0,
-                    rerank_score=3.5,
-                    source_url=final_url,
-                    fetched_at=now,
-                    is_stale=False,
+            # Programme pages: prefer the per-section structured chunker so
+            # studyProgramme.* fields and per-year Valvillkor buckets each
+            # become individually-retrievable chunks instead of one 36KB blob.
+            structured: list[RetrievedChunk] = []
+            if "/student/kurser/program/" in final_url:
+                structured = _studyplan_chunks_from_html(
+                    html, final_url=final_url, fetched_at=now, lang="sv"
                 )
-            )
+            if structured:
+                source_urls.append(final_url)
+                chunks.extend(structured)
+                log.info(
+                    "dynamic-web: emitted %d structured chunks from %s",
+                    len(structured),
+                    final_url,
+                )
+            else:
+                source_urls.append(final_url)
+                section = _program_page_section_label(final_url)
+                chunks.append(
+                    RetrievedChunk(
+                        chunk_id=f"web:{final_url}",
+                        text=content,
+                        rel_source=final_url,
+                        doc_title=title,
+                        doc_type="html",
+                        language="sv",
+                        section_path=section,
+                        chunk_index=0,
+                        chroma_distance=0.0,
+                        rerank_score=3.5,
+                        source_url=final_url,
+                        fetched_at=now,
+                        is_stale=False,
+                    )
+                )
             if "/student/kurser/program/" in final_url:
                 for u in _program_links(html, final_url):
                     if len(queue) + len(visited) >= max_pages:
@@ -1314,6 +2233,11 @@ def maybe_fetch_dynamic_web(
             used_stale = True
             stale_days = max(stale_days, age)
             log.info("dynamic-web: using cached page %s (age=%sd)", cached.url, age)
+            # Stale-cache content is text-only (HTML wasn't preserved), so we
+            # can't re-derive structured chunks here. Surface the cached body
+            # as a single chunk and rely on the rerank score gradient (2.5 vs
+            # the 3.5 used by structured chunks) so fresh structured content
+            # outranks stale dumps when both are present.
             source_urls.append(cached.url)
             section = _program_page_section_label(cached.url)
             chunks.append(
@@ -1345,4 +2269,5 @@ def maybe_fetch_dynamic_web(
         source_urls=source_urls,
         used_stale_cache=used_stale,
         stale_age_days=stale_days,
+        resolved_program_code=resolved_program_code,
     )

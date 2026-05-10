@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="sv">
+
+<head>
+  <title>Civilingenjörsutbildning i teknisk fysik (CTFYS), Utbildningsplan kull HT2024, Utbildningens omfattning och innehåll | KTH</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="">
+  <link rel="shortcut icon" id="favicon" href="/student/kurser/static/icon/favicon">
+
+
+  
+  
+  
+
+  <link href="/student/kurser/static/kth-style/css/kth-bootstrap.css?v=2.0.0-20260427.1_59b0" media="screen" rel="stylesheet">
+<link href="/student/kurser/assets/fonts.css?v=2.0.0-20260427.1_59b0" media="screen" rel="stylesheet">
+<link href="/student/kurser/static/app.css?v=2.0.0-20260427.1_59b0" media="screen" rel="stylesheet">
+
+    
+
+
+
+
+  <!-- Begin JavaScript contentId-1_1137647 -->
+  <script>var klaroConfig = {
+    testing: false,
+  acceptAll: true,
+  styling: {
+      theme: [],
+  },
+  htmlTexts: false,
+  groupByPurpose: false,
+  storageMethod: 'cookie',
+  cookieDomain: 'kth.se',
+  cookieExpiresAfterDays: 30,
+  hideDeclineAll: false,
+  translations: {
+      sv: {
+          service: {
+            disableAll: {
+              description: 'Använd detta reglage för att tillåta alla tjänster eller endast nödvändiga.',
+              title: 'Ändra för alla tjänster',
+            },
+          },
+          consentModal: {
+            description:
+              'Här kan du se och anpassa vilken information vi samlar om dig.',
+          },
+          privacyPolicy: {
+              name: 'kakor',
+              text: 'Läs mer om hur vi hanterar {privacyPolicy}.',
+          },
+          privacyPolicyUrl: 'https://www.kth.se/gemensamt/om-kakor-cookies-pa-kth-s-webbplats-1.844',
+          consentNotice: {
+              title: '',
+              testing: 'Observera att Klaro körs i testläge',
+              description: 'Denna webbplats använder tjänster som kan lagra information om dig och hur du använder denna webbplats. Vissa tjänster är nödvändiga för att webbplatsen ska fungera och andra är valbara.',
+              learnMore: 'Hantera valbara tjänster',
+          },
+          decline: 'Tillåt bara nödvändiga tjänster',
+          ok: 'Tillåt alla tjänster',
+          purposeItem: {
+              service: 'Tjänster'
+          },
+            contextualConsent:{
+                acceptAlways: 'Alltid',
+                acceptOnce: 'Ja',
+                description: 'Du har tidigare nekat visning av innehåll av typen "{title}". Vill du visa innehållet?',
+          }
+      },
+      en: {
+          service: {
+            disableAll: {
+              description: 'Use this slider to allow all cookies or only necessary.',
+              title: 'Change for all services',
+            },
+          },
+        consentModal: {
+            description:
+              'Here you can assess and customise the services we use on this website.',
+          },
+          privacyPolicy: {
+              name: 'cookies',
+              text: 'Find out more about our usage of {privacyPolicy}.',
+          },
+          privacyPolicyUrl: 'https://www.kth.se/en/gemensamt/om-kakor-cookies-pa-kth-s-webbplats-1.844',
+          consentNotice: {
+              title: '',
+              testing: 'Please note that Klaro is currently running in test mode',
+              description: 'This website uses services that may store information about you and how you use the website. Some services are necessary for the website to work, and others are optional.',
+              learnMore: 'Manage services',
+          },
+          decline: 'Accept only necessary services',
+          ok: 'Accept all services',
+          purposeItem: {
+              service: 'Services'
+          },
+            contextualConsent:{
+                acceptAlways: 'Always',
+                acceptOnce: 'Yes',
+                description: 'You have previously denied the display of content of the type "{title}". Do you want to show content?',
+          }
+      }
+  },
+  services: [
+      {
+          name: "required-consent",
+          default: true,
+          contextualConsentOnly: false,
+          required: true,
+          translations: {
+              zz: {
+                  title: 'Required Services',
+                  description: 'These services are necessary for the site to function and cannot be turned off. They are usually used when you utilise a function on the website that needs an answer, such as setting cookies, logging in, or filling in a form.'
+              },
+              sv: {
+                  title: 'Nödvändiga tjänster',
+                  description: 'Dessa tjänster är nödvändiga för att webbplatsen ska fungera och kan inte stängas av. De används främst när du nyttjar en funktion på webbplatsen som behöver ett svar, exempelvis ställer in kakor, loggar in eller fyller i formulär.'
+              },
+          },
+      },
+      {
+          name: "media-consent",
+          default: false,
+          translations: {
+              zz: {
+                  title: 'External media',
+                  description: 'Media on the site embedded from external providers like Youtube, Vimeo and Kaltura. When these are played, the providers may use cookies and local storage.'
+              },
+              sv: {
+                  title: 'Extern media',
+                  description: 'Inbäddad media från externa leverantörer som Youtube, Vimeo och Kaltura. När media spelas upp kan leverantörerna använda sig av kakor och lokal lagring.'
+              },
+          },
+      },
+      {
+        name: "service-consent",
+        default: false,
+        translations: {
+          zz: {
+            title: 'External Services',
+            description: 'Embedded services by external providers such as forms, maps, chat applications et c. When these are loaded, the providers may use cookies and local storage.'
+          },
+          sv: {
+            title: 'Externa tjänster',
+            description: 'Inbäddade tjänster från externa leverantörer såsom formulär, kartor, chat-funktion et c. När tjänsterna laddas in kan leverantörerna använda sig av kakor och lokal lagring.'
+          },
+        },
+      },
+      {
+          name: "analytics-consent",
+          default: false,
+          translations: {
+              zz: {
+                  title: 'Analytics and Tracking',
+                  description: 'The website uses Matomo to evaluate and improve the website content, experience and structure. The information collected is anonymised and only stored at KTH servers.'
+              },
+              sv: {
+                  title: 'Analys och spårning',
+                  description: 'Webbplatsen använder Matomo för att utvärdera och förbättra webbplatsens innehåll, upplevelse och struktur. Insamlandet av informationen anonymiseras och lagras enbart på KTH-servrar.'
+              },
+          },
+      },
+      {
+        name: "marketing-consent",
+        default: false,
+        translations: {
+            zz: {
+                title: 'Marketing',
+                description: 'The website contains pages that, via cookies, communicate with advertising services and social media.'
+            },
+            sv: {
+                title: 'Marknadsföring',
+                description: 'På webbplatsen förekommer sidor som via kakor kommunicerar med annonseringstjänster och sociala medier.'
+            },
+        },
+    }
+    
+  ]
+}</script>
+  
+  
+  <!-- End JavaScript contentId-1_1137647 -->
+
+
+
+    
+
+  
+  
+  
+  <script src="/student/kurser/static/kth-style/js/klaro-no-css.js?v=2.0.0-20260427.1_59b0"></script>
+<script src="/student/kurser/static/vendor.js?v=2.0.0-20260427.1_59b0"></script>
+<script src="/student/kurser/static/browserConfig?v=2.0.0-20260427.1_59b0"></script>
+<script src="/student/kurser/static/kth-style/js/backtotop.js?v=2.0.0-20260427.1_59b0"></script>
+
+  <script src="https://www.kth.se/social/toolbar/widget.js"></script>
+
+</head>
+
+<body>
+  <a class="skipToMainContent" href="#mainContent" tabindex="1">Hoppa till huvudinnehållet</a>
+  <!--indexOff: all-->
+  <header class="kth-header student-web">
+    <div class="kth-header__container">
+      <a href="/student" class="kth-logotype">
+        <figure>
+          <img class="blue" alt="Till KTH:s startsida" width="64" height="64" src="/student/kurser/assets/logotype/logotype-blue.svg">
+        </figure>
+      </a>      
+  
+  
+  
+  
+  
+    <nav class="kth-mega-menu" aria-label="Huvudmeny" data-ajax-path="/cm/1.1066510?l=sv&amp;contentIdPath=/2.75593/1.1066510/&amp;target=">
+      <ul>
+        
+          <li><button data-id="1.1066571" class="kth-menu-item dropdown">
+              <span>
+                Studier
+              </span>
+            </button>
+            <dialog class="kth-menu-panel">
+              <div class="kth-menu-panel__container">
+                <div class="kth-menu-panel__header">
+                  <div>
+                    <a href="/student/studier">
+                      <h2>
+                        Studier
+                      </h2>
+                    </a>
+                  </div>
+                  <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                    <span class="kth-visually-hidden">close</span>
+                  </button>
+                </div>
+                <div class="kth-menu-panel__content"></div>
+              </div>
+            </dialog>
+          </li>
+          <li><button data-id="1.1070324" class="kth-menu-item dropdown">
+              <span>
+                Stöd och vägledning
+              </span>
+            </button>
+            <dialog class="kth-menu-panel">
+              <div class="kth-menu-panel__container">
+                <div class="kth-menu-panel__header">
+                  <div>
+                    <a href="/student/stod">
+                      <h2>
+                        Stöd och vägledning
+                      </h2>
+                    </a>
+                  </div>
+                  <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                    <span class="kth-visually-hidden">close</span>
+                  </button>
+                </div>
+                <div class="kth-menu-panel__content"></div>
+              </div>
+            </dialog>
+          </li>
+          <li><button data-id="1.1178595" class="kth-menu-item dropdown">
+              <span>
+                IT och digitala tjänster
+              </span>
+            </button>
+            <dialog class="kth-menu-panel">
+              <div class="kth-menu-panel__container">
+                <div class="kth-menu-panel__header">
+                  <div>
+                    <a href="/student/it">
+                      <h2>
+                        IT och digitala tjänster
+                      </h2>
+                    </a>
+                  </div>
+                  <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                    <span class="kth-visually-hidden">close</span>
+                  </button>
+                </div>
+                <div class="kth-menu-panel__content"></div>
+              </div>
+            </dialog>
+          </li>
+          <li><button data-id="1.1178638" class="kth-menu-item dropdown">
+              <span>
+                Kontakt
+              </span>
+            </button>
+            <dialog class="kth-menu-panel">
+              <div class="kth-menu-panel__container">
+                <div class="kth-menu-panel__header">
+                  <div>
+                    <a href="/student/kontakt">
+                      <h2>
+                        Kontakt
+                      </h2>
+                    </a>
+                  </div>
+                  <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                    <span class="kth-visually-hidden">close</span>
+                  </button>
+                </div>
+                <div class="kth-menu-panel__content"></div>
+              </div>
+            </dialog>
+          </li>
+        
+      </ul>
+    </nav>
+  
+    <!-- Mobile menu -->
+    <nav class="kth-mega-menu--collapsable">
+      <dialog class="kth-mobile-menu">
+        <div class="kth-mobile-menu__navigation">
+          <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+            <span class="kth-visually-hidden">Close</span>
+          </button>
+        </div>
+        <div class="kth-mobile-menu__content">
+          <ul class="kth-mobile-menu__items">
+            <li>
+              <button class="kth-mobile-menu__item" data-id="1.1066571">
+                <span>
+                  Studier
+                </span>
+              </button>
+              <dialog class="kth-menu-panel--modal">
+                <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                  <span class="kth-visually-hidden">Close</span>
+                </button>
+                <div class="kth-menu-panel__content"></div>
+              </dialog>
+            </li>
+            <li>
+              <button class="kth-mobile-menu__item" data-id="1.1070324">
+                <span>
+                  Stöd och vägledning
+                </span>
+              </button>
+              <dialog class="kth-menu-panel--modal">
+                <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                  <span class="kth-visually-hidden">Close</span>
+                </button>
+                <div class="kth-menu-panel__content"></div>
+              </dialog>
+            </li>
+            <li>
+              <button class="kth-mobile-menu__item" data-id="1.1178595">
+                <span>
+                  IT och digitala tjänster
+                </span>
+              </button>
+              <dialog class="kth-menu-panel--modal">
+                <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                  <span class="kth-visually-hidden">Close</span>
+                </button>
+                <div class="kth-menu-panel__content"></div>
+              </dialog>
+            </li>
+            <li>
+              <button class="kth-mobile-menu__item" data-id="1.1178638">
+                <span>
+                  Kontakt
+                </span>
+              </button>
+              <dialog class="kth-menu-panel--modal">
+                <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                  <span class="kth-visually-hidden">Close</span>
+                </button>
+                <div class="kth-menu-panel__content"></div>
+              </dialog>
+            </li>
+          </ul>
+        </div>
+      </dialog>
+      <dialog class="kth-mobile-menu details" data-id="1.1066571">
+        <div class="kth-mobile-menu__navigation">
+          <button class="kth-button back">Huvudmeny</button>
+          <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+            <span class="kth-visually-hidden">Close</span>
+          </button>
+        </div>
+        <div class="kth-mobile-menu__header">
+          <a href="/student/studier">
+            <h2>
+              Studier
+            </h2>
+          </a>
+        </div>
+        <div class="kth-mobile-menu__content">
+          <div class="kth-mobile-menu__cortina-content"></div>
+        </div>
+      </dialog><dialog class="kth-mobile-menu details" data-id="1.1070324">
+        <div class="kth-mobile-menu__navigation">
+          <button class="kth-button back">Huvudmeny</button>
+          <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+            <span class="kth-visually-hidden">Close</span>
+          </button>
+        </div>
+        <div class="kth-mobile-menu__header">
+          <a href="/student/stod">
+            <h2>
+              Stöd och vägledning
+            </h2>
+          </a>
+        </div>
+        <div class="kth-mobile-menu__content">
+          <div class="kth-mobile-menu__cortina-content"></div>
+        </div>
+      </dialog><dialog class="kth-mobile-menu details" data-id="1.1178595">
+        <div class="kth-mobile-menu__navigation">
+          <button class="kth-button back">Huvudmeny</button>
+          <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+            <span class="kth-visually-hidden">Close</span>
+          </button>
+        </div>
+        <div class="kth-mobile-menu__header">
+          <a href="/student/it">
+            <h2>
+              IT och digitala tjänster
+            </h2>
+          </a>
+        </div>
+        <div class="kth-mobile-menu__content">
+          <div class="kth-mobile-menu__cortina-content"></div>
+        </div>
+      </dialog><dialog class="kth-mobile-menu details" data-id="1.1178638">
+        <div class="kth-mobile-menu__navigation">
+          <button class="kth-button back">Huvudmeny</button>
+          <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+            <span class="kth-visually-hidden">Close</span>
+          </button>
+        </div>
+        <div class="kth-mobile-menu__header">
+          <a href="/student/kontakt">
+            <h2>
+              Kontakt
+            </h2>
+          </a>
+        </div>
+        <div class="kth-mobile-menu__content">
+          <div class="kth-mobile-menu__cortina-content"></div>
+        </div>
+      </dialog>
+    </nav>
+    <!-- Mobile menu -->
+  
+    
+    <script>/* eslint-disable no-unused-expressions, no-unused-vars, no-undef */"use strict";window.addEventListener("load",(()=>{function e(e){return document.querySelector(".kth-mega-menu[data-ajax-path]")?.getAttribute("data-ajax-path")+e}function t(){document.querySelectorAll("dialog").forEach((e=>e.close()))}function n(e){const n=e.querySelector(".kth-icon-button.close");e.addEventListener("keydown",(t=>{"Escape"===t.key&&e.close()})),n instanceof HTMLButtonElement&&n.addEventListener("click",(()=>{t()}))}function o(e,o){n(e),o.addEventListener("click",(n=>{n.preventDefault(),e.open?t():(t(),e.show())})),document.addEventListener("click",(n=>{!e.open||n.composedPath().includes(o)||n.composedPath().includes(e)||(n.preventDefault(),t())}))}function c(e,o,c){const i=e.querySelector(".kth-button.back");n(e),o.addEventListener("click",(n=>{n.preventDefault(),t(),e.showModal()})),i instanceof HTMLButtonElement&&i.addEventListener("click",(()=>{e.close(),c&&c.showModal()}))}var i,l;document.querySelectorAll(".kth-menu-item[data-id], .kth-menu-item--modal[data-id]").forEach((t=>{const n=t.nextElementSibling,o=n?.querySelector(".kth-menu-panel__content");if(!(t instanceof HTMLElement))return;if(!(n instanceof HTMLDialogElement))return;const c=t.dataset.id;let i;function l(){o instanceof HTMLElement&&(i||(i=fetch(e(c)).then((e=>e.text()))),i.then((e=>{o.innerHTML=e})))}t.addEventListener("mouseover",l),t.addEventListener("click",l)})),document.querySelectorAll(".kth-mobile-menu__item[data-id]").forEach((t=>{if(!(t instanceof HTMLElement))return;const n=t.dataset.id,o=document.querySelector(`.kth-mobile-menu[data-id='${n}']`),c=o?.querySelector(".kth-mobile-menu__cortina-content");if(!(o instanceof HTMLDialogElement))return;let i;t.addEventListener("click",(function(){c instanceof HTMLElement&&(i||(i=fetch(e(n)).then((e=>e.text()))),i.then((e=>{c.innerHTML=e})))}))})),function(e,n){if(e){for(const e of n){if(!(e instanceof HTMLElement))continue;const t=e.nextElementSibling;t instanceof HTMLDialogElement&&o(t,e)}e.addEventListener("focusout",(function(n){const o=n.relatedTarget;o&&o instanceof Node&&!e.contains(o)&&t()}))}}(document.querySelector(".kth-header"),document.querySelectorAll(".kth-mega-menu .kth-menu-item")),i=document.querySelector(".kth-menu-item.collapsable"),l=document.querySelector(".kth-mobile-menu"),i instanceof HTMLElement&&l instanceof HTMLDialogElement&&c(l,i),function(e,t){if(!t||t instanceof HTMLDialogElement)for(const n of e){if(!(n instanceof HTMLElement))continue;const e=n.getAttribute("data-id"),o=document.querySelector(`.kth-mobile-menu[data-id='${e}']`);if(!(o instanceof HTMLDialogElement))return;c(o,n,t)}}(document.querySelectorAll(".kth-mobile-menu__item"),document.querySelector(".kth-mobile-menu"))})),window.addEventListener("load",(()=>{const e={threshold:32,className:"collapsed"};function t(e,{threshold:t,className:n}){window.scrollY>t?e?.classList.add(n):e?.classList.remove(n)}!function(n,o=e){t(n,o),window.addEventListener("scroll",(()=>{t(n,o)}))}(document.querySelector(".kth-header"))}));</script>
+  
+  
+  
+      <ul class="kth-header__tools">
+        <li><button class="kth-menu-item search">
+      <span>Sök</span>
+  </button>
+  <dialog class="kth-menu-panel">
+      <div class="kth-menu-panel__container search">
+          <button class="kth-icon-button close">
+              <span class="kth-visually-hidden">Stäng</span>
+          </button>
+          <div class="kth-menu-panel__content">
+                  
+  
+  
+  
+  
+    <div class="block search mainWidget default-size" data-cid="1.1066521" lang="sv">
+      <div id="widget_yhnutasc" class="searchWidgetContainer"><div class="searchWidget"><div class="searchInputBar"><form class="searchInputForm" method="GET" role="search" action="https://www.kth.se/search"><div class="searchAutoCompleteField kth-search"><label for="widget_yhnutasc_search__Field">Sök på Studentwebben</label><input id="widget_yhnutasc_search__Field" name="q" autoComplete="off" type="text" maxLength="1024" value=""/><button type="submit"><span class="kth-visually-hidden">Sök</span></button></div><input type="hidden" name="urlFilter" value="https://www.kth.se/student"/><input type="hidden" name="entityFilter" value="kth-profile,kth-course,kth-place,kth-program,kth-system"/><input type="hidden" name="metaSystemFilter" value=""/><input type="hidden" name="documentFilter" value=""/><input type="hidden" name="filterLabel" value="Sök på Studentwebben"/><input type="hidden" name="l" value="sv"/><input type="hidden" name="noscript" class="noscriptInput" value=""/></form></div><div class="searchAlternativesWidget"><div class="searchAlternativesWidgetLinks"><a href="https://www.kth.se/search?l=sv">Sök på KTH:s webbplats</a><a href="https://intra.kth.se/search?l=sv">Sök på KTH Intranät</a></div></div></div></div>
+  
+  <script>
+    (() => {
+      const SCRIPT_PATH = 'https://www.kth.se/search/static/widget.js?v=2.0.0-20250606.1_9d7abae6'
+      const STYLE_PATH = 'https://www.kth.se/search/static/widget.css?v=2.0.0-20250606.1_9d7abae6'
+      const DATA_PATH = 'https://www.kth.se/search/widgetData.js?widgetId=widget_yhnutasc&filterLabel=S%C3%B6k%20p%C3%A5%20Studentwebben&placeholder=S%C3%B6k%20p%C3%A5%20KTH%3As%20webbplats&urlFilter=https%3A%2F%2Fwww.kth.se%2Fstudent&isFilterRemovable=false&entityFilter=kth-profile%2Ckth-course%2Ckth-place%2Ckth-program%2Ckth-system&l=sv&includeLinks=true'
+      const WIDGET_ID = 'widget_yhnutasc'
+      const scriptAnchor = document.currentScript
+  
+      const observer = new IntersectionObserver((entries, observer) => {
+  
+        if (entries[0].target?.checkVisibility?.()) {
+  
+          if (!window.searchWidgetIsLoaded) {
+  
+            const styleElement = document.createElement('link')
+            styleElement.href = STYLE_PATH
+            styleElement.media = "screen"
+            styleElement.rel = "stylesheet"
+            styleElement.async = 1
+            scriptAnchor.after(styleElement)
+  
+            const scriptElement = document.createElement('script')
+            scriptElement.src = SCRIPT_PATH
+            scriptElement.async = 1
+            scriptAnchor.after(scriptElement)
+          }
+  
+          const dataElement = document.createElement('script')
+          dataElement.src = DATA_PATH
+          dataElement.async = 1
+          scriptAnchor.after(dataElement)
+  
+          window.searchWidgetIsLoaded = true
+          observer.disconnect()
+        }
+      }).observe(document.getElementById(WIDGET_ID))
+    })()
+  </script>
+      
+      <script>/* eslint-disable no-unused-expressions, no-unused-vars, no-undef */"use strict";!function(){function e(){document.querySelectorAll("dialog").forEach((e=>e.close()))}window.addEventListener("load",(function(){document.querySelectorAll(".block.search").forEach((t=>{t.parentElement.className.includes("kth-menu-panel__content")&&function(t,n){if(!(n instanceof HTMLElement))return;const c=n.nextElementSibling;if(!(c instanceof HTMLDialogElement))return;c.addEventListener("keydown",(t=>{"Escape"===t.key&&e()}));const o=c.querySelector(".close");o instanceof HTMLButtonElement&&o.addEventListener("click",(()=>{e()})),n.addEventListener("click",(n=>{n.preventDefault(),c.open?e():(e(),c.show(),function(e){const t=e.querySelector("template");if(null===t)return;const n=t.content;t.replaceWith(n)}(t),function(e){const t=e.querySelector(".searchAutoCompleteField")?.querySelector("input");t&&t.focus()}(c))})),document.addEventListener("click",(t=>{!c.open||t.composedPath().includes(n)||t.composedPath().includes(c)||(t.preventDefault(),e())}))}(t,document.querySelector(".kth-menu-item.search"))}))}))}();</script>
+    </div>
+  
+  
+  
+          </div>
+      </div>
+  </dialog></li>
+        <li><a class="kth-menu-item language" hreflang="en-US" href="?l=en">English</a></li>
+      </ul>
+      <button class="kth-menu-item menu collapsable">
+        <span>Meny</span>
+      </button>
+    </div>
+  </header>
+  <div class="kth-content articleNavigation">
+    <div class="row justify-content-between">
+      
+    <nav id="breadcrumbs" aria-label="Brödsmulor" class="kth-breadcrumbs">
+      <ol class="kth-breadcrumbs__list">
+        <li><a href="/student">Studentwebben</a></li><li><a href="/student/studier">Studier</a></li><li><a href="/student/kurser/kurser-inom-program">Kurs- och programkatalogen</a></li><li><a href="/student/kurser/program/CTFYS">Civilingenjörsutbildning i teknisk fysik</a></li>
+      </ol>
+    </nav>
+   
+    </div>
+  </div>
+  <!--indexOn: all-->  <div class="kth-content">
+    <div class="row">
+        <script>window.__compressedApplicationStore__ = "%7B%22browserConfig%22%3A%7B%22proxyPrefixPath%22%3A%7B%22uri%22%3A%22%2Fstudent%2Fkurser%22%2C%22searchPage%22%3A%22%2Fstudent%2Fkurser%2Fsokkurs%22%2C%22searchResult%22%3A%22%2Fstudent%2Fkurser%2Fsokkurs%2Fresultat%22%2C%22courseSearchInternApi%22%3A%22%2Fstudent%2Fkurser%2Fintern-api%2Fsok%22%2C%22department%22%3A%22%2Fstudent%2Fkurser%2Forg%22%2C%22programme%22%3A%22%2Fstudent%2Fkurser%2Fprogram%22%2C%22programmesList%22%3A%22%2Fstudent%2Fkurser%2Fkurser-inom-program%22%2C%22schoolsList%22%3A%22%2Fstudent%2Fkurser%2Fprogram%22%2C%22studyHandbook%22%3A%22%2Fstudent%2Fprogram%2Fshb%22%2C%22thirdCycleCourseSearch%22%3A%22%2Futbildning%2Fforskarutbildning%2Fkurser%2Fsok%22%2C%22thirdCycleCourseSearchResult%22%3A%22%2Futbildning%2Fforskarutbildning%2Fkurser%2Fsok%2Fresultat%22%2C%22thirdCycleSchoolsAndDepartments%22%3A%22%2Futbildning%2Fforskarutbildning%2Fkurser%2Favdelning%22%2C%22thirdCycleCoursesPerDepartment%22%3A%22%2Futbildning%2Fforskarutbildning%2Fkurser%2Forg%22%2C%22programmeSyllabusPDF%22%3A%22%2Fstudent%2Fkurser%2Fintern-api%2FPDFRenderFunction%22%7D%2C%22redirectProxyPath%22%3A%7B%22studentRoot%22%3A%22%2Fstudent%2Fkurser%22%2C%22thirdCycleRoot%22%3A%22%2Futbildning%2Fforskarutbildning%2Fkurser%22%2C%22coursesPerDepartment%22%3A%22%2Fstudent%2Fkurser%2Fkurser-per-avdelning%22%2C%22departmentCourses%22%3A%22%2Fstudent%2Fkurser%2Favdelning%2F%3AdepartmentCode%2Fkurser%2F%22%7D%2C%22markHtmlFromKopps%22%3Afalse%2C%22markHtmlFromLadok%22%3Afalse%2C%22env%22%3A%22prod%22%7D%2C%22statusCode%22%3A200%2C%22language%22%3A%22sv%22%2C%22languageIndex%22%3A1%2C%22studyProgramme%22%3A%7B%22specialisations%22%3A%5B%7B%22kod%22%3A%22MAI2%22%2C%22benamning%22%3A%22Master%2C%20maskininl%C3%A4rning%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%3Cbr%20%2F%3E%5Cnhttp%3A%2F%2Fwww.kth.se%2Fstudies%2Fprogrammes%2Fmaster%2Fprogrammes%2Fit%2Fmachinelearning%3Fl%3Den_UK%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftmaim%2F%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22MTH%22%2C%22benamning%22%3A%22Master%2C%20matematik%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%20http%3A%2F%2Fwww.kth.se%2Fstudies%2Fprogrammes%2Fmaster%2Fprogrammes%2Fm%2F2.1709%3Fl%3Den_UK%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftmthm%2F%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22PHS%22%2C%22benamning%22%3A%22Master%2C%20fotonik%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%20http%3A%2F%2Fwww.kth.se%2Fstudies%2Fprogrammes%2Fmaster%2Fprogrammes%2Fee%2F2.1726%3Fl%3Den_UK%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftphsm%2F%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22TEM%22%2C%22benamning%22%3A%22Master%2C%20teknisk%20mekanik%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%20http%3A%2F%2Fwww.kth.se%2Fstudies%2Fprogrammes%2Fmaster%2Fprogrammes%2Fme%2F2.1571%3Fl%3Den_UK%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Fttemm%2F%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22CSC%22%2C%22benamning%22%3A%22Master%2C%20datalogi%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Futbildning%2Fprogram%2Fmaster-magisterutbildning%2Fmaster-magisterprogram-svenska%2Fsvenska-master-magisterprogram%2Fdatalogi%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftcscm%2F%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22TMA%22%2C%22benamning%22%3A%22Master%2C%20till%C3%A4mpad%20matematik%20och%20ber%C3%A4kningsmatematik%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fen%2Fstudies%2Fprogrammes%2Fmaster%2Fprogrammes%2Fphysics-mathematics%2Fapplied-and-computational-mathematics%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2FTTMAM%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22IND%22%2C%22benamning%22%3A%22Individuell%22%7D%2C%7B%22kod%22%3A%22MRS%22%2C%22benamning%22%3A%22Master%2C%20marina%20system%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%20http%3A%2F%2Fwww.kth.se%2Fstudies%2Fprogrammes%2Fmaster%2Fprogrammes%2Fme%2Fnavalarchitecture%3Fl%3Den_UK%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftmrsm%2F%3C%2Fp%3E%5Cn%3Cp%3EOBS!%3Cbr%20%2F%3E%5CnSp%C3%A5ren%20Management%20och%20H%C3%A5llbar%20utveckling%20inneh%C3%A5ller%2C%20f%C3%B6r%20Teknisk%20fysik%2C%20teknikkomplement%C3%A4ra%20kurser%20vilket%20kan%20g%C3%B6ra%20det%20sv%C3%A5rt%20att%20ta%20ut%20en%20civilingenj%C3%B6rsexamen%20i%20Teknisk%20fysik.%20Kontakta%20kansli%20SCI%20om%20du%20har%20fr%C3%A5gor.%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22NTE%22%2C%22benamning%22%3A%22Master%2C%20nanoteknik%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%20http%3A%2F%2Fwww.kth.se%2Fstudies%2Fprogrammes%2Fmaster%2Fprogrammes%2Fphysics%2F2.1718%3Fl%3Den_UK%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftntem%2F%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22SCR%22%2C%22benamning%22%3A%22Master%2C%20systemteknik%20och%20robotik%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%3Cbr%20%2F%3E%5Cnhttp%3A%2F%2Fwww.kth.se%2Fstudies%2Fprogrammes%2Fmaster%2Fprogrammes%2Fee%2F2.1749%3Fl%3Den_UK%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftscrm%2F%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22BSB%22%2C%22benamning%22%3A%22Master%2C%20ber%C3%A4knings-%20och%20systembiologi%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudies%2Fprogrammes%2Fmaster%2Fprogrammes%2Fit%2F2.3035%3Fl%3Den_UK%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftbsbm%2F%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22TLS%22%2C%22benamning%22%3A%22Master%2C%20tr%C3%A5dl%C3%B6sa%20system%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%3Cbr%20%2F%3E%5Cnhttp%3A%2F%2Fwww.kth.se%2Fstudies%2Fprogrammes%2Fmaster%2Fprogrammes%2Fee%2F2.1760%3Fl%3Den_UK%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Fttlsm%2F%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22FOR%22%2C%22benamning%22%3A%22Master%2C%20fordonsteknik%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudies%2Fprogrammes%2Fmaster%2Fprogrammes%2Fme%2Fvehicleengineering%3Fl%3Den_UK%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftform%2F%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22MAK%22%2C%22benamning%22%3A%22Master%2C%20matematik%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fen%2Fstudies%2Fprogrammes%2Fmaster%2Fprogrammes%2Fphysics-mathematics%2Fmathematics%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2FTMAKM%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22NEE%22%2C%22benamning%22%3A%22Master%2C%20k%C3%A4rnenergiteknik%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%20http%3A%2F%2Fwww.kth.se%2Fstudies%2Fprogrammes%2Fmaster%2Fprogrammes%2Fphysics%2F2.7400%3Fl%3Den_UK%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftneem%2F%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22SCC%22%2C%22benamning%22%3A%22Master%2C%20tekniska%20ber%C3%A4kningar%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%20http%3A%2F%2Fwww.kth.se%2Fstudies%2Fprogrammes%2Fmaster%2Fprogrammes%2Fm%2F2.1729%3Fl%3Den_UK%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftsccm%2F%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22AEE%22%2C%22benamning%22%3A%22Master%2C%20flyg-%20och%20rymdteknik%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudies%2Fprogrammes%2Fmaster%2Fprogrammes%2Fme%2F2.994%3Fl%3Den_UK%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftaeem%2F%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22TFY%22%2C%22benamning%22%3A%22Master%2C%20teknisk%20fysik%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%20http%3A%2F%2Fwww.kth.se%2Fstudies%2Fprogrammes%2Fmaster%2Fprogrammes%2Fphysics%2Fengineeringphysics%2Fengineering-physics-1.48226%3Fl%3Den_UK%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Fttfym%2F%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22ELF%22%2C%22benamning%22%3A%22Master%2C%20elektrofysik%22%2C%22beskrivning%22%3A%22%3Cp%3ESe%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudies%2Fprogrammes%2Fmaster%2Fprogrammes%2Fee%2Felectrophysics%3Fl%3Den_UK%3C%2Fp%3E%5Cn%3Cp%3Ehttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftelfm%2F%3C%2Fp%3E%22%7D%5D%2C%22giltigfran%22%3A%22HT2024%22%2C%22kurslistaar1%22%3A%22%3Ch3%20id%3D%5C%22gemensammakurser%5C%22%3EGemensamma%20kurser%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22obligatoriskakurser%5C%22%3EObligatoriska%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1331%3C%2Ftd%3E%5Cn%3Ctd%3EGrundl%C3%A4ggande%20programmering%3C%2Ftd%3E%5Cn%3Ctd%3E5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1672%3C%2Ftd%3E%5Cn%3Ctd%3ELinj%C3%A4r%20algebra%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1673%3C%2Ftd%3E%5Cn%3Ctd%3EAnalys%20i%20en%20variabel%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1674%3C%2Ftd%3E%5Cn%3Ctd%3EFlervariabelanalys%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1922%3C%2Ftd%3E%5Cn%3Ctd%3ESannolikhetsteori%20och%20statistik%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESG1112%3C%2Ftd%3E%5Cn%3Ctd%3EMekanik%20I%3C%2Ftd%3E%5Cn%3Ctd%3E9%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESI1121%3C%2Ftd%3E%5Cn%3Ctd%3ETermodynamik%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESK1104%3C%2Ftd%3E%5Cn%3Ctd%3EKlassisk%20fysik%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESK1105%3C%2Ftd%3E%5Cn%3Ctd%3EExperimentell%20fysik%3C%2Ftd%3E%5Cn%3Ctd%3E4%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22valfriakurser%5C%22%3EValfria%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1301%3C%2Ftd%3E%5Cn%3Ctd%3EDatorintroduktion%3C%2Ftd%3E%5Cn%3Ctd%3E1.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%22%2C%22kurslistaar2%22%3A%22%3Ch3%20id%3D%5C%22gemensammakurser%5C%22%3EGemensamma%20kurser%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22obligatoriskakurser%5C%22%3EObligatoriska%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1327%3C%2Ftd%3E%5Cn%3Ctd%3EGrundl%C3%A4ggande%20datalogi%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESE1055%3C%2Ftd%3E%5Cn%3Ctd%3EH%C3%A5llfasthetsl%C3%A4ra%2C%20grundkurs%20med%20energimetoder%3C%2Ftd%3E%5Cn%3Ctd%3E9%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1544%3C%2Ftd%3E%5Cn%3Ctd%3ENumeriska%20metoder%2C%20grundkurs%20IV%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1681%3C%2Ftd%3E%5Cn%3Ctd%3ELinj%C3%A4r%20algebra%2C%20forts%C3%A4ttningskurs%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1683%3C%2Ftd%3E%5Cn%3Ctd%3EDifferentialekvationer%20och%20transformmetoder%3C%2Ftd%3E%5Cn%3Ctd%3E9%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESG1113%3C%2Ftd%3E%5Cn%3Ctd%3EMekanik%2C%20forts%C3%A4ttningskurs%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESH1014%3C%2Ftd%3E%5Cn%3Ctd%3EModern%20fysik%3C%2Ftd%3E%5Cn%3Ctd%3E4%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESI1146%3C%2Ftd%3E%5Cn%3Ctd%3EVektoranalys%3C%2Ftd%3E%5Cn%3Ctd%3E4%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESI1155%3C%2Ftd%3E%5Cn%3Ctd%3ETeoretisk%20fysik%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESI1200%3C%2Ftd%3E%5Cn%3Ctd%3EFysikens%20matematiska%20metoder%3C%2Ftd%3E%5Cn%3Ctd%3E4%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202024%2F2025.%20%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fp%3E%22%2C%22kurslistaar3%22%3A%22%3Ch3%20id%3D%5C%22gemensammakurser%5C%22%3EGemensamma%20kurser%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22obligatoriskakurser%5C%22%3EObligatoriska%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EEI1320%3C%2Ftd%3E%5Cn%3Ctd%3ETeoretisk%20elektroteknik%3C%2Ftd%3E%5Cn%3Ctd%3E9%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EEL1000%3C%2Ftd%3E%5Cn%3Ctd%3EReglerteknik%2C%20allm%C3%A4n%20kurs%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESG1218%3C%2Ftd%3E%5Cn%3Ctd%3EStr%C3%B6mningsmekanik%3C%2Ftd%3E%5Cn%3Ctd%3E4%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESH1015%3C%2Ftd%3E%5Cn%3Ctd%3ETill%C3%A4mpad%20modern%20fysik%3C%2Ftd%3E%5Cn%3Ctd%3E5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESI1336%3C%2Ftd%3E%5Cn%3Ctd%3ESimulering%20och%20modellering%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22villkorligtvalfriakurser%5C%22%3EVillkorligt%20valfria%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EEF112X%3C%2Ftd%3E%5Cn%3Ctd%3EExamensarbete%20inom%20elektroteknik%2C%20grundniv%C3%A5%3C%2Ftd%3E%5Cn%3Ctd%3E15%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESA114X%3C%2Ftd%3E%5Cn%3Ctd%3EExamensarbete%20inom%20teknisk%20fysik%2C%20grundniv%C3%A5%3C%2Ftd%3E%5Cn%3Ctd%3E15%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22valfriakurser%5C%22%3EValfria%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EAK2011%3C%2Ftd%3E%5Cn%3Ctd%3ETeknik%20och%20etik%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EAK2014%3C%2Ftd%3E%5Cn%3Ctd%3EBeslutsteori%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1380%3C%2Ftd%3E%5Cn%3Ctd%3EJavaprogrammering%20f%C3%B6r%20Pythonprogrammerare%3C%2Ftd%3E%5Cn%3Ctd%3E1.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD2352%3C%2Ftd%3E%5Cn%3Ctd%3EAlgoritmer%20och%20komplexitet%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD2380%3C%2Ftd%3E%5Cn%3Ctd%3EArtificiell%20intelligens%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD2421%3C%2Ftd%3E%5Cn%3Ctd%3EMaskininl%C3%A4rning%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EEQ1120%3C%2Ftd%3E%5Cn%3Ctd%3ETidsdiskreta%20signaler%20och%20system%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EIL2240%3C%2Ftd%3E%5Cn%3Ctd%3EHalvledarkomponenter%20f%C3%B6r%20integrerade%20kretsar%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME2075%3C%2Ftd%3E%5Cn%3Ctd%3ELedarskap%20och%20makt%20i%20industriella%20organisationer%3A%20genusperspektiv%20och%20aspekter%20p%C3%A5%20m%C3%A5ngfald%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EMH1023%3C%2Ftd%3E%5Cn%3Ctd%3EPraktiskt%20j%C3%A4mst%C3%A4lldhets-%20och%20m%C3%A5ngfaldsarbete%20i%20vetenskapliga%2C%20tekniska%20och%20industriella%20milj%C3%B6er%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1677%3C%2Ftd%3E%5Cn%3Ctd%3EAnalysens%20grunder%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1678%3C%2Ftd%3E%5Cn%3Ctd%3EGrupper%20och%20ringar%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1679%3C%2Ftd%3E%5Cn%3Ctd%3EDiskret%20matematik%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1691%3C%2Ftd%3E%5Cn%3Ctd%3EKomplex%20analys%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1811%3C%2Ftd%3E%5Cn%3Ctd%3EOptimeringsl%C3%A4ra%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1861%3C%2Ftd%3E%5Cn%3Ctd%3EOptimeringsl%C3%A4ra%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1904%3C%2Ftd%3E%5Cn%3Ctd%3EMarkovprocesser%2C%20grundkurs%3C%2Ftd%3E%5Cn%3Ctd%3E3%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF2701%3C%2Ftd%3E%5Cn%3Ctd%3EFinansiell%20matematik%2C%20grundkurs%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF2930%3C%2Ftd%3E%5Cn%3Ctd%3ERegressionsanalys%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF2940%3C%2Ftd%3E%5Cn%3Ctd%3ESannolikhetsteori%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESH2404%3C%2Ftd%3E%5Cn%3Ctd%3EAstrofysik%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESI1142%3C%2Ftd%3E%5Cn%3Ctd%3EFysikens%20matematiska%20metoder%2C%20till%C3%A4ggskurs%3C%2Ftd%3E%5Cn%3Ctd%3E3%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESI1162%3C%2Ftd%3E%5Cn%3Ctd%3EStatistisk%20fysik%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESI2360%3C%2Ftd%3E%5Cn%3Ctd%3EAnalytisk%20mekanik%20och%20klassisk%20f%C3%A4ltteori%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESK2712%3C%2Ftd%3E%5Cn%3Ctd%3EMilj%C3%B6fysik%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESK2758%3C%2Ftd%3E%5Cn%3Ctd%3EFasta%20tillst%C3%A5ndets%20fysik%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3EP%C3%A5%20v%C3%A5ren%20i%20%C3%A5rskurs%203%20finns%20ett%20utrymme%20p%C3%A5%2015%20hp%20valfria%20kurser.%3C%2Fp%3E%5Cn%3Ch4%20id%3D%5C%22informationomvillkorligtvalfriakurser%5C%22%3EInformation%20om%20villkorligt%20valfria%20kurser%3C%2Fh4%3E%5Cn%3Cp%3EEn%20ska%20l%C3%A4sas.%3C%2Fp%3E%5Cn%3Cp%3EEF112X%20l%C3%A4ses%20%C3%A4ven%20av%20de%20som%20g%C3%B6r%20inom%20datalogi.%3C%2Fp%3E%22%2C%22kurslistaar4%22%3A%22%3Ch3%20id%3D%5C%22gemensammakurser%5C%22%3EGemensamma%20kurser%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3EUtbildningens%20tv%C3%A5%20sista%20%C3%A5r%20l%C3%A4ses%20inom%20ramen%20f%C3%B6r%20ett%20masterprogram.%3C%2Fp%3E%5Cn%3Cp%3EF%C3%B6r%20kurser%20inom%20%C3%A5rskurs%204%2C%20se%20l%C3%A4s%C3%A5rsplan%20f%C3%B6r%20%C3%A5rskurs%201%20inom%20det%20masterprogram%20du%20har%20valt.%3C%2Fp%3E%5Cn%3Cp%3EValbara%20masterprogram%20som%20leder%20till%20civilingenj%C3%B6rsexamen%20i%20Teknisk%20fysik%20%C3%A4r%3A%3C%2Fp%3E%5Cn%3Cp%3ETeknisk%20fysik%3C%2Fp%3E%5Cn%3Cp%3EMatematik%3C%2Fp%3E%5Cn%3Cp%3ETill%C3%A4mpad%20matematik%20och%20ber%C3%A4kningsmatematik%3C%2Fp%3E%5Cn%3Cp%3ETeknisk%20mekanik%3C%2Fp%3E%5Cn%3Cp%3EK%C3%A4rnenergiteknik%3C%2Fp%3E%5Cn%3Cp%3EDatalogi%3C%2Fp%3E%5Cn%3Cp%3EElektromagnetism%2C%20fusion%20och%20rymdteknik%3C%2Fp%3E%5Cn%3Cp%3EFlyg-%20och%20rymdteknik%3C%2Fp%3E%5Cn%3Cp%3EFordonsteknik%3C%2Fp%3E%5Cn%3Cp%3EInformation%20och%20n%C3%A4tverksteknologi%3C%2Fp%3E%5Cn%3Cp%3ENanoteknik%3C%2Fp%3E%5Cn%3Cp%3EMarina%20system%20(ej%20sp%C3%A5r%20Management)%3C%2Fp%3E%5Cn%3Cp%3EMaskininl%C3%A4rning%3C%2Fp%3E%5Cn%3Cp%3ESystemteknik%20och%20robotik%3C%2Fp%3E%5Cn%3Cp%3ECybers%C3%A4kerhet%3C%2Fp%3E%5Cn%3Cp%3EBiostatistik%20och%20datavetenskap%3C%2Fp%3E%22%2C%22kurslistaar5%22%3A%22%3Ch3%20id%3D%5C%22gemensammakurser%5C%22%3EGemensamma%20kurser%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3EUtbildningens%20tv%C3%A5%20sista%20%C3%A5r%20l%C3%A4ses%20inom%20ramen%20f%C3%B6r%20ett%20masterprogram.%3C%2Fp%3E%5Cn%3Cp%3EF%C3%B6r%20kurser%20inom%20%C3%A5rskurs%205%2C%20se%20l%C3%A4s%C3%A5rsplan%20f%C3%B6r%20%C3%A5rskurs%202%20inom%20det%20masterprogram%20du%20har%20valt.%3C%2Fp%3E%5Cn%3Cp%3EValbara%20masterprogram%20som%20leder%20till%20civilingenj%C3%B6rsexamen%20i%20Teknisk%20fysik%20%C3%A4r%3A%3C%2Fp%3E%5Cn%3Cp%3ETeknisk%20fysik%3C%2Fp%3E%5Cn%3Cp%3EMatematik%3C%2Fp%3E%5Cn%3Cp%3ETill%C3%A4mpad%20matematik%20och%20ber%C3%A4kningsmatematik%3C%2Fp%3E%5Cn%3Cp%3ETeknisk%20mekanik%3C%2Fp%3E%5Cn%3Cp%3EK%C3%A4rnenergiteknik%3C%2Fp%3E%5Cn%3Cp%3EDatalogi%3C%2Fp%3E%5Cn%3Cp%3EElektromagnetism%2C%20fusion%20och%20rymdteknik%3C%2Fp%3E%5Cn%3Cp%3EFlyg-%20och%20rymdteknik%3C%2Fp%3E%5Cn%3Cp%3EFordonsteknik%3C%2Fp%3E%5Cn%3Cp%3EInformation%20och%20n%C3%A4tverksteknologi%3C%2Fp%3E%5Cn%3Cp%3ENanoteknik%3C%2Fp%3E%5Cn%3Cp%3EMarina%20system%20(ej%20sp%C3%A5r%20Management)%3C%2Fp%3E%5Cn%3Cp%3EMaskininl%C3%A4rning%3C%2Fp%3E%5Cn%3Cp%3ESystemteknik%20och%20robotik%3C%2Fp%3E%22%2C%22utbildningensgenomforande%22%3A%22%3Cp%3EDetta%20avsnitt%20beskriver%20utbildningens%20genomf%C3%B6rande%20och%20ska%20inneh%C3%A5lla%20uppgifter%20om%20uppl%C3%A4gg%2C%20kurser%2C%20betygssystem%2C%20villkor%20f%C3%B6r%20deltagande%20samt%20examensarbete%20och%20examen%20(om%20relevant).%3C%2Fp%3E%22%2C%22utbildningensupplagg%22%3A%22%3Cp%3EL%C3%A4s%C3%A5ret%20f%C3%B6r%20KTH%3As%20grundutbildning%20%C3%A4r%20indelat%20i%20fyra%20l%C3%A4sperioder.%20F%C3%B6r%20mer%20information%20se%20aktuell%20l%C3%A4s%C3%A5rsindelning%20se%20www.kth.se%3C%2Fp%3E%5Cn%3Cp%3EUtbildningen%20%C3%A4r%20organiserad%20kring%20kurser%20i%20de%20matematiska%2C%20teknikvetenskapliga%20och%20tekniska%20till%C3%A4mpnings%C3%A4mnena%20med%20succesiv%20f%C3%B6rdjupning.%3C%2Fp%3E%5Cn%3Cp%3EF%C3%B6r%20att%20skapa%20en%20helhet%20i%20utbildningen%20betonas%20samverkan%20mellan%20olika%20%C3%A4mnen%20s%C3%A5v%C3%A4l%20inom%20varje%20%C3%A5rskurs%20som%20mellan%20%C3%A5rskurserna.%20Detta%20sker%20genom%20att%20kurserna%20samordnas%20schematekniskt%20och%20genom%20kontinuerlig%20f%C3%B6rb%C3%A4ttering%20av%20programmet.%3C%2Fp%3E%5Cn%3Cp%3EUtbildningsplanen%20best%C3%A5r%20av%20en%20obligatorisk%20kandidatdel%20(%C3%A5rskurserna%201%20%E2%80%93%203)%20och%20ett%20avslutande%20masterprogram%20(%C3%A5rskurserna%204%20%E2%80%93%205).%20Kandidatdelen%20avslutas%20med%20ett%20examensarbete%20p%C3%A5%20grundniv%C3%A5%2C%2015%20h%C3%B6gskolepo%C3%A4ng%2C%20och%20masterdelen%20med%20ett%20examensarbete%20p%C3%A5%20avancerad%20niv%C3%A5%2C%2030%20h%C3%B6gskolepo%C3%A4ng.%3C%2Fp%3E%5Cn%3Cp%3EUndervisningen%20i%20%C3%A5rskurserna%201%20och%202%20samt%20delar%20av%20%C3%A5rskurs%203%20%C3%A4r%20gemensam%20f%C3%B6r%20alla%20studerande%20vid%20programmet.%20Inf%C3%B6r%20den%20avslutande%20delen%20av%20utbildningen%20(%C3%A5rskurs%204-5)%20v%C3%A4ljer%20studenten%20masterprogram.%20Vilka%20masterprogram%20som%20ger%20en%20civilingenj%C3%B6rsexamen%20i%20Teknisk%20fysik%20finns%20listade%20i%20bl.a.%20kurs-%20och%20programkatalogen.%3C%2Fp%3E%22%2C%22fardigheterOchFormagor%22%3A%22%3Cp%3E%3Cstrong%3EEfter%20genomf%C3%B6rd%20utbildning%20skall%20studenten%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cul%3E%5Cn%3Cli%3Evisa%20f%C3%B6rm%C3%A5ga%20att%20med%20helhetssyn%20kritiskt%2C%20sj%C3%A4lvst%C3%A4ndigt%20och%20kreativt%20identifiera%2C%20formulera%20och%20hantera%20komplexa%20fr%C3%A5gest%C3%A4llningar%2C%20analysera%20och%20kritiskt%20utv%C3%A4rdera%20olika%20tekniska%20l%C3%B6sningar%20samt%20delta%20i%20forsknings-%20och%20utvecklingsarbete%20och%20d%C3%A4rigenom%20bidra%20till%20kunskapsutvecklingen%2C%3C%2Fli%3E%5Cn%3Cli%3Evisa%20f%C3%B6rm%C3%A5ga%20att%20kritiskt%20och%20systematiskt%20integrera%20kunskap%20samt%20visa%20f%C3%B6rm%C3%A5ga%20att%20modellera%2C%20simulera%2C%20f%C3%B6ruts%C3%A4ga%20och%20utv%C3%A4rdera%20skeenden%2C%20%C3%A4ven%20med%20utg%C3%A5ngspunkt%20i%20begr%C3%A4nsad%20information%2C%3C%2Fli%3E%5Cn%3Cli%3Evisa%20f%C3%B6rm%C3%A5ga%20att%20planera%20och%20med%20adekvata%20metoder%20genomf%C3%B6ra%20kvalificerade%20uppgifter%20inom%20givna%20ramar%2C%3C%2Fli%3E%5Cn%3Cli%3Evisa%20f%C3%B6rm%C3%A5ga%20att%20utveckla%20och%20utforma%20produkter%2C%20processer%20och%20system%20med%20h%C3%A4nsyn%20till%20m%C3%A4nniskors%20f%C3%B6ruts%C3%A4ttningar%20och%20behov%20och%20samh%C3%A4llets%20m%C3%A5l%20f%C3%B6r%20h%C3%A5llbar%20utveckling%2C%20och%3C%2Fli%3E%5Cn%3Cli%3Evisa%20f%C3%B6rm%C3%A5ga%20att%20i%20s%C3%A5v%C3%A4l%20nationella%20som%20internationella%20sammanhang%20muntligt%20och%20skriftligt%20klart%20redog%C3%B6ra%20f%C3%B6r%20och%20diskutera%20sina%20slutsatser%2C%20och%20den%20kunskap%20och%20de%20argument%20som%20ligger%20till%20grund%20f%C3%B6r%20dessa%2C%20i%20dialog%20med%20olika%20m%C3%A5lgrupper.%3C%2Fli%3E%5Cn%3C%2Ful%3E%5Cn%3Cp%3E%3Cstrong%3EEfter%20genomf%C3%B6rd%20utbildning%20inom%20civilingenj%C3%B6rsprogrammet%20Teknisk%20fysik%20studenten%20skall%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cul%3E%5Cn%3Cli%3Esnabbt%20kunna%20tillgodog%C3%B6ra%20sig%20teknisk%20och%20naturvetenskaplig%20information%20%C3%A4ven%20inom%20f%C3%B6r%20studenten%20obekanta%20omr%C3%A5den%20och%20till%C3%A4mpa%20denna%20p%C3%A5%20fr%C3%A5gest%C3%A4llningar%20inom%20vitt%20skilda%20f%C3%A4lt%2C%3C%2Fli%3E%5Cn%3Cli%3Evisa%20f%C3%B6rm%C3%A5ga%20till%20probleml%C3%B6sning%20%C3%A4ven%20inom%20omr%C3%A5den%20ut%C3%B6ver%20valt%20masterprogram%2C%3C%2Fli%3E%5Cn%3Cli%3Evisa%20f%C3%B6rm%C3%A5ga%20att%20v%C3%A4lja%20och%20till%C3%A4mpa%20avancerade%20matematiska%20metoder%20inom%20vitt%20skilda%20f%C3%A4lt%2C%3C%2Fli%3E%5Cn%3Cli%3Evisa%20f%C3%B6rm%C3%A5ga%20att%20planera%2C%20v%C3%A4lja%20metoder%20f%C3%B6r%20och%20genomf%C3%B6ra%20unders%C3%B6kningar%2C%20genom%20modellering%20och%20simulering%20eller%20genom%20m%C3%A4tningar%2C%20samt%20v%C3%A4rdera%20erh%C3%A5llna%20resultat%3C%2Fli%3E%5Cn%3C%2Ful%3E%22%2C%22varderingsformagaOchForhallningssatt%22%3A%22%3Cp%3E%3Cstrong%3EEfter%20genomf%C3%B6rd%20utbildning%20ska%20studenten%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cul%3E%5Cn%3Cli%3Evisa%20f%C3%B6rm%C3%A5ga%20att%20g%C3%B6ra%20bed%C3%B6mningar%20med%20h%C3%A4nsyn%20till%20relevanta%20vetenskapliga%2C%20samh%C3%A4lleliga%20och%20etiska%20aspekter%20samt%20visa%20medvetenhet%20om%20etiska%20aspekter%20p%C3%A5%20forsknings-%20och%20utvecklingsarbete%2C%3C%2Fli%3E%5Cn%3Cli%3Evisa%20insikt%20i%20teknikens%20m%C3%B6jligheter%20och%20begr%C3%A4nsningar%2C%20dess%20roll%20i%20samh%C3%A4llet%20och%20m%C3%A4nniskors%20ansvar%20f%C3%B6r%20hur%20den%20anv%C3%A4nds%2C%20inbegripet%20sociala%2C%20ekonomiska%20och%20milj%C3%B6m%C3%A4ssiga%20aspekter%2C%3C%2Fli%3E%5Cn%3Cli%3Evisa%20insikt%20om%20och%20f%C3%B6rm%C3%A5ga%20till%20lagarbete%20och%20samverkan%20i%20grupper%20med%20olika%20sammans%C3%A4ttning%3C%2Fli%3E%5Cn%3Cli%3Evisa%20f%C3%B6rm%C3%A5ga%20att%20identifiera%20sitt%20behov%20av%20ytterligare%20kunskap%20och%20att%20fortl%C3%B6pande%20utveckla%20sin%20f%C3%A4rdighet%20och%20f%C3%B6rm%C3%A5ga.%3C%2Fli%3E%5Cn%3C%2Ful%3E%22%2C%22arskursinformationAr2%22%3A%22%3Cp%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202024%2F2025.%20%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fp%3E%22%2C%22arskursinformationAr3%22%3A%22%3Cp%3EP%C3%A5%20v%C3%A5ren%20i%20%C3%A5rskurs%203%20finns%20ett%20utrymme%20p%C3%A5%2015%20hp%20valfria%20kurser.%3C%2Fp%3E%22%2C%22arskursinformationAr4%22%3A%22%3Cp%3EUtbildningens%20tv%C3%A5%20sista%20%C3%A5r%20l%C3%A4ses%20inom%20ramen%20f%C3%B6r%20ett%20masterprogram.%3C%2Fp%3E%5Cn%3Cp%3EF%C3%B6r%20kurser%20inom%20%C3%A5rskurs%204%2C%20se%20l%C3%A4s%C3%A5rsplan%20f%C3%B6r%20%C3%A5rskurs%201%20inom%20det%20masterprogram%20du%20har%20valt.%3C%2Fp%3E%5Cn%3Cp%3EValbara%20masterprogram%20som%20leder%20till%20civilingenj%C3%B6rsexamen%20i%20Teknisk%20fysik%20%C3%A4r%3A%3C%2Fp%3E%5Cn%3Cp%3ETeknisk%20fysik%3C%2Fp%3E%5Cn%3Cp%3EMatematik%3C%2Fp%3E%5Cn%3Cp%3ETill%C3%A4mpad%20matematik%20och%20ber%C3%A4kningsmatematik%3C%2Fp%3E%5Cn%3Cp%3ETeknisk%20mekanik%3C%2Fp%3E%5Cn%3Cp%3EK%C3%A4rnenergiteknik%3C%2Fp%3E%5Cn%3Cp%3EDatalogi%3C%2Fp%3E%5Cn%3Cp%3EElektromagnetism%2C%20fusion%20och%20rymdteknik%3C%2Fp%3E%5Cn%3Cp%3EFlyg-%20och%20rymdteknik%3C%2Fp%3E%5Cn%3Cp%3EFordonsteknik%3C%2Fp%3E%5Cn%3Cp%3EInformation%20och%20n%C3%A4tverksteknologi%3C%2Fp%3E%5Cn%3Cp%3ENanoteknik%3C%2Fp%3E%5Cn%3Cp%3EMarina%20system%20(ej%20sp%C3%A5r%20Management)%3C%2Fp%3E%5Cn%3Cp%3EMaskininl%C3%A4rning%3C%2Fp%3E%5Cn%3Cp%3ESystemteknik%20och%20robotik%3C%2Fp%3E%5Cn%3Cp%3ECybers%C3%A4kerhet%3C%2Fp%3E%5Cn%3Cp%3EBiostatistik%20och%20datavetenskap%3C%2Fp%3E%22%2C%22arskursinformationAr5%22%3A%22%3Cp%3EUtbildningens%20tv%C3%A5%20sista%20%C3%A5r%20l%C3%A4ses%20inom%20ramen%20f%C3%B6r%20ett%20masterprogram.%3C%2Fp%3E%5Cn%3Cp%3EF%C3%B6r%20kurser%20inom%20%C3%A5rskurs%205%2C%20se%20l%C3%A4s%C3%A5rsplan%20f%C3%B6r%20%C3%A5rskurs%202%20inom%20det%20masterprogram%20du%20har%20valt.%3C%2Fp%3E%5Cn%3Cp%3EValbara%20masterprogram%20som%20leder%20till%20civilingenj%C3%B6rsexamen%20i%20Teknisk%20fysik%20%C3%A4r%3A%3C%2Fp%3E%5Cn%3Cp%3ETeknisk%20fysik%3C%2Fp%3E%5Cn%3Cp%3EMatematik%3C%2Fp%3E%5Cn%3Cp%3ETill%C3%A4mpad%20matematik%20och%20ber%C3%A4kningsmatematik%3C%2Fp%3E%5Cn%3Cp%3ETeknisk%20mekanik%3C%2Fp%3E%5Cn%3Cp%3EK%C3%A4rnenergiteknik%3C%2Fp%3E%5Cn%3Cp%3EDatalogi%3C%2Fp%3E%5Cn%3Cp%3EElektromagnetism%2C%20fusion%20och%20rymdteknik%3C%2Fp%3E%5Cn%3Cp%3EFlyg-%20och%20rymdteknik%3C%2Fp%3E%5Cn%3Cp%3EFordonsteknik%3C%2Fp%3E%5Cn%3Cp%3EInformation%20och%20n%C3%A4tverksteknologi%3C%2Fp%3E%5Cn%3Cp%3ENanoteknik%3C%2Fp%3E%5Cn%3Cp%3EMarina%20system%20(ej%20sp%C3%A5r%20Management)%3C%2Fp%3E%5Cn%3Cp%3EMaskininl%C3%A4rning%3C%2Fp%3E%5Cn%3Cp%3ESystemteknik%20och%20robotik%3C%2Fp%3E%22%2C%22infoVvkurserAr3%22%3A%22%3Cp%3EEn%20ska%20l%C3%A4sas.%3C%2Fp%3E%5Cn%3Cp%3EEF112X%20l%C3%A4ses%20%C3%A4ven%20av%20de%20som%20g%C3%B6r%20inom%20datalogi.%3C%2Fp%3E%22%2C%22giltighet%22%3A%22%3Cp%3EG%C3%A4ller%20f%C3%B6r%20antagna%20till%20utbildningen%20fr%20o%20m%20HT24%3C%2Fp%3E%22%2C%22utbildningensMal%22%3A%22%3Cp%3E%3Cstrong%3EProgrammets%20syfte%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3ETeknisk%20fysik%20omfattar%20grundl%C3%A4ggande%20matematik%20och%26nbsp%3Bfysik%20och%20teknik%26nbsp%3Bsamt%20deras%20tekniska%20till%C3%A4mpningar.%20Utbildningsprogrammet%20ger%20en%20bred%20kunskapsbas%20som%20kan%20till%C3%A4mpas%20inom%20vitt%20skilda%20f%C3%A4lt.%20%26nbsp%3B%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3EProgrammets%20m%C3%A5l%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EF%C3%B6r%20civilingenj%C3%B6rsexamen%20fr%C3%A5n%20Teknisk%20fysik%20skall%20studenten%20uppfylla%20de%20m%C3%A5l%20som%20anges%20i%20H%C3%B6gskolef%C3%B6rordningens%20examensordning%20f%C3%B6r%20civilingenj%C3%B6r.%3C%2Fp%3E%22%2C%22kunskapOchForstaelse%22%3A%22%3Cp%3E%3Cstrong%3EEfter%20genomf%C3%B6rd%20utbildning%20skall%20studenten%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cul%3E%5Cn%3Cli%3Evisa%20s%C3%A5dan%20kunskap%20och%20f%C3%B6rm%C3%A5ga%20som%20kr%C3%A4vs%20f%C3%B6r%20att%20sj%C3%A4lvst%C3%A4ndigt%20arbeta%20som%20civilingenj%C3%B6r%2C%3C%2Fli%3E%5Cn%3Cli%3Evisa%20kunskap%20om%20det%20valda%20teknikomr%C3%A5dets%20vetenskapliga%20grund%20och%20dess%20bepr%C3%B6vade%20erfarenhet%20samt%20insikt%20i%20aktuellt%20forsknings-%20och%20utvecklingsarbete%2C%20och%3C%2Fli%3E%5Cn%3Cli%3Evisa%20s%C3%A5v%C3%A4l%20brett%20kunnande%20inom%20det%20valda%20teknikomr%C3%A5det%20inbegripet%20kunskaper%20i%20matematik%20och%20fysik%20och%20teknik%26nbsp%3B%20som%20v%C3%A4sentligt%20f%C3%B6rdjupade%20kunskaper%20inom%20vissa%20delar%20av%20omr%C3%A5det.%3C%2Fli%3E%5Cn%3C%2Ful%3E%5Cn%3Cp%3E%3Cstrong%3EUt%C3%B6ver%20detta%20skall%20studenten%20efter%20genomf%C3%B6rd%20utbildning%20p%C3%A5%20civilingenj%C3%B6rsprogrammet%20inom%20Teknisk%20Fysik%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cul%3E%5Cn%3Cli%3Evisa%20brett%20kunnande%2C%20som%20kan%20till%C3%A4mpas%20%C3%A4ven%20inom%20omr%C3%A5den%20ut%C3%B6ver%20den%20valda%20studieinriktningen%2C%3C%2Fli%3E%5Cn%3Cli%3Ebeh%C3%A4rska%20avancerade%20matematiska%20metoder%20och%20deras%20till%C3%A4mpning%20inom%20olika%20omr%C3%A5den.%3C%2Fli%3E%5Cn%3C%2Ful%3E%22%2C%22utbildningensOmfattningOchInnehall%22%3A%22%3Cp%3ECivilingenj%C3%B6rsprogrammet%20i%20Teknisk%20Fysik%20omfattar%20300%20h%C3%B6gskolepo%C3%A4ng%2C%20vilket%20i%20normal%20studietakt%20inneb%C3%A4r%205%20%C3%A5rs%20heltidsstudier.%20Utbildningens%20f%C3%B6rsta%20tre%20%C3%A5r%20%C3%A4r%20p%C3%A5%20grundl%C3%A4ggande%20niv%C3%A5%20och%20kan%2C%20om%20studenten%20ans%C3%B6ker%20om%20det%2C%20avslutas%20med%20en%20teknologie%20kandidatexamen.%20De%20tv%C3%A5%20avslutande%20%C3%A5ren%20%C3%A4r%20p%C3%A5%20avancerad%20niv%C3%A5.%26nbsp%3B%3C%2Fp%3E%5Cn%3Cp%3EUndervisningen%20p%C3%A5%20grundniv%C3%A5%20sker%20i%20huvudsak%20p%C3%A5%20svenska%2C%20viss%20engelsk%20litteratur%26nbsp%3B%20f%C3%B6rekommer.%20Undervisningen%20p%C3%A5%20avancerad%20niv%C3%A5%20%C3%A4r%20i%20huvudsak%20p%C3%A5%20engelska.%3C%2Fp%3E%22%2C%22behorighetOchUrval%22%3A%22%3Cp%3E%3Cstrong%3EGrundl%C3%A4ggande%20och%20s%C3%A4rskild%20beh%C3%B6righet%3C%2Fstrong%3E%20%20%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3EGymnasieskolan%20fr%C3%A5n%20och%20med%201%20juli%202011%20och%20gymnasial%20vuxenutbildning%20fr%C3%A5n%20och%20med%201%20juli%202012%20(Gy11%2FVux12)%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Cp%3ES%C3%A4rskild%20beh%C3%B6righet%20motsvarande%3A%3C%2Fp%3E%5Cn%3Cp%3EMatematik%204%3C%2Fp%3E%5Cn%3Cp%3EFysik%202%3C%2Fp%3E%5Cn%3Cp%3EKemi%201%3C%2Fp%3E%5Cn%3Cp%3EI%20vart%20och%20ett%20av%20%C3%A4mnena%20kr%C3%A4vs%20l%C3%A4gst%20betyget%20E.%26nbsp%3B%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3EGymnasieskolan%20f%C3%B6re%201%20juli%202011%20och%20gymnasial%20vuxenutbildning%20f%C3%B6re%201%20juli%202012%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Cp%3ES%C3%A4rskild%20beh%C3%B6righet%20motsvarande%3A%3C%2Fp%3E%5Cn%3Cp%3EMatematik%20E%3C%2Fp%3E%5Cn%3Cp%3EFysik%20B%3C%2Fp%3E%5Cn%3Cp%3EKemi%20A%3C%2Fp%3E%5Cn%3Cp%3EI%20vart%20och%20ett%20av%20%C3%A4mnena%20kr%C3%A4vs%20l%C3%A4gst%20betyget%20Godk%C3%A4nt%20eller%203.%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3EMatematik%20och%20Fysikprovet%3C%2Fstrong%3E%3Cbr%20%2F%3E%5CnS%C3%B6kande%20till%20civilingenj%C3%B6rsutbildningen%20Teknisk%20Fysik%20f%C3%A5r%20skriva%20Matematik-%20och%20fysikprovet.%20Det%20%C3%A4r%20ett%20s%C3%A4tt%20att%2C%20ut%C3%B6ver%20gymnasiebetyg%20och%20h%C3%B6gskoleprov%2C%20konkurrera%20om%20platserna%20till%20civilingenj%C3%B6rsutbildningen%20Teknisk%20Fysik.%20Mer%20information%20om%20Matematik-%20och%20fysikprovet%20finns%20p%C3%A5%20hemsidan%20www.matematik-och-fysikprovet.se%3C%2Fp%3E%22%2C%22kurser%22%3A%22%3Cp%3EUtbildningen%20sker%20i%20kursform.%20Kurslistor%20finns%20i%20bilaga%201.%3C%2Fp%3E%5Cn%3Cp%3EI%20utbildningen%20ing%C3%A5r%20obligatoriska%20och%26nbsp%3Bvalbara%20och%20kurser.%20De%20obligatoriska%20kurserna%20definieras%20f%C3%B6r%20varje%20%C3%A5rskurs%20i%20l%C3%A4ro-%20och%20timplanerna.%20De%20olika%20kursernas%20m%C3%A5l%2C%20f%C3%B6rkunskapskrav%2C%20inneh%C3%A5ll%20samt%20kursfordringar%20%C3%A5terfinns%20i%20kursplanerna.%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3EValfria%20kurser%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EHuvuddelen%20av%20utbildningen%20ska%20vara%20inom%20teknikomr%C3%A5det%20Teknisk%20fysik.%3C%2Fp%3E%5Cn%3Cp%3EUt%C3%B6ver%20detta%20finns%20i%20civilingenj%C3%B6rsutbildningen%20i%20Teknisk%20fysik%20ett%20utrymme%20p%C3%A5%2030%20hp%20f%C3%B6r%20valfria%20kurser%20som%20kan%20v%C3%A4ljas%20utanf%C3%B6r%20teknikomr%C3%A5det%2C%20t.ex.%20kurser%20inom%20spr%C3%A5k%2C%20ekonomi%2C%20management%20och%20filosofi.%E2%80%AFValfria%20kurser%20kan%20antingen%20l%C3%A4sas%20p%C3%A5%20KTH%20eller%20p%C3%A5%20annat%20universitet.%20Dock%20g%C3%A4ller%20f%C3%B6ljande%20begr%C3%A4nsningar%3A%3C%2Fp%3E%5Cn%3Cul%3E%5Cn%3Cli%3EEn%20valfri%20kurs%20f%C3%A5r%20ej%20%C3%B6verlappa%20befintlig%20programkurs.%3C%2Fli%3E%5Cn%3Cli%3EValfri%20kurs%20p%C3%A5%20l%C3%A4gre%20niv%C3%A5%20inom%20samma%20%C3%A4mne%20som%20en%20obligatorisk%20eller%20villkorligt%20valfri%26nbsp%3Bprogramkurs%20ger%20inte%20progression%20inom%20%C3%A4mnet%20och%20f%C3%A5r%20d%C3%A4rf%C3%B6r%20ej%20medr%C3%A4knas%20i%20examen.%3C%2Fli%3E%5Cn%3C%2Ful%3E%22%2C%22betygssystem%22%3A%22%3Cp%3EF%C3%B6r%20kurser%20p%C3%A5%20KTH%20anv%C3%A4nds%20en%20sjugradig%20m%C3%A5lrelaterad%20betygsskala%20A-F%20som%20slutbetyg%20f%C3%B6r%20kurser%20p%C3%A5%20grundniv%C3%A5%20och%20avancerad%20niv%C3%A5.%20A-E%20%C3%A4r%20godk%C3%A4nda%20betyg%20med%20A%20som%20h%C3%B6gsta%20betyg.%20Betygen%20godk%C3%A4nd%20(P)%20och%20underk%C3%A4nd%20(F)%20anv%C3%A4nds%20som%20slutbetyg%20d%C3%A5%20s%C3%A4rskilda%20sk%C3%A4l%20f%C3%B6religger.%3C%2Fp%3E%5Cn%3Cp%3ED%C3%A5%20betygssystemen%20skiljer%20sig%20v%C3%A4ldigt%20mycket%20mellan%20olika%20l%C3%A4nder%20%C3%B6vers%C3%A4tts%20inte%20betygen%20fr%C3%A5n%20utbytesstudier%20till%20KTHs%20betygsskala.%3C%2Fp%3E%5Cn%3Cp%3EP%C3%A5%20examensarbete%20p%C3%A5%20KTH%20anv%C3%A4nds%20betygen%20(P)%20och%20(F).%3C%2Fp%3E%22%2C%22villkorForDeltagande%22%3A%22%3Cp%3EF%C3%B6r%20deltagande%20kr%C3%A4vs%20antagning%20till%20kurs%20inom%20programmet%20samt%20registrering%20p%C3%A5%20kurs.%20Kursregistrering%20g%C3%B6rs%20via%20den%20personliga%20menyn%20p%C3%A5%20www.kth.se%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3EVal%20av%20kurs%3C%2Fstrong%3E%3Cbr%20%2F%3E%5CnAnm%C3%A4lan%20till%20kurs%20skall%20g%C3%B6ras%20den%3C%2Fp%3E%5Cn%3Cul%3E%5Cn%3Cli%3E1%E2%80%9315%20maj%20inf%C3%B6r%20h%C3%B6stterminen%3C%2Fli%3E%5Cn%3Cli%3E1%E2%80%9315%20november%20inf%C3%B6r%20v%C3%A5rterminen%3C%2Fli%3E%5Cn%3C%2Ful%3E%5Cn%3Cp%3Evia%20KTH%3As%20anm%C3%A4lan%20till%20kurs%20inom%20program%20med%20studentens%20kth.se-konto%20via%20www.antagning.se%3Cbr%20%2F%3E%5Cn%3Cstrong%3EKursregistrering%3C%2Fstrong%3E%3Cbr%20%2F%3E%5CnStudenten%20ansvarar%20sj%C3%A4lv%20f%C3%B6r%20att%20g%C3%B6ra%20kursregistrering%20varje%20termin.%20Detta%20g%C3%B6rs%20via%20%5C%22Personliga%20menyn%5C%22%20p%C3%A5%20KTH%3As%20hemsida%2C%20under%20en%20begr%C3%A4nsad%20period.%20Kursregistrering%20inneb%C3%A4r%20att%20studenten%20%C3%A4r%20aktiv%20och%20kan%20examineras.%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3EVillkor%20f%C3%B6r%20fortsatta%20studier%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EF%C3%B6r%20studenter%20som%20p%C3%A5b%C3%B6rjar%20utbildning%20fr%C3%A5n%20och%20med%20h%C3%B6stterminen%202018%20ers%C3%A4tts%20tidigare%20uppflyttningskrav%20med%20krav%20p%C3%A5%20s%C3%A4rskild%20beh%C3%B6righet%20till%20kurs.%20Krav%20p%C3%A5%20s%C3%A4rskild%20beh%C3%B6righet%20specificeras%20i%20kursplanen.%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3EKrav%20f%C3%B6r%20studier%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20masterniv%C3%A5%3A%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cul%3E%5Cn%3Cli%3ETotalt%20165%20hp%20fr%C3%A5n%20%C3%A5rskurs%201-3%20avklarade%20varav%20minst%2060%20hp%20fr%C3%A5n%20%C3%A5k%201%20och%20minst%2050%20hp%20fr%C3%A5n%20%C3%A5k%202.%3C%2Fli%3E%5Cn%3Cli%3EExamensarbete%20grundniv%C3%A5%2C%2015hp%2C%20(kandidatexamensarbete)%26nbsp%3B%20ska%20vara%20slutf%C3%B6rt%20innan%20studierna%20p%C3%A5%20masterprogrammet%20p%C3%A5b%C3%B6rjas%3C%2Fli%3E%5Cn%3Cli%3ED%C3%A4rut%C3%B6ver%20g%C3%A4ller%20s%C3%A4rskilda%20beh%C3%B6righetskrav%20till%20varje%20masterprogram%3C%2Fli%3E%5Cn%3C%2Ful%3E%5Cn%3Cp%3E%3Cstrong%3EAnm%C3%A4lan%20till%20avancerade%20niv%C3%A5n%20inom%20civilingenj%C3%B6rsutbildningen%3A%3C%2Fstrong%3E%3Cbr%20%2F%3E%5CnInf%C3%B6r%20fortsatta%20studier%20i%20%C3%A5rskurs%204%20inom%20civilingenj%C3%B6rsprogram%20ska%20den%20studerande%20v%C3%A4lja%20ett%20masterprogram.%20https%3A%2F%2Fwww.kth.se%2Fstudent%2Fprogram%2Fmasterprogram%3Cbr%20%2F%3E%5CnF%C3%B6r%20masterprogram%20som%20utan%20platsbegr%C3%A4sning%20leder%20till%20civilingenj%C3%B6rsexamen%3Cbr%20%2F%3E%5CnTill%20masterprogram%20som%20leder%20till%20civilingenj%C3%B6rsexamen%20finns%20ingen%20platsbegr%C3%A4nsning.%3Cbr%20%2F%3E%5CnVal%20av%20masterprogram%20%C3%A4ger%20rum%20under%20perioden%201%E2%80%9315%20maj.%3C%2Fp%3E%5Cn%3Cp%3EF%C3%B6r%20masterprogram%20som%20med%20platsbegr%C3%A4sning%20leder%20till%20civilingenj%C3%B6rsexamen%3Cbr%20%2F%3E%5CnUndantag%20fr%C3%A5n%20regeln%20om%20platsgaranti%20g%C3%A4ller%20f%C3%B6r%20de%20masterprogram%20som%20ges%20inom%20samarbetsavtal%20med%20andra%20universitet.%20Dessa%20program%20kan%20ha%20platsbegr%C3%A4nsningar%20och%20andra%20beh%C3%B6righetskrav%2C%20samt%20s%C3%B6ks%20i%20s%C3%B6kperioder%20som%20anges%20av%20respektive%20program.%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3ESCI-skolans%20villkor%20f%C3%B6r%20att%20ett%20masterprogram%20som%20ges%20i%20samarbete%20med%20andra%20universitet%20ska%20kunna%20leda%20till%20civilingenj%C3%B6rsexamen%20%C3%A4r%3A%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3E%E2%80%A2%20Minst%2030%20hp%20kurser%20ska%20l%C3%A4sas%20p%C3%A5%20KTH%20(ut%C3%B6ver%20examensarbete)%3C%2Fp%3E%5Cn%3Cp%3E%E2%80%A2%20Examensarbetet%20(30%20hp)%20ska%20uppfylla%20m%C3%A5len%20f%C3%B6r%20civilingenj%C3%B6rsexamen%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3EProgram%20som%20leder%20till%20en%20civilingenj%C3%B6rsexamen%20men%20med%20annat%20ans%C3%B6kningsf%C3%B6rfarande%3C%2Fstrong%3E%3Cbr%20%2F%3E%5CnF%C3%B6ljande%20program%20leder%20till%20en%20civilingenj%C3%B6rsexamen%20men%20har%20ett%20annat%20ans%C3%B6kningsf%C3%B6rfarande.%20Programmen%20har%20ingen%26nbsp%3Bplatsgaranti%2C%20olika%20beh%C3%B6righetsregler%20och%20olika%20ans%C3%B6kningsdatum.%20Mer%20information%20finns%20p%C3%A5%20KTH%C2%B4s%20hemsida.%20%20%3C%2Fp%3E%5Cn%3Cul%3E%5Cn%3Cli%3EComputer%20Simulation%20for%20Science%20and%20Engineering%2FDatorsimuleringar%20inom%20teknik%20och%20naturvetenskap%3C%2Fli%3E%5Cn%3Cli%3EEnergy%20Innovation%2FInnovativ%20energiteknik%3A%20endast%20sp%C3%A5r%20K%C3%A4rnenergi%20(NUEY)%3C%2Fli%3E%5Cn%3Cli%3EDual%20Master%20in%20Aerospace%20Engineering%20(KTH%2FBologna)%3C%2Fli%3E%5Cn%3Cli%3ERailway%20Engineering%2FJ%C3%A4rnv%C3%A4gsteknik%3C%2Fli%3E%5Cn%3C%2Ful%3E%5Cn%3Cp%3E%3Cstrong%3EIndividuellt%20kurspaket%20p%C3%A5%20avancerad%20niv%C3%A5%3C%2Fstrong%3E%3Cbr%20%2F%3E%5CnInom%20ramen%20f%C3%B6r%20civilingenj%C3%B6rsprogrammet%20finns%20det%20m%C3%B6jlighet%20att%20s%C3%A4tta%20ihop%20kurskombinationer%20p%C3%A5%20avancerad%20niv%C3%A5%20till%20ett%20individuellt%20kurspaket.%20Det%20kan%20dock%20vara%20l%C3%A4mpligt%20att%20f%C3%B6rst%20ta%20reda%20p%C3%A5%20vilken%20valfrihet%20som%20finns%20inom%20de%20befintliga%20masterprogrammen.%3C%2Fp%3E%5Cn%3Cp%3EF%C3%B6r%20att%20l%C3%A4sa%20ett%20individuellt%20kurspaket%20kr%C3%A4vs%20en%20ans%C3%B6kan%20om%20individuellt%20kurspaket.%3Cbr%20%2F%3E%5CnBlankett%20finns%20h%C3%A4r%3A%20http%3A%2F%2Fwww.kth.se%2Fdokument%2Fstudent%2Fsci%2Fblankett%2Findividuell_studieinriktning.pdf%20kolla%20l%C3%A4nk%3C%2Fp%3E%5Cn%3Cp%3EI%20ans%C3%B6kan%20skall%20studenten%20formulera%20tanken%20med%20det%20individuella%20kurspaketet%20samt%20definiera%20vilka%20kurser%20som%20skall%20ing%C3%A5.%20Betr%C3%A4ffande%20examensarbetet%20m%C3%A5ste%20ett%20prelimin%C3%A4rt%20godk%C3%A4nnande%20inh%C3%A4mtas%20fr%C3%A5n%20en%20m%C3%B6jlig%20examinator%20vid%20l%C3%A4mplig%20institution.%20Minst%2030%20h%C3%B6gskolepo%C3%A4ng%20p%C3%A5%20avancerad%20niv%C3%A5%20ska%20vara%20inom%20samma%20huvudomr%C3%A5de%20som%20examensarbetet.%3C%2Fp%3E%5Cn%3Cp%3EDet%20%C3%A4r%20studentens%20ansvar%20att%20kontrollera%20om%20kurserna%20ges%20varje%20%C3%A5r%20eller%20om%20det%20finns%20andra%20f%C3%B6rbeh%C3%A5ll%20f%C3%B6r%20om%20och%20n%C3%A4r%20en%20kurs%20kommer%20att%20ges.%26nbsp%3B%20Det%20%C3%A4r%20bra%20att%20k%C3%A4nna%20till%20att%20ett%20individuellt%20kurspaket%20inneb%C3%A4r%20ett%20visst%20m%C3%A5tt%20av%20oundvikliga%20schemakrockar.%3C%2Fp%3E%5Cn%3Cp%3EAns%C3%B6kan%20l%C3%A4mnas%20till%20programkansliet%20vid%20skolan%20f%C3%B6r%20Teknikvetenskap%20under%20samma%20period%20som%20mastervalet%20g%C3%B6rs%20(den%201%E2%80%9315%20maj).%20Beslut%20om%20ans%C3%B6kan%20blir%20godk%C3%A4nd%20eller%20ej%20fattas%20av%20programansvarig%20och%20besked%20skickas%20med%20e-post.%3C%2Fp%3E%22%2C%22tillgodoraknande%22%3A%22%3Cp%3ETillgodor%C3%A4knander%C3%A4tten%20%C3%A4r%20ett%20viktigt%20element%20f%C3%B6r%20att%20gynna%20mobiliteten%20inom%20landet%20och%20mellan%20l%C3%A4nder%2C%20f%C3%B6r%20h%C3%B6gskolans%20internationaliseringsarbete%20samt%20f%C3%B6r%20det%20livsl%C3%A5nga%20l%C3%A4randet.%3C%2Fp%3E%5Cn%3Cp%3EKTH%20skall%20ha%20ett%20%C3%B6ppet%20f%C3%B6rh%C3%A5llningss%C3%A4tt%20till%20tillgodor%C3%A4knande.%20Tillgodor%C3%A4knande%20skall%20d%C3%A4rf%C3%B6r%20kunna%20ske%20%C3%A4ven%20om%20exakt%20liknande%20utbildning%20inte%20finns%20vid%20KTH%20eller%20om%20inneh%C3%A5llet%20i%20till%20exempel%20kursplaner%20inte%20helt%20%C3%B6verensst%C3%A4mmer%20med%20KTH%3As.%20De%20krav%20som%20KTH%20normalt%20st%C3%A4ller%20p%C3%A5%20utbildningens%20niv%C3%A5%20och%20kvalitet%20skall%20beaktas%20vid%20tillgodor%C3%A4knanden.%3C%2Fp%3E%5Cn%3Cp%3EDen%20som%20%C3%A4r%20student%20vid%20KTH%20och%20genomf%C3%B6r%20studier%20vid%20ett%20annat%20universitet%20inom%20ramen%20f%C3%B6r%20ett%20utbytesavtal%20har%20r%C3%A4tt%20att%20f%C3%A5%20ett%20f%C3%B6rhandsbesked%20om%20tillgodor%C3%A4knande.%20Detta%20g%C3%B6rs%20i%20form%20av%20enstudieplan%2C%20som%20uppr%C3%A4ttas%20med%20hj%C3%A4lp%20av%20internationell%20koordinator%20och%20undertecknas%20av%20PA%20f%C3%B6r%20det%20program%20som%20studenten%20l%C3%A4ser.%3C%2Fp%3E%5Cn%3Cp%3EDen%20som%20%C3%A4r%20student%20vid%20KTH%20har%20r%C3%A4tt%20att%20f%C3%A5%20tillgodor%C3%A4knande%20pr%C3%B6vat.%3C%2Fp%3E%5Cn%3Cp%3E%C3%84ven%20examensarbete%20kan%20i%20undantagsfall%26nbsp%3Btillgodor%C3%A4knas.%3C%2Fp%3E%5Cn%3Cp%3EBeslut%20om%20tillgodor%C3%A4knande%20av%20kurs%20kan%20%C3%B6verklagas%20hos%20%C3%96verklaganden%C3%A4mnden%20f%C3%B6r%20h%C3%B6gskolan%20(%C3%96NH).%20%C3%96verklagandet%20skall%20l%C3%A4mnas%20in%20till%20KTH%20senast%20inom%20tre%20veckor%20fr%C3%A5n%20den%20dag%20den%20klagande%20fick%20del%20av%20beslutet.%3C%2Fp%3E%5Cn%3Cp%3EF%C3%B6r%20att%20tillgodor%C3%A4knandet%20skall%20kunna%20pr%C3%B6vas%20m%C3%A5ste%20den%20s%C3%B6kande%20normalt%20kunna%20dokumentera%20att%20hon%2Fhan%20examinerats%20i%20kurs%20(motsvarande)%20med%20minst%20godk%C3%A4nt%20resultat.%20Studieprestationen%20betygs%C3%A4tts%20av%20den%20h%C3%B6gskola%20d%C3%A4r%20examination%20skett.%20Till%20ans%C3%B6kan%20ska%20%C3%A4ven%20kursplan%20%C3%B6ver%20ans%C3%B6kt%20kurs%20bifogas.%3C%2Fp%3E%5Cn%3Cp%3EL%C3%A4s%20mer%20om%20KTH%3As%20Regelverk%20om%20tillgodor%C3%A4knande%20av%20h%C3%B6gskoleutbildning%20p%C3%A5%20www.kth.se%3C%2Fp%3E%22%2C%22utlandsstudier%22%3A%22%3Cp%3EInom%20civilingenj%C3%B6rsprogrammen%20finns%20det%20m%C3%B6jlighet%20att%20l%C3%A4sa%20delar%20av%20studierna%20inom%20ramen%20f%C3%B6r%20n%C3%A5got%20av%20KTHs%20utbytesavtal.%26nbsp%3B%20Ans%C3%B6kan%20till%20utbyte%20g%C3%B6rs%20en%20g%C3%A5ng%20per%20l%C3%A4s%C3%A5r.%20De%20flesta%20utbytesavtalen%20%C3%A4r%20skrivna%20f%C3%B6r%26nbsp%3Batt%20l%C3%A4sa%20kurser%26nbsp%3Boch%20det%20%C3%A4r%20vanligast%20att%20man%20%C3%A5ker%20p%C3%A5%20utbyte%20under%20en%20termin%2C%20oftast%20den%20termin%20som%20har%20mest%20valfria%20kurser%20inplanerade.%20Det%20kan%20%C3%A4ven%20finnas%20m%C3%B6jlighet%20att%20skriva%20sitt%20examensarbete%20under%20utbytet%2C%20men%20denna%20m%C3%B6jlighet%20garanteras%20inte%20i%20avtalen.%3C%2Fp%3E%5Cn%3Cp%3ETa%20kontakt%20med%20den%20internationella%20koordinatorn%20p%C3%A5%20kansliet%20f%C3%B6r%20ytterligare%20information%3A%20exchange-out%40sci.kth.se.%3C%2Fp%3E%5Cn%3Cp%3EMer%20och%20detaljerad%20information%20om%20utbytesstudier%20finns%20h%C3%A4r%3A%3Cbr%20%2F%3E%5Cnhttp%3A%2F%2Fwww.kth.se%2Fstudent%2Fprogram%2Futlandsstudier%3C%2Fp%3E%22%2C%22examensarbete%22%3A%22%3Cp%3E%3Cstrong%3EExamensarbete%2C%20grundniv%C3%A5%2C%2015%20h%C3%B6gskolepo%C3%A4ng%20(kandidatexamensarbete)%3C%2Fstrong%3E%3Cbr%20%2F%3E%5CnI%20utbildningen%20ing%C3%A5r%20ett%20examensarbete%20f%C3%B6r%20kandidatexamen%20(p%C3%A5%20grundniv%C3%A5)%20om%2015%20hp.%20Examensarbetskursen%20utg%C3%B6r%20den%20avslutande%20delen%20av%20utbildningen.%20Examensarbetet%20kan%20p%C3%A5b%C3%B6rjas%20n%C3%A4r%20kursens%20s%C3%A4rskilda%20beh%C3%B6righetskrav%20%C3%A4r%20uppfyllda.%20%26nbsp%3B%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3EExamensarbete%2C%20avancerad%20niv%C3%A5%2C%2030%20h%C3%B6gskolepo%C3%A4ng%3C%2Fstrong%3E%3Cbr%20%2F%3E%5CnI%20utbildningen%20ing%C3%A5r%20ocks%C3%A5%20ett%20examensarbete%20som%20motsvarar%20en%20kurs%20om%2030%26nbsp%3Bh%C3%B6gskolepo%C3%A4ng%20motsvarande%20en%20termins%20heltidsstudier.%26nbsp%3B%20Examensarbetskursen%20utg%C3%B6r%20den%20avslutande%20delen%20av%20utbildningen.%20Examensarbetet%20kan%20p%C3%A5b%C3%B6rjas%20n%C3%A4r%20kursens%20s%C3%A4rskilda%20beh%C3%B6righetskrav%20%C3%A4r%20uppfyllda.%3C%2Fp%3E%5Cn%3Cul%3E%5Cn%3Cli%3EExamensarbete%20genomf%C3%B6rs%20normalt%20inom%20ett%20%C3%A4mne%20centralt%20f%C3%B6r%20programmets%20teknikomr%C3%A5de.%3C%2Fli%3E%5Cn%3Cli%3EExamensarbetet%20f%C3%A5r%20inte%20p%C3%A5b%C3%B6rjas%20innan%20uppgiften%20godk%C3%A4nts%20av%20examinator%20vid%20vald%20institution%20och%20anm%C3%A4lts%20p%C3%A5%20s%C3%A4rskild%20blankett%20till%20programkansliet.%3C%2Fli%3E%5Cn%3Cli%3EExaminator%20svarar%20f%C3%B6r%20att%20den%20studerande%20har%20tillr%C3%A4ckliga%20f%C3%B6rkunskaper%20f%C3%B6r%20den%20valda%20uppgiften.%3C%2Fli%3E%5Cn%3Cli%3EExamensarbetet%20grundas%20p%C3%A5%20de%20kunskaper%20som%20inh%C3%A4mtats%20under%20hela%20studietiden%20och%20skall%20normalt%20utf%C3%B6ras%20under%26nbsp%3Bden%20sista%26nbsp%3Bterminen%20inom%20det%20masterprogram%20som%20den%20studerande%20valt.%20Om%20den%20studerande%20%C3%B6nskar%20utf%C3%B6ra%20examensarbete%20inom%20annat%20%C3%A4mnesomr%C3%A5de%20skall%20detta%20godk%C3%A4nnas%20av%20programkansliet.%3C%2Fli%3E%5Cn%3Cli%3EExamensarbetet%20ska%20visa%20att%20studenten%20%C3%A4r%20kapabel%20att%20sj%C3%A4lvst%C3%A4ndigt%20till%C3%A4mpa%20sina%20under%20studietiden%20f%C3%B6rv%C3%A4rvade%20kunskaper%20och%20ska%20d%C3%A4rf%C3%B6r%20g%C3%B6ras%20i%20slutet%20av%20utbildningen.%3C%2Fli%3E%5Cn%3Cli%3EExamensarbetet%20skall%20utg%C3%B6ra%20prov%20p%C3%A5%20ett%20sj%C3%A4lvst%C3%A4ndigt%2C%20ingenj%C3%B6rsm%C3%A4ssigt%2Fvetenskapligt%20arbete%20omfattande%20teoretisk%20och%2Feller%20experimentell%20verksamhet%20med%20%C3%A5tf%C3%B6ljande%20rapportskrivning.%20Examensarbetet%20kan%20inkludera%20andra%20moment%2C%20t%26nbsp%3Bex%20seminarier%2C%20informationss%C3%B6kning%2C%20auskultationer%2C%20opposition%20eller%20andra%20inslag%20som%20examinator%20eller%20handledare%20bed%C3%B6mer%20l%C3%A4mpliga.%3C%2Fli%3E%5Cn%3Cli%3EExamensarbete%20genomf%C3%B6rs%20individuellt%20eller%20tillsammans%20med%20annan%20student.%20I%20det%20senare%20fallet%20skall%20examinator%20se%20till%20att%20varje%20students%20arbetsinsats%20motsvarar%20kraven%20f%C3%B6r%20ett%20individuellt%20examensarbete%3C%2Fli%3E%5Cn%3Cli%3EHandledare%20utses%20av%20examinator.%3C%2Fli%3E%5Cn%3C%2Ful%3E%5Cn%3Cp%3ESe%20KTH%3As%20regelverk%20f%C3%B6r%20%C3%B6vergripande%20regler%20och%20riktlinjer%20f%C3%B6r%20examensarbete%2030%20h%C3%B6gskolepo%C3%A4ng%20f%C3%B6r%20civilingenj%C3%B6rsexamen%20www.kth.se%3C%2Fp%3E%5Cn%3Cp%3EBlanketten%20%5C%22Ans%C3%B6kan%20om%20examensarbete%5C%22%20finns%20p%C3%A5%20hemsidan%20www.kth.se%20via%20student%20p%C3%A5%20KTH%2C%20under%20programstudierna%2C%20och%20l%C3%A4mnas%20p%C3%A5skriven%20av%20student%20och%20examinator%20till%20programkansliet.%20F%C3%B6r%20examensarbeten%20erh%C3%A5lls%20mer%20detaljerade%20regler%20och%20riktlinjer%20vid%20respektive%20institution.%3C%2Fp%3E%22%2C%22examen%22%3A%22%3Cp%3E%3Cstrong%3EVillkor%20f%C3%B6r%20examen%3C%2Fstrong%3E%26nbsp%3B%3Cbr%20%2F%3E%5CnCivilingenj%C3%B6rsexamen%20erh%C3%A5lls%20efter%20genomg%C3%A5nget%20utbildningsprogram.%20Programmet%20%C3%A4r%20utformat%20s%C3%A5%20att%20den%20studerande%20vid%20examen%20uppfyller%20de%20nationella%20examenskraven%20och%20har%20fullgjort%20kurser%20om%20300%20h%C3%B6gskolepo%C3%A4ng%2C%20varav%3C%2Fp%3E%5Cn%3Cul%3E%5Cn%3Cli%3Ematematiska-naturvetenskapliga%20%C3%A4mnen%20om%20minst%2045%20h%C3%B6gskolepo%C3%A4ng%2C%20och%20d%C3%A4rut%C3%B6ver%20minst%20180%20h%C3%B6gskolepo%C3%A4ng%20(inkl%2030%20h%C3%B6gskolepo%C3%A4ng%20examensarbete)%20i%20%C3%A4mnen%20centrala%20f%C3%B6r%20teknikomr%C3%A5det%3B%3C%2Fli%3E%5Cn%3Cli%3Eminst%2090%20h%C3%B6gskolepo%C3%A4ng%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20varav%20minst%2060%20h%C3%B6gskolepo%C3%A4ng%20(inkl%2030%20h%C3%B6gskolepo%C3%A4ng%20examensarbete)%20i%20%C3%A4mnen%20centrala%20f%C3%B6r%20teknikomr%C3%A5det.%3C%2Fli%3E%5Cn%3C%2Ful%3E%5Cn%3Cp%3E%26nbsp%3BBen%C3%A4mning%20p%C3%A5%20examen%20%C3%A4r%20civilingenj%C3%B6rsexamen%20inom%20Teknisk%20Fysik%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3EAns%C3%B6kan%20om%20examen%3C%2Fstrong%3E%3Cbr%20%2F%3E%5CnStudenten%20har%20m%C3%B6jlighet%20att%20ans%C3%B6ka%20om%20tre%20olika%20examina%2C%20teknologie%20kandidatexamen%2C%20civilingenj%C3%B6rsexamen%20och%20masterexamen%20om%20resp.%20examensfordringar%20uppfylls.%3C%2Fp%3E%5Cn%3Cp%3EAns%C3%B6kan%20om%20examen%20g%C3%B6rs%20via%20studentens%20personliga%20meny%20p%C3%A5%20www.kth.se.%3C%2Fp%3E%5Cn%3Cp%3EKTHs%20lokala%20examensordning%20i%20KTHs%20regelverk%3A%20www.kth.se%3C%2Fp%3E%22%7D%2C%22programmeCode%22%3A%22CTFYS%22%2C%22programmeName%22%3A%22Civilingenj%C3%B6rsutbildning%20i%20teknisk%20fysik%22%2C%22term%22%3A%2220242%22%2C%22lengthInStudyYears%22%3A5%2C%22thisHostBaseUrl%22%3Anull%7D";</script>
+
+<!---->
+
+  <div id="app"></div>
+    </div>
+  </div>
+  <!--indexOff: all-->
+  <!-- add "scroll-to-top" button when scrolled down -->
+  <div id="back-to-top" role="link" aria-label="Till sidans topp"></div>
+  <footer class="kth-footer student-web">
+      <div class="kth-footer__content">
+              
+  
+  
+  
+  
+    <div class="columnSplitterWrapper" data-cid="1.1066523" lang="sv">
+      
+      <div class="columnSplitter  using4Columns ">
+        <div class="col c1">
+          
+  
+  
+  
+  
+    <div class="block list links" data-cid="1.1066524" lang="sv">
+      <h2>Studentwebben</h2>
+      
+      <ul>
+        <li><a href="/student/studier">Studier</a></li>
+        <li><a href="/student/stod">Stöd och vägledning</a></li>
+        <li><a href="/student/it">IT och digitala tjänster</a></li>
+        <li><a href="/student/kontakt">Kontakt</a></li>
+      </ul>
+    </div>
+  
+  
+  
+        </div>
+        <div class="col c2">
+          
+  
+  
+  
+  
+    <div class="block list links" data-cid="1.1066531" lang="sv">
+      <h2>Tjänster</h2>
+      
+      <ul>
+        <li><a href="/student/studier/schema">Schema</a></li>
+        <li><a href="https://canvas.kth.se/">Canvas</a></li>
+        <li><a href="http://webmail.kth.se">Webbmejl</a></li>
+        <li><a href="/student/it/studenttjanster/personligamenyn">Personliga menyn</a></li>
+        <li><a href="https://www.student.ladok.se/student/app/studentwebb/">Ladok för studenter</a></li>
+      </ul>
+    </div>
+  
+  
+  
+        </div>
+        <div class="col c3">
+          
+  
+  
+  
+  
+    <div class="block list links" data-cid="1.1066534" lang="sv">
+      <h2>Kontakt</h2>
+      
+      <ul>
+        <li><a href="/student/kontakt/kontaktuppgifter/kontakta-utbildningsprogram-1.1170401">Kontakta utbildningsprogram</a></li>
+        <li><a href="/student/kontakt/kontaktuppgifter/kontakta-kurs-1.1171899">Kontakta kurs</a></li>
+        <li><a href="/student/it/contact">IT-support</a></li>
+        <li><a href="/student/kontakt/campus/kth-entre">KTH Entré</a></li>
+        <li><a href="/student/kontakt/campus/kth-biblioteket-1.2479">KTH Biblioteket</a></li>
+      </ul>
+    </div>
+  
+  
+  
+        </div>
+        <div class="col c4">
+          
+  
+  
+  
+  
+    <article class="block teaser top white" data-cid="1.1083631" lang="sv">
+      
+      <div class="teaserBody   ">
+        
+        
+        <div class="lead">
+          
+          
+        
+          
+          <p><strong>KTH</strong><br> <em>100 44 Stockholm<br> +46 8 790 60 00<br>
+        
+      
+        
+          
+  
+  
+  
+  
+    <a class="block link" data-cid="1.1083633" lang="sv" href="mailto:info@kth.se">info@kth.se</a>
+  
+  
+  
+          
+        
+      
+        
+          
+          </em><br> &nbsp;</p>
+        
+      
+        </div>
+        
+      </div>
+    </article>
+  
+  
+  
+        </div>
+      </div>
+    </div>
+  
+  
+  
+      </div>
+  </footer>
+  <!--indexOn: all-->  <script src="/student/kurser/static/app.js?v=2.0.0-20260427.1_59b0"></script>
+</body>
+
+</html>
