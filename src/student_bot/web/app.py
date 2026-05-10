@@ -47,6 +47,7 @@ from student_bot.bot.topics import classify
 from student_bot.config import Config, get_config
 from student_bot.jargon import Jargon, _nfc_lower, _read_json, _write_json
 from student_bot.logging_db import LogDB
+from student_bot.version import get_version
 from student_bot.web.auth import require_access
 from student_bot.web.md_render import render_file
 
@@ -695,6 +696,12 @@ def _about_page(cfg: Config, base_path: str = "") -> HTMLResponse:
     # Counselor link is config-driven, not language-bound, so we render it
     # server-side and append it after the translatable tip text.
     cl_html = f' (<a href="{link}">{link}</a>)' if link else ""
+    version = get_version()
+    version_html = (
+        f' (<a href="{version.link}" target="_blank" rel="noopener">{version.display}</a>)'
+        if version.display
+        else ""
+    )
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
 <link rel="stylesheet" href="{static_prefix}/style.css?v=22">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
@@ -716,7 +723,7 @@ def _about_page(cfg: Config, base_path: str = "") -> HTMLResponse:
       <path d="M8 0C3.58 0 0 3.67 0 8.2c0 3.62 2.29 6.69 5.47 7.77.4.08.55-.18.55-.4 0-.2-.01-.86-.01-1.56-2.01.38-2.53-.5-2.69-.95-.09-.23-.48-.95-.82-1.14-.28-.16-.68-.56-.01-.57.63-.01 1.08.59 1.23.83.72 1.25 1.87.9 2.33.68.07-.54.28-.9.51-1.11-1.78-.21-3.64-.91-3.64-4.05 0-.9.31-1.64.82-2.22-.08-.21-.36-1.05.08-2.18 0 0 .67-.22 2.2.85A7.37 7.37 0 0 1 8 4.68c.68 0 1.36.1 2 .29 1.53-1.07 2.2-.85 2.2-.85.44 1.13.16 1.97.08 2.18.51.58.82 1.31.82 2.22 0 3.15-1.87 3.84-3.65 4.05.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .22.15.49.55.4A8.23 8.23 0 0 0 16 8.2C16 3.67 12.42 0 8 0z"/>
     </svg>
     github.com/cohm/student-admin-bot
-  </a>
+  </a>{version_html}
 </div>
 <p><a href="{home}" data-i18n="about.back"></a></p>
 </div></main></body></html>
