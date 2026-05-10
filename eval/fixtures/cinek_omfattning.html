@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="sv">
+
+<head>
+  <title>Civilingenjörsutbildning i industriell ekonomi (CINEK), Utbildningsplan kull HT2024, Utbildningens omfattning och innehåll | KTH</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="">
+  <link rel="shortcut icon" id="favicon" href="/student/kurser/static/icon/favicon">
+
+
+  
+  
+  
+
+  <link href="/student/kurser/static/kth-style/css/kth-bootstrap.css?v=2.0.0-20260427.1_59b0" media="screen" rel="stylesheet">
+<link href="/student/kurser/assets/fonts.css?v=2.0.0-20260427.1_59b0" media="screen" rel="stylesheet">
+<link href="/student/kurser/static/app.css?v=2.0.0-20260427.1_59b0" media="screen" rel="stylesheet">
+
+    
+
+
+
+
+  <!-- Begin JavaScript contentId-1_1137647 -->
+  <script>var klaroConfig = {
+    testing: false,
+  acceptAll: true,
+  styling: {
+      theme: [],
+  },
+  htmlTexts: false,
+  groupByPurpose: false,
+  storageMethod: 'cookie',
+  cookieDomain: 'kth.se',
+  cookieExpiresAfterDays: 30,
+  hideDeclineAll: false,
+  translations: {
+      sv: {
+          service: {
+            disableAll: {
+              description: 'Använd detta reglage för att tillåta alla tjänster eller endast nödvändiga.',
+              title: 'Ändra för alla tjänster',
+            },
+          },
+          consentModal: {
+            description:
+              'Här kan du se och anpassa vilken information vi samlar om dig.',
+          },
+          privacyPolicy: {
+              name: 'kakor',
+              text: 'Läs mer om hur vi hanterar {privacyPolicy}.',
+          },
+          privacyPolicyUrl: 'https://www.kth.se/gemensamt/om-kakor-cookies-pa-kth-s-webbplats-1.844',
+          consentNotice: {
+              title: '',
+              testing: 'Observera att Klaro körs i testläge',
+              description: 'Denna webbplats använder tjänster som kan lagra information om dig och hur du använder denna webbplats. Vissa tjänster är nödvändiga för att webbplatsen ska fungera och andra är valbara.',
+              learnMore: 'Hantera valbara tjänster',
+          },
+          decline: 'Tillåt bara nödvändiga tjänster',
+          ok: 'Tillåt alla tjänster',
+          purposeItem: {
+              service: 'Tjänster'
+          },
+            contextualConsent:{
+                acceptAlways: 'Alltid',
+                acceptOnce: 'Ja',
+                description: 'Du har tidigare nekat visning av innehåll av typen "{title}". Vill du visa innehållet?',
+          }
+      },
+      en: {
+          service: {
+            disableAll: {
+              description: 'Use this slider to allow all cookies or only necessary.',
+              title: 'Change for all services',
+            },
+          },
+        consentModal: {
+            description:
+              'Here you can assess and customise the services we use on this website.',
+          },
+          privacyPolicy: {
+              name: 'cookies',
+              text: 'Find out more about our usage of {privacyPolicy}.',
+          },
+          privacyPolicyUrl: 'https://www.kth.se/en/gemensamt/om-kakor-cookies-pa-kth-s-webbplats-1.844',
+          consentNotice: {
+              title: '',
+              testing: 'Please note that Klaro is currently running in test mode',
+              description: 'This website uses services that may store information about you and how you use the website. Some services are necessary for the website to work, and others are optional.',
+              learnMore: 'Manage services',
+          },
+          decline: 'Accept only necessary services',
+          ok: 'Accept all services',
+          purposeItem: {
+              service: 'Services'
+          },
+            contextualConsent:{
+                acceptAlways: 'Always',
+                acceptOnce: 'Yes',
+                description: 'You have previously denied the display of content of the type "{title}". Do you want to show content?',
+          }
+      }
+  },
+  services: [
+      {
+          name: "required-consent",
+          default: true,
+          contextualConsentOnly: false,
+          required: true,
+          translations: {
+              zz: {
+                  title: 'Required Services',
+                  description: 'These services are necessary for the site to function and cannot be turned off. They are usually used when you utilise a function on the website that needs an answer, such as setting cookies, logging in, or filling in a form.'
+              },
+              sv: {
+                  title: 'Nödvändiga tjänster',
+                  description: 'Dessa tjänster är nödvändiga för att webbplatsen ska fungera och kan inte stängas av. De används främst när du nyttjar en funktion på webbplatsen som behöver ett svar, exempelvis ställer in kakor, loggar in eller fyller i formulär.'
+              },
+          },
+      },
+      {
+          name: "media-consent",
+          default: false,
+          translations: {
+              zz: {
+                  title: 'External media',
+                  description: 'Media on the site embedded from external providers like Youtube, Vimeo and Kaltura. When these are played, the providers may use cookies and local storage.'
+              },
+              sv: {
+                  title: 'Extern media',
+                  description: 'Inbäddad media från externa leverantörer som Youtube, Vimeo och Kaltura. När media spelas upp kan leverantörerna använda sig av kakor och lokal lagring.'
+              },
+          },
+      },
+      {
+        name: "service-consent",
+        default: false,
+        translations: {
+          zz: {
+            title: 'External Services',
+            description: 'Embedded services by external providers such as forms, maps, chat applications et c. When these are loaded, the providers may use cookies and local storage.'
+          },
+          sv: {
+            title: 'Externa tjänster',
+            description: 'Inbäddade tjänster från externa leverantörer såsom formulär, kartor, chat-funktion et c. När tjänsterna laddas in kan leverantörerna använda sig av kakor och lokal lagring.'
+          },
+        },
+      },
+      {
+          name: "analytics-consent",
+          default: false,
+          translations: {
+              zz: {
+                  title: 'Analytics and Tracking',
+                  description: 'The website uses Matomo to evaluate and improve the website content, experience and structure. The information collected is anonymised and only stored at KTH servers.'
+              },
+              sv: {
+                  title: 'Analys och spårning',
+                  description: 'Webbplatsen använder Matomo för att utvärdera och förbättra webbplatsens innehåll, upplevelse och struktur. Insamlandet av informationen anonymiseras och lagras enbart på KTH-servrar.'
+              },
+          },
+      },
+      {
+        name: "marketing-consent",
+        default: false,
+        translations: {
+            zz: {
+                title: 'Marketing',
+                description: 'The website contains pages that, via cookies, communicate with advertising services and social media.'
+            },
+            sv: {
+                title: 'Marknadsföring',
+                description: 'På webbplatsen förekommer sidor som via kakor kommunicerar med annonseringstjänster och sociala medier.'
+            },
+        },
+    }
+    
+  ]
+}</script>
+  
+  
+  <!-- End JavaScript contentId-1_1137647 -->
+
+
+
+    
+
+  
+  
+  
+  <script src="/student/kurser/static/kth-style/js/klaro-no-css.js?v=2.0.0-20260427.1_59b0"></script>
+<script src="/student/kurser/static/vendor.js?v=2.0.0-20260427.1_59b0"></script>
+<script src="/student/kurser/static/browserConfig?v=2.0.0-20260427.1_59b0"></script>
+<script src="/student/kurser/static/kth-style/js/backtotop.js?v=2.0.0-20260427.1_59b0"></script>
+
+  <script src="https://www.kth.se/social/toolbar/widget.js"></script>
+
+</head>
+
+<body>
+  <a class="skipToMainContent" href="#mainContent" tabindex="1">Hoppa till huvudinnehållet</a>
+  <!--indexOff: all-->
+  <header class="kth-header student-web">
+    <div class="kth-header__container">
+      <a href="/student" class="kth-logotype">
+        <figure>
+          <img class="blue" alt="Till KTH:s startsida" width="64" height="64" src="/student/kurser/assets/logotype/logotype-blue.svg">
+        </figure>
+      </a>      
+  
+  
+  
+  
+  
+    <nav class="kth-mega-menu" aria-label="Huvudmeny" data-ajax-path="/cm/1.1066510?l=sv&amp;contentIdPath=/2.75593/1.1066510/&amp;target=">
+      <ul>
+        
+          <li><button data-id="1.1066571" class="kth-menu-item dropdown">
+              <span>
+                Studier
+              </span>
+            </button>
+            <dialog class="kth-menu-panel">
+              <div class="kth-menu-panel__container">
+                <div class="kth-menu-panel__header">
+                  <div>
+                    <a href="/student/studier">
+                      <h2>
+                        Studier
+                      </h2>
+                    </a>
+                  </div>
+                  <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                    <span class="kth-visually-hidden">close</span>
+                  </button>
+                </div>
+                <div class="kth-menu-panel__content"></div>
+              </div>
+            </dialog>
+          </li>
+          <li><button data-id="1.1070324" class="kth-menu-item dropdown">
+              <span>
+                Stöd och vägledning
+              </span>
+            </button>
+            <dialog class="kth-menu-panel">
+              <div class="kth-menu-panel__container">
+                <div class="kth-menu-panel__header">
+                  <div>
+                    <a href="/student/stod">
+                      <h2>
+                        Stöd och vägledning
+                      </h2>
+                    </a>
+                  </div>
+                  <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                    <span class="kth-visually-hidden">close</span>
+                  </button>
+                </div>
+                <div class="kth-menu-panel__content"></div>
+              </div>
+            </dialog>
+          </li>
+          <li><button data-id="1.1178595" class="kth-menu-item dropdown">
+              <span>
+                IT och digitala tjänster
+              </span>
+            </button>
+            <dialog class="kth-menu-panel">
+              <div class="kth-menu-panel__container">
+                <div class="kth-menu-panel__header">
+                  <div>
+                    <a href="/student/it">
+                      <h2>
+                        IT och digitala tjänster
+                      </h2>
+                    </a>
+                  </div>
+                  <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                    <span class="kth-visually-hidden">close</span>
+                  </button>
+                </div>
+                <div class="kth-menu-panel__content"></div>
+              </div>
+            </dialog>
+          </li>
+          <li><button data-id="1.1178638" class="kth-menu-item dropdown">
+              <span>
+                Kontakt
+              </span>
+            </button>
+            <dialog class="kth-menu-panel">
+              <div class="kth-menu-panel__container">
+                <div class="kth-menu-panel__header">
+                  <div>
+                    <a href="/student/kontakt">
+                      <h2>
+                        Kontakt
+                      </h2>
+                    </a>
+                  </div>
+                  <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                    <span class="kth-visually-hidden">close</span>
+                  </button>
+                </div>
+                <div class="kth-menu-panel__content"></div>
+              </div>
+            </dialog>
+          </li>
+        
+      </ul>
+    </nav>
+  
+    <!-- Mobile menu -->
+    <nav class="kth-mega-menu--collapsable">
+      <dialog class="kth-mobile-menu">
+        <div class="kth-mobile-menu__navigation">
+          <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+            <span class="kth-visually-hidden">Close</span>
+          </button>
+        </div>
+        <div class="kth-mobile-menu__content">
+          <ul class="kth-mobile-menu__items">
+            <li>
+              <button class="kth-mobile-menu__item" data-id="1.1066571">
+                <span>
+                  Studier
+                </span>
+              </button>
+              <dialog class="kth-menu-panel--modal">
+                <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                  <span class="kth-visually-hidden">Close</span>
+                </button>
+                <div class="kth-menu-panel__content"></div>
+              </dialog>
+            </li>
+            <li>
+              <button class="kth-mobile-menu__item" data-id="1.1070324">
+                <span>
+                  Stöd och vägledning
+                </span>
+              </button>
+              <dialog class="kth-menu-panel--modal">
+                <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                  <span class="kth-visually-hidden">Close</span>
+                </button>
+                <div class="kth-menu-panel__content"></div>
+              </dialog>
+            </li>
+            <li>
+              <button class="kth-mobile-menu__item" data-id="1.1178595">
+                <span>
+                  IT och digitala tjänster
+                </span>
+              </button>
+              <dialog class="kth-menu-panel--modal">
+                <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                  <span class="kth-visually-hidden">Close</span>
+                </button>
+                <div class="kth-menu-panel__content"></div>
+              </dialog>
+            </li>
+            <li>
+              <button class="kth-mobile-menu__item" data-id="1.1178638">
+                <span>
+                  Kontakt
+                </span>
+              </button>
+              <dialog class="kth-menu-panel--modal">
+                <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+                  <span class="kth-visually-hidden">Close</span>
+                </button>
+                <div class="kth-menu-panel__content"></div>
+              </dialog>
+            </li>
+          </ul>
+        </div>
+      </dialog>
+      <dialog class="kth-mobile-menu details" data-id="1.1066571">
+        <div class="kth-mobile-menu__navigation">
+          <button class="kth-button back">Huvudmeny</button>
+          <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+            <span class="kth-visually-hidden">Close</span>
+          </button>
+        </div>
+        <div class="kth-mobile-menu__header">
+          <a href="/student/studier">
+            <h2>
+              Studier
+            </h2>
+          </a>
+        </div>
+        <div class="kth-mobile-menu__content">
+          <div class="kth-mobile-menu__cortina-content"></div>
+        </div>
+      </dialog><dialog class="kth-mobile-menu details" data-id="1.1070324">
+        <div class="kth-mobile-menu__navigation">
+          <button class="kth-button back">Huvudmeny</button>
+          <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+            <span class="kth-visually-hidden">Close</span>
+          </button>
+        </div>
+        <div class="kth-mobile-menu__header">
+          <a href="/student/stod">
+            <h2>
+              Stöd och vägledning
+            </h2>
+          </a>
+        </div>
+        <div class="kth-mobile-menu__content">
+          <div class="kth-mobile-menu__cortina-content"></div>
+        </div>
+      </dialog><dialog class="kth-mobile-menu details" data-id="1.1178595">
+        <div class="kth-mobile-menu__navigation">
+          <button class="kth-button back">Huvudmeny</button>
+          <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+            <span class="kth-visually-hidden">Close</span>
+          </button>
+        </div>
+        <div class="kth-mobile-menu__header">
+          <a href="/student/it">
+            <h2>
+              IT och digitala tjänster
+            </h2>
+          </a>
+        </div>
+        <div class="kth-mobile-menu__content">
+          <div class="kth-mobile-menu__cortina-content"></div>
+        </div>
+      </dialog><dialog class="kth-mobile-menu details" data-id="1.1178638">
+        <div class="kth-mobile-menu__navigation">
+          <button class="kth-button back">Huvudmeny</button>
+          <button class="kth-icon-button close" title="Stäng" aria-label="Stäng">
+            <span class="kth-visually-hidden">Close</span>
+          </button>
+        </div>
+        <div class="kth-mobile-menu__header">
+          <a href="/student/kontakt">
+            <h2>
+              Kontakt
+            </h2>
+          </a>
+        </div>
+        <div class="kth-mobile-menu__content">
+          <div class="kth-mobile-menu__cortina-content"></div>
+        </div>
+      </dialog>
+    </nav>
+    <!-- Mobile menu -->
+  
+    
+    <script>/* eslint-disable no-unused-expressions, no-unused-vars, no-undef */"use strict";window.addEventListener("load",(()=>{function e(e){return document.querySelector(".kth-mega-menu[data-ajax-path]")?.getAttribute("data-ajax-path")+e}function t(){document.querySelectorAll("dialog").forEach((e=>e.close()))}function n(e){const n=e.querySelector(".kth-icon-button.close");e.addEventListener("keydown",(t=>{"Escape"===t.key&&e.close()})),n instanceof HTMLButtonElement&&n.addEventListener("click",(()=>{t()}))}function o(e,o){n(e),o.addEventListener("click",(n=>{n.preventDefault(),e.open?t():(t(),e.show())})),document.addEventListener("click",(n=>{!e.open||n.composedPath().includes(o)||n.composedPath().includes(e)||(n.preventDefault(),t())}))}function c(e,o,c){const i=e.querySelector(".kth-button.back");n(e),o.addEventListener("click",(n=>{n.preventDefault(),t(),e.showModal()})),i instanceof HTMLButtonElement&&i.addEventListener("click",(()=>{e.close(),c&&c.showModal()}))}var i,l;document.querySelectorAll(".kth-menu-item[data-id], .kth-menu-item--modal[data-id]").forEach((t=>{const n=t.nextElementSibling,o=n?.querySelector(".kth-menu-panel__content");if(!(t instanceof HTMLElement))return;if(!(n instanceof HTMLDialogElement))return;const c=t.dataset.id;let i;function l(){o instanceof HTMLElement&&(i||(i=fetch(e(c)).then((e=>e.text()))),i.then((e=>{o.innerHTML=e})))}t.addEventListener("mouseover",l),t.addEventListener("click",l)})),document.querySelectorAll(".kth-mobile-menu__item[data-id]").forEach((t=>{if(!(t instanceof HTMLElement))return;const n=t.dataset.id,o=document.querySelector(`.kth-mobile-menu[data-id='${n}']`),c=o?.querySelector(".kth-mobile-menu__cortina-content");if(!(o instanceof HTMLDialogElement))return;let i;t.addEventListener("click",(function(){c instanceof HTMLElement&&(i||(i=fetch(e(n)).then((e=>e.text()))),i.then((e=>{c.innerHTML=e})))}))})),function(e,n){if(e){for(const e of n){if(!(e instanceof HTMLElement))continue;const t=e.nextElementSibling;t instanceof HTMLDialogElement&&o(t,e)}e.addEventListener("focusout",(function(n){const o=n.relatedTarget;o&&o instanceof Node&&!e.contains(o)&&t()}))}}(document.querySelector(".kth-header"),document.querySelectorAll(".kth-mega-menu .kth-menu-item")),i=document.querySelector(".kth-menu-item.collapsable"),l=document.querySelector(".kth-mobile-menu"),i instanceof HTMLElement&&l instanceof HTMLDialogElement&&c(l,i),function(e,t){if(!t||t instanceof HTMLDialogElement)for(const n of e){if(!(n instanceof HTMLElement))continue;const e=n.getAttribute("data-id"),o=document.querySelector(`.kth-mobile-menu[data-id='${e}']`);if(!(o instanceof HTMLDialogElement))return;c(o,n,t)}}(document.querySelectorAll(".kth-mobile-menu__item"),document.querySelector(".kth-mobile-menu"))})),window.addEventListener("load",(()=>{const e={threshold:32,className:"collapsed"};function t(e,{threshold:t,className:n}){window.scrollY>t?e?.classList.add(n):e?.classList.remove(n)}!function(n,o=e){t(n,o),window.addEventListener("scroll",(()=>{t(n,o)}))}(document.querySelector(".kth-header"))}));</script>
+  
+  
+  
+      <ul class="kth-header__tools">
+        <li><button class="kth-menu-item search">
+      <span>Sök</span>
+  </button>
+  <dialog class="kth-menu-panel">
+      <div class="kth-menu-panel__container search">
+          <button class="kth-icon-button close">
+              <span class="kth-visually-hidden">Stäng</span>
+          </button>
+          <div class="kth-menu-panel__content">
+                  
+  
+  
+  
+  
+    <div class="block search mainWidget default-size" data-cid="1.1066521" lang="sv">
+      <div id="widget_yhnutasc" class="searchWidgetContainer"><div class="searchWidget"><div class="searchInputBar"><form class="searchInputForm" method="GET" role="search" action="https://www.kth.se/search"><div class="searchAutoCompleteField kth-search"><label for="widget_yhnutasc_search__Field">Sök på Studentwebben</label><input id="widget_yhnutasc_search__Field" name="q" autoComplete="off" type="text" maxLength="1024" value=""/><button type="submit"><span class="kth-visually-hidden">Sök</span></button></div><input type="hidden" name="urlFilter" value="https://www.kth.se/student"/><input type="hidden" name="entityFilter" value="kth-profile,kth-course,kth-place,kth-program,kth-system"/><input type="hidden" name="metaSystemFilter" value=""/><input type="hidden" name="documentFilter" value=""/><input type="hidden" name="filterLabel" value="Sök på Studentwebben"/><input type="hidden" name="l" value="sv"/><input type="hidden" name="noscript" class="noscriptInput" value=""/></form></div><div class="searchAlternativesWidget"><div class="searchAlternativesWidgetLinks"><a href="https://www.kth.se/search?l=sv">Sök på KTH:s webbplats</a><a href="https://intra.kth.se/search?l=sv">Sök på KTH Intranät</a></div></div></div></div>
+  
+  <script>
+    (() => {
+      const SCRIPT_PATH = 'https://www.kth.se/search/static/widget.js?v=2.0.0-20250606.1_9d7abae6'
+      const STYLE_PATH = 'https://www.kth.se/search/static/widget.css?v=2.0.0-20250606.1_9d7abae6'
+      const DATA_PATH = 'https://www.kth.se/search/widgetData.js?widgetId=widget_yhnutasc&filterLabel=S%C3%B6k%20p%C3%A5%20Studentwebben&placeholder=S%C3%B6k%20p%C3%A5%20KTH%3As%20webbplats&urlFilter=https%3A%2F%2Fwww.kth.se%2Fstudent&isFilterRemovable=false&entityFilter=kth-profile%2Ckth-course%2Ckth-place%2Ckth-program%2Ckth-system&l=sv&includeLinks=true'
+      const WIDGET_ID = 'widget_yhnutasc'
+      const scriptAnchor = document.currentScript
+  
+      const observer = new IntersectionObserver((entries, observer) => {
+  
+        if (entries[0].target?.checkVisibility?.()) {
+  
+          if (!window.searchWidgetIsLoaded) {
+  
+            const styleElement = document.createElement('link')
+            styleElement.href = STYLE_PATH
+            styleElement.media = "screen"
+            styleElement.rel = "stylesheet"
+            styleElement.async = 1
+            scriptAnchor.after(styleElement)
+  
+            const scriptElement = document.createElement('script')
+            scriptElement.src = SCRIPT_PATH
+            scriptElement.async = 1
+            scriptAnchor.after(scriptElement)
+          }
+  
+          const dataElement = document.createElement('script')
+          dataElement.src = DATA_PATH
+          dataElement.async = 1
+          scriptAnchor.after(dataElement)
+  
+          window.searchWidgetIsLoaded = true
+          observer.disconnect()
+        }
+      }).observe(document.getElementById(WIDGET_ID))
+    })()
+  </script>
+      
+      <script>/* eslint-disable no-unused-expressions, no-unused-vars, no-undef */"use strict";!function(){function e(){document.querySelectorAll("dialog").forEach((e=>e.close()))}window.addEventListener("load",(function(){document.querySelectorAll(".block.search").forEach((t=>{t.parentElement.className.includes("kth-menu-panel__content")&&function(t,n){if(!(n instanceof HTMLElement))return;const c=n.nextElementSibling;if(!(c instanceof HTMLDialogElement))return;c.addEventListener("keydown",(t=>{"Escape"===t.key&&e()}));const o=c.querySelector(".close");o instanceof HTMLButtonElement&&o.addEventListener("click",(()=>{e()})),n.addEventListener("click",(n=>{n.preventDefault(),c.open?e():(e(),c.show(),function(e){const t=e.querySelector("template");if(null===t)return;const n=t.content;t.replaceWith(n)}(t),function(e){const t=e.querySelector(".searchAutoCompleteField")?.querySelector("input");t&&t.focus()}(c))})),document.addEventListener("click",(t=>{!c.open||t.composedPath().includes(n)||t.composedPath().includes(c)||(t.preventDefault(),e())}))}(t,document.querySelector(".kth-menu-item.search"))}))}))}();</script>
+    </div>
+  
+  
+  
+          </div>
+      </div>
+  </dialog></li>
+        <li><a class="kth-menu-item language" hreflang="en-US" href="?l=en">English</a></li>
+      </ul>
+      <button class="kth-menu-item menu collapsable">
+        <span>Meny</span>
+      </button>
+    </div>
+  </header>
+  <div class="kth-content articleNavigation">
+    <div class="row justify-content-between">
+      
+    <nav id="breadcrumbs" aria-label="Brödsmulor" class="kth-breadcrumbs">
+      <ol class="kth-breadcrumbs__list">
+        <li><a href="/student">Studentwebben</a></li><li><a href="/student/studier">Studier</a></li><li><a href="/student/kurser/kurser-inom-program">Kurs- och programkatalogen</a></li><li><a href="/student/kurser/program/CINEK">Civilingenjörsutbildning i industriell ekonomi</a></li>
+      </ol>
+    </nav>
+   
+    </div>
+  </div>
+  <!--indexOn: all-->  <div class="kth-content">
+    <div class="row">
+        <script>window.__compressedApplicationStore__ = "%7B%22browserConfig%22%3A%7B%22proxyPrefixPath%22%3A%7B%22uri%22%3A%22%2Fstudent%2Fkurser%22%2C%22searchPage%22%3A%22%2Fstudent%2Fkurser%2Fsokkurs%22%2C%22searchResult%22%3A%22%2Fstudent%2Fkurser%2Fsokkurs%2Fresultat%22%2C%22courseSearchInternApi%22%3A%22%2Fstudent%2Fkurser%2Fintern-api%2Fsok%22%2C%22department%22%3A%22%2Fstudent%2Fkurser%2Forg%22%2C%22programme%22%3A%22%2Fstudent%2Fkurser%2Fprogram%22%2C%22programmesList%22%3A%22%2Fstudent%2Fkurser%2Fkurser-inom-program%22%2C%22schoolsList%22%3A%22%2Fstudent%2Fkurser%2Fprogram%22%2C%22studyHandbook%22%3A%22%2Fstudent%2Fprogram%2Fshb%22%2C%22thirdCycleCourseSearch%22%3A%22%2Futbildning%2Fforskarutbildning%2Fkurser%2Fsok%22%2C%22thirdCycleCourseSearchResult%22%3A%22%2Futbildning%2Fforskarutbildning%2Fkurser%2Fsok%2Fresultat%22%2C%22thirdCycleSchoolsAndDepartments%22%3A%22%2Futbildning%2Fforskarutbildning%2Fkurser%2Favdelning%22%2C%22thirdCycleCoursesPerDepartment%22%3A%22%2Futbildning%2Fforskarutbildning%2Fkurser%2Forg%22%2C%22programmeSyllabusPDF%22%3A%22%2Fstudent%2Fkurser%2Fintern-api%2FPDFRenderFunction%22%7D%2C%22redirectProxyPath%22%3A%7B%22studentRoot%22%3A%22%2Fstudent%2Fkurser%22%2C%22thirdCycleRoot%22%3A%22%2Futbildning%2Fforskarutbildning%2Fkurser%22%2C%22coursesPerDepartment%22%3A%22%2Fstudent%2Fkurser%2Fkurser-per-avdelning%22%2C%22departmentCourses%22%3A%22%2Fstudent%2Fkurser%2Favdelning%2F%3AdepartmentCode%2Fkurser%2F%22%7D%2C%22markHtmlFromKopps%22%3Afalse%2C%22markHtmlFromLadok%22%3Afalse%2C%22env%22%3A%22prod%22%7D%2C%22statusCode%22%3A200%2C%22language%22%3A%22sv%22%2C%22languageIndex%22%3A1%2C%22studyProgramme%22%3A%7B%22specialisations%22%3A%5B%7B%22kod%22%3A%22EHUI%22%2C%22benamning%22%3A%22Energisystem%20och%20h%C3%A5llbar%20utveckling%22%2C%22arskursinformationAr2%22%3A%22%3Cp%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202022%2F2023%26nbsp%3B%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fp%3E%22%2C%22arskursinformationAr3%22%3A%22%3Cp%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202022%2F2023%26nbsp%3B%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3EStudierna%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20%C3%A5rskurs%204%20och%205%2C%20inom%20civilingenj%C3%B6rsprogrammet%20Industriell%20ekonomi%2C%20300%20hp%2C%20sker%20inom%20ramen%20f%C3%B6r%20masterprogrammet%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management).%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3ESe%20Kurs-%20och%20programkatalogen%3A%3C%2Fem%3E%20%3Cem%3E%3Ca%20href%3D%5C%22https%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%5C%22%3Ewww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%3C%2Fa%3E%3C%2Fem%3E%3C%2Fp%3E%22%2C%22arskursinformationAr4%22%3A%22%3Cp%3EStudierna%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20%C3%A5rskurs%204%20och%205%2C%20inom%20civilingenj%C3%B6rsprogrammet%20Industriell%20ekonomi%2C%20300hp%2C%20sker%20inom%20ramen%20f%C3%B6r%20masterprogrammet%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management).%3C%2Fp%3E%5Cn%3Cp%3ESe%20Kurs-%20och%20programkatalogen%3A%20Masterprogram%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management)%3A%3C%2Fp%3E%5Cn%3Cp%3E%3Ca%20href%3D%5C%22https%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%5C%22%3Ewww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%3C%2Fa%3E%3C%2Fp%3E%22%2C%22arskursinformationAr5%22%3A%22%3Cp%3EStudierna%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20%C3%A5rskurs%204%20och%205%2C%20inom%20civilingenj%C3%B6rsprogrammet%20Industriell%20ekonomi%2C%20300hp%2C%20sker%20inom%20ramen%20f%C3%B6r%20masterprogrammet%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management).%3C%2Fp%3E%5Cn%3Cp%3ESe%20Kurs-%20och%20programkatalogen%3A%20Masterprogram%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management)%3A%3C%2Fp%3E%5Cn%3Cp%3Ewww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22TMAI%22%2C%22benamning%22%3A%22Till%C3%A4mpad%20matematik%22%2C%22arskursinformationAr2%22%3A%22%3Cp%3E%3Cem%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202025%2F2026.%20%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fem%3E%3C%2Fp%3E%22%2C%22arskursinformationAr3%22%3A%22%3Cp%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202022%2F2023.%20%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3EStudierna%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20%C3%A5rskurs%204%20och%205%2C%20inom%20civilingenj%C3%B6rsprogrammet%20Industriell%20ekonomi%2C%20300%20hp%2C%20sker%20inom%20ramen%20f%C3%B6r%20masterprogrammet%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management).%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3ESe%20Kurs-%20och%20programkatalogen%3A%20Masterprogram%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management)%3A%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3E%3Ca%20href%3D%5C%22https%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%5C%22%3Ewww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%3C%2Fa%3E%3C%2Fem%3E%3C%2Fp%3E%22%2C%22arskursinformationAr4%22%3A%22%3Cp%3EStudierna%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20%C3%A5rskurs%204%20och%205%2C%20inom%20civilingenj%C3%B6rsprogrammet%20Industriell%20ekonomi%2C%20300%20hp%2C%20sker%20inom%20ramen%20f%C3%B6r%20masterprogrammet%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management).%3C%2Fp%3E%5Cn%3Cp%3ESe%20Kurs-%20och%20programkatalogen%3A%20Masterprogram%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management)%3A%3C%2Fp%3E%5Cn%3Cp%3E%3Ca%20href%3D%5C%22https%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%5C%22%3Ewww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%3C%2Fa%3E%3C%2Fp%3E%22%2C%22arskursinformationAr5%22%3A%22%3Cp%3EStudierna%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20%C3%A5rskurs%204%20och%205%2C%20inom%20civilingenj%C3%B6rsprogrammet%20Industriell%20ekonomi%2C%20300%20hp%2C%20sker%20inom%20ramen%20f%C3%B6r%20masterprogrammet%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management).%3C%2Fp%3E%5Cn%3Cp%3ESe%20Kurs-%20och%20programkatalogen%3A%20Masterprogram%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management)%3A%3C%2Fp%3E%5Cn%3Cp%3E%3Ca%20href%3D%5C%22https%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%5C%22%3Ewww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%3C%2Fa%3E%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22DTOI%22%2C%22benamning%22%3A%22Datateknik%22%2C%22arskursinformationAr2%22%3A%22%3Cp%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202025%2F2026.%20%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fp%3E%22%2C%22arskursinformationAr3%22%3A%22%3Cp%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202022%2F2023%26nbsp%3B%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fp%3E%22%7D%2C%7B%22kod%22%3A%22PPUI%22%2C%22benamning%22%3A%22Produkt-%20och%20produktionsutveckling%22%2C%22arskursinformationAr2%22%3A%22%3Cp%3E%3Cem%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202025%2F2026.%20%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fem%3E%3C%2Fp%3E%22%2C%22arskursinformationAr3%22%3A%22%3Cp%3ENy%20inriktning%3A%20Fr%20o%20m%20kull-20%20ers%C3%A4tter%20teknikinriktningen%20Produkt-%20och%20produktionsutveckling%20(PPUI)%20inriktningen%20Produktframtagning%20(PFRI).%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202022%2F2023.%20%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3EStudierna%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20%C3%A5rskurs%204%20och%205%2C%20inom%20civilingenj%C3%B6rsprogrammet%20Industriell%20ekonomi%2C%20300%20hp%2C%20sker%20inom%20ramen%20f%C3%B6r%20masterprogrammet%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management).%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3ESe%20Kurs-%20och%20programkatalogen%3A%26nbsp%3B%3C%2Fem%3E%3Cem%3E%3Ca%20href%3D%5C%22https%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%5C%22%3Ewww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%3C%2Fa%3E%3C%2Fem%3E%3C%2Fp%3E%22%2C%22arskursinformationAr4%22%3A%22%3Cp%3E%3Cem%3EStudierna%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20%C3%A5rskurs%204%20och%205%2C%20inom%20civilingenj%C3%B6rsprogrammet%20Industriell%20ekonomi%2C%20300%20hp%2C%20sker%20inom%20ramen%20f%C3%B6r%20masterprogrammet%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management).%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3ESe%20Kurs-%20och%20programkatalogen%3A%26nbsp%3B%3C%2Fem%3E%3Cem%3E%3Ca%20href%3D%5C%22https%3A%2F%2Fwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%5C%22%3Ewww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%3C%2Fa%3E%3C%2Fem%3E%3C%2Fp%3E%22%7D%5D%2C%22giltigfran%22%3A%22HT2024%22%2C%22kurslistaar1%22%3A%22%3Ch3%20id%3D%5C%22gemensammakurser%5C%22%3EGemensamma%20kurser%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22obligatoriskakurser%5C%22%3EObligatoriska%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1317%3C%2Ftd%3E%5Cn%3Ctd%3EProgrammeringsteknik%3Cbr%3E%3Cem%3EErs%C3%A4tter%20DD1315%3C%2Fem%3E%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1306%3C%2Ftd%3E%5Cn%3Ctd%3EIndustriell%20projektledning%20f%C3%B6r%20I%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1314%3C%2Ftd%3E%5Cn%3Ctd%3EIntroduktion%20till%20industriell%20ekonomi%3C%2Ftd%3E%5Cn%3Ctd%3E9%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1315%3C%2Ftd%3E%5Cn%3Ctd%3EIndustriell%20marknadsf%C3%B6ring%20f%C3%B6r%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1624%3C%2Ftd%3E%5Cn%3Ctd%3EAlgebra%20och%20geometri%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1625%3C%2Ftd%3E%5Cn%3Ctd%3EEnvariabelanalys%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1626%3C%2Ftd%3E%5Cn%3Ctd%3EFlervariabelanalys%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESG1109%3C%2Ftd%3E%5Cn%3Ctd%3EMekanik%3C%2Ftd%3E%5Cn%3Ctd%3E8%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22rekommenderadekurser%5C%22%3ERekommenderade%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF0003%3C%2Ftd%3E%5Cn%3Ctd%3EIntroduktion%20i%20matematik%3Cbr%3E%3Cem%3EL%C3%A4ses%20i%20augusti%20under%20mottagningen.%20R%C3%A4knas%20ej%20med%20i%20examen.%3C%2Fem%3E%3C%2Ftd%3E%5Cn%3Ctd%3E1.5%20fup%3C%2Ftd%3E%5Cn%3Ctd%3EF%C3%B6rberedande%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22valfriakurser%5C%22%3EValfria%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1301%3C%2Ftd%3E%5Cn%3Ctd%3EDatorintroduktion%3C%2Ftd%3E%5Cn%3Ctd%3E1.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3EKurs%20DD1301%20%C3%A4r%20valfri%20att%20l%C3%A4sa%2C%20dvs%20det%20%C3%A4r%20inget%20krav%20att%20man%20m%C3%A5ste%20l%C3%A4sa%20den.%3C%2Fp%3E%5Cn%3Cp%3EFr%20o%20m%20kull-22%20utg%C3%A5r%20kurs%20DD1315.%20Ers%C3%A4tts%20av%20ny%20kurs%20DD1317%20Programmeringsteknik.%3C%2Fp%3E%22%2C%22kurslistaar2%22%3A%22%3Ch3%20id%3D%5C%22gemensammakurser%5C%22%3EGemensamma%20kurser%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22obligatoriskakurser%5C%22%3EObligatoriska%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1308%3C%2Ftd%3E%5Cn%3Ctd%3EIndustriell%20verksamhetsledning%20f%C3%B6r%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1309%3C%2Ftd%3E%5Cn%3Ctd%3EIndustriell%20ekonomistyrning%20f%C3%B6r%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1316%3C%2Ftd%3E%5Cn%3Ctd%3EKvantitativ%20aff%C3%A4rs-%20och%20verksamhetsanalys%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1545%3C%2Ftd%3E%5Cn%3Ctd%3ENumeriska%20metoder%2C%20grundkurs%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1633%3C%2Ftd%3E%5Cn%3Ctd%3EDifferentialekvationer%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1918%3C%2Ftd%3E%5Cn%3Ctd%3ESannolikhetsteori%20och%20statistik%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202025%2F2026%20%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fp%3E%5Cn%3Cp%3E%C3%84ven%20SK1110%20Elektromagnetism%20och%20v%C3%A5gr%C3%B6relsel%C3%A4ra%207%2C5%26nbsp%3Bhp%20%C3%A4r%20en%20programgemensam%20kurs%20p%C3%A5%20CINEK%202.%3Cbr%20%2F%3E%5CnObservera%20att%20den%20l%C3%A4ses%20i%20antingen%20period%203%20eller%204%20beroende%20p%C3%A5%20val%20av%20teknikinriktning.%3C%2Fp%3E%5Cn%3Ch3%20id%3D%5C%22inriktningdatateknikdtoi%5C%22%3EInriktning%3A%20Datateknik%20(DTOI)%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22obligatoriskakurser-1%5C%22%3EObligatoriska%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1320%3C%2Ftd%3E%5Cn%3Ctd%3ETill%C3%A4mpad%20datalogi%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDH1623%3C%2Ftd%3E%5Cn%3Ctd%3EM%C3%A4nniska-datorinteraktion%2C%20grundl%C3%A4ggande%20teori%3C%2Ftd%3E%5Cn%3Ctd%3E4.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EEP1200%3C%2Ftd%3E%5Cn%3Ctd%3EIntroduktion%20till%20datorsystemteknik%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1308%3C%2Ftd%3E%5Cn%3Ctd%3EIndustriell%20verksamhetsledning%20f%C3%B6r%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1309%3C%2Ftd%3E%5Cn%3Ctd%3EIndustriell%20ekonomistyrning%20f%C3%B6r%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1316%3C%2Ftd%3E%5Cn%3Ctd%3EKvantitativ%20aff%C3%A4rs-%20och%20verksamhetsanalys%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1545%3C%2Ftd%3E%5Cn%3Ctd%3ENumeriska%20metoder%2C%20grundkurs%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1633%3C%2Ftd%3E%5Cn%3Ctd%3EDifferentialekvationer%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1918%3C%2Ftd%3E%5Cn%3Ctd%3ESannolikhetsteori%20och%20statistik%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESK1110%3C%2Ftd%3E%5Cn%3Ctd%3EElektromagnetism%20och%20v%C3%A5gr%C3%B6relsel%C3%A4ra%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation-1%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202025%2F2026.%20%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fp%3E%5Cn%3Ch3%20id%3D%5C%22inriktningenergisystemochhllbarutvecklingehui%5C%22%3EInriktning%3A%20Energisystem%20och%20h%C3%A5llbar%20utveckling%20(EHUI)%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22obligatoriskakurser-2%5C%22%3EObligatoriska%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1308%3C%2Ftd%3E%5Cn%3Ctd%3EIndustriell%20verksamhetsledning%20f%C3%B6r%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1309%3C%2Ftd%3E%5Cn%3Ctd%3EIndustriell%20ekonomistyrning%20f%C3%B6r%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1316%3C%2Ftd%3E%5Cn%3Ctd%3EKvantitativ%20aff%C3%A4rs-%20och%20verksamhetsanalys%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EMJ1112%3C%2Ftd%3E%5Cn%3Ctd%3ETill%C3%A4mpad%20termodynamik%3C%2Ftd%3E%5Cn%3Ctd%3E9%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EMJ1145%3C%2Ftd%3E%5Cn%3Ctd%3EEnergisystem%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1545%3C%2Ftd%3E%5Cn%3Ctd%3ENumeriska%20metoder%2C%20grundkurs%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1633%3C%2Ftd%3E%5Cn%3Ctd%3EDifferentialekvationer%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1918%3C%2Ftd%3E%5Cn%3Ctd%3ESannolikhetsteori%20och%20statistik%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESK1110%3C%2Ftd%3E%5Cn%3Ctd%3EElektromagnetism%20och%20v%C3%A5gr%C3%B6relsel%C3%A4ra%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation-2%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202022%2F2023%26nbsp%3B%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fp%3E%5Cn%3Ch3%20id%3D%5C%22inriktningproduktochproduktionsutvecklingppui%5C%22%3EInriktning%3A%20Produkt-%20och%20produktionsutveckling%20(PPUI)%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22obligatoriskakurser-3%5C%22%3EObligatoriska%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1308%3C%2Ftd%3E%5Cn%3Ctd%3EIndustriell%20verksamhetsledning%20f%C3%B6r%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1309%3C%2Ftd%3E%5Cn%3Ctd%3EIndustriell%20ekonomistyrning%20f%C3%B6r%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1316%3C%2Ftd%3E%5Cn%3Ctd%3EKvantitativ%20aff%C3%A4rs-%20och%20verksamhetsanalys%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EMF1016%3C%2Ftd%3E%5Cn%3Ctd%3EElektroteknik%3C%2Ftd%3E%5Cn%3Ctd%3E9%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EMF1039%3C%2Ftd%3E%5Cn%3Ctd%3EDesign%20och%20produktframtagning%2C%20komponenter%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EMG1028%3C%2Ftd%3E%5Cn%3Ctd%3EGrundl%C3%A4ggande%203D-CAD%3C%2Ftd%3E%5Cn%3Ctd%3E1.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1545%3C%2Ftd%3E%5Cn%3Ctd%3ENumeriska%20metoder%2C%20grundkurs%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1633%3C%2Ftd%3E%5Cn%3Ctd%3EDifferentialekvationer%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1918%3C%2Ftd%3E%5Cn%3Ctd%3ESannolikhetsteori%20och%20statistik%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESK1110%3C%2Ftd%3E%5Cn%3Ctd%3EElektromagnetism%20och%20v%C3%A5gr%C3%B6relsel%C3%A4ra%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation-3%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3E%3Cem%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202025%2F2026.%20%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Ch3%20id%3D%5C%22inriktningtillmpadmatematiktmai%5C%22%3EInriktning%3A%20Till%C3%A4mpad%20matematik%20(TMAI)%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22obligatoriskakurser-4%5C%22%3EObligatoriska%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1320%3C%2Ftd%3E%5Cn%3Ctd%3ETill%C3%A4mpad%20datalogi%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1308%3C%2Ftd%3E%5Cn%3Ctd%3EIndustriell%20verksamhetsledning%20f%C3%B6r%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1309%3C%2Ftd%3E%5Cn%3Ctd%3EIndustriell%20ekonomistyrning%20f%C3%B6r%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1316%3C%2Ftd%3E%5Cn%3Ctd%3EKvantitativ%20aff%C3%A4rs-%20och%20verksamhetsanalys%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1545%3C%2Ftd%3E%5Cn%3Ctd%3ENumeriska%20metoder%2C%20grundkurs%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1633%3C%2Ftd%3E%5Cn%3Ctd%3EDifferentialekvationer%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1687%3C%2Ftd%3E%5Cn%3Ctd%3EKompletteringskurs%20i%20differentialekvationer%20och%20transformer%3C%2Ftd%3E%5Cn%3Ctd%3E3%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1861%3C%2Ftd%3E%5Cn%3Ctd%3EOptimeringsl%C3%A4ra%3Cbr%3E%3Cem%3EErs%C3%A4tter%20SF1811%3C%2Fem%3E%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1904%3C%2Ftd%3E%5Cn%3Ctd%3EMarkovprocesser%2C%20grundkurs%3C%2Ftd%3E%5Cn%3Ctd%3E3%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF1918%3C%2Ftd%3E%5Cn%3Ctd%3ESannolikhetsteori%20och%20statistik%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESK1110%3C%2Ftd%3E%5Cn%3Ctd%3EElektromagnetism%20och%20v%C3%A5gr%C3%B6relsel%C3%A4ra%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation-4%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3E%3Cem%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202025%2F2026.%20%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fem%3E%3C%2Fp%3E%22%2C%22kurslistaar3%22%3A%22%3Ch3%20id%3D%5C%22gemensammakurser%5C%22%3EGemensamma%20kurser%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22obligatoriskakurser%5C%22%3EObligatoriska%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1310%3C%2Ftd%3E%5Cn%3Ctd%3ENationalekonomi%20f%C3%B6r%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1311%3C%2Ftd%3E%5Cn%3Ctd%3EFinansiering%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1317%3C%2Ftd%3E%5Cn%3Ctd%3EPersonal-%20och%20arbetsledning%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202022%2F2023%26nbsp%3B%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fp%3E%5Cn%3Ch3%20id%3D%5C%22inriktningdatateknikdtoi%5C%22%3EInriktning%3A%20Datateknik%20(DTOI)%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22obligatoriskakurser-1%5C%22%3EObligatoriska%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDA151X%3C%2Ftd%3E%5Cn%3Ctd%3EExamensarbete%20i%20datateknik%20och%20industriell%20ekonomi%2C%20grundniv%C3%A5%3Cbr%3E%3Cem%3EErs%C3%A4tter%20DD152X%3C%2Fem%3E%3C%2Ftd%3E%5Cn%3Ctd%3E15%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1334%3C%2Ftd%3E%5Cn%3Ctd%3EDatabasteknik%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1380%3C%2Ftd%3E%5Cn%3Ctd%3EJavaprogrammering%20f%C3%B6r%20Pythonprogrammerare%3C%2Ftd%3E%5Cn%3Ctd%3E1.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1385%3C%2Ftd%3E%5Cn%3Ctd%3EProgramutvecklingsteknik%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1386%3C%2Ftd%3E%5Cn%3Ctd%3EInternetprogrammering%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1418%3C%2Ftd%3E%5Cn%3Ctd%3ESpr%C3%A5kteknologi%20med%20introduktion%20till%20maskininl%C3%A4rning%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1310%3C%2Ftd%3E%5Cn%3Ctd%3ENationalekonomi%20f%C3%B6r%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1311%3C%2Ftd%3E%5Cn%3Ctd%3EFinansiering%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1317%3C%2Ftd%3E%5Cn%3Ctd%3EPersonal-%20och%20arbetsledning%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation-1%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202022%2F2023%26nbsp%3B%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fp%3E%5Cn%3Ch3%20id%3D%5C%22inriktningenergisystemochhllbarutvecklingehui%5C%22%3EInriktning%3A%20Energisystem%20och%20h%C3%A5llbar%20utveckling%20(EHUI)%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22obligatoriskakurser-2%5C%22%3EObligatoriska%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EEG2205%3C%2Ftd%3E%5Cn%3Ctd%3EDrift%20och%20planering%20av%20elproduktion%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1310%3C%2Ftd%3E%5Cn%3Ctd%3ENationalekonomi%20f%C3%B6r%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1311%3C%2Ftd%3E%5Cn%3Ctd%3EFinansiering%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1317%3C%2Ftd%3E%5Cn%3Ctd%3EPersonal-%20och%20arbetsledning%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EMF1017%3C%2Ftd%3E%5Cn%3Ctd%3EElektroteknik%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EMJ1141%3C%2Ftd%3E%5Cn%3Ctd%3EEnergisystem%20och%20h%C3%A5llbar%20utveckling%3C%2Ftd%3E%5Cn%3Ctd%3E9%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EMJ1401%3C%2Ftd%3E%5Cn%3Ctd%3EV%C3%A4rme%C3%B6verf%C3%B6ring%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EMJ148X%3C%2Ftd%3E%5Cn%3Ctd%3EExamensarbete%20i%20Energisystem%2C%20h%C3%A5llbar%20utveckling%20och%20industriell%20ekonomi%2C%20grundniv%C3%A5%3C%2Ftd%3E%5Cn%3Ctd%3E15%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation-2%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202022%2F2023%26nbsp%3B%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3EStudierna%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20%C3%A5rskurs%204%20och%205%2C%20inom%20civilingenj%C3%B6rsprogrammet%20Industriell%20ekonomi%2C%20300%20hp%2C%20sker%20inom%20ramen%20f%C3%B6r%20masterprogrammet%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management).%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3ESe%20Kurs-%20och%20programkatalogen%3A%20www.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Ch3%20id%3D%5C%22inriktningproduktochproduktionsutvecklingppui%5C%22%3EInriktning%3A%20Produkt-%20och%20produktionsutveckling%20(PPUI)%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22obligatoriskakurser-3%5C%22%3EObligatoriska%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1320%3C%2Ftd%3E%5Cn%3Ctd%3ETill%C3%A4mpad%20datalogi%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1324%3C%2Ftd%3E%5Cn%3Ctd%3ETill%C3%A4mpad%20programmering%20och%20datalogi%2C%20del%202%3C%2Ftd%3E%5Cn%3Ctd%3E3%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EEL1010%3C%2Ftd%3E%5Cn%3Ctd%3EReglerteknik%2C%20allm%C3%A4n%20kurs%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1310%3C%2Ftd%3E%5Cn%3Ctd%3ENationalekonomi%20f%C3%B6r%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1311%3C%2Ftd%3E%5Cn%3Ctd%3EFinansiering%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1317%3C%2Ftd%3E%5Cn%3Ctd%3EPersonal-%20och%20arbetsledning%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EMG1002%3C%2Ftd%3E%5Cn%3Ctd%3EAutomatiseringsteknik%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EMG1026%3C%2Ftd%3E%5Cn%3Ctd%3ETillverkningsteknik%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22villkorligtvalfriakurser%5C%22%3EVillkorligt%20valfria%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EMF134X%3C%2Ftd%3E%5Cn%3Ctd%3EExamensarbete%20inom%20produktframtagning%20och%20industriell%20ekonomi%2C%20grundniv%C3%A5%3C%2Ftd%3E%5Cn%3Ctd%3E15%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EMG115X%3C%2Ftd%3E%5Cn%3Ctd%3EExamensarbete%20inom%20produktframtagning%20och%20industriell%20ekonomi%2C%20grundniv%C3%A5%3C%2Ftd%3E%5Cn%3Ctd%3E15%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation-3%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3ENy%20inriktning%3A%20Fr%20o%20m%20kull-20%20ers%C3%A4tter%20teknikinriktningen%20Produkt-%20och%20produktionsutveckling%20(PPUI)%20inriktningen%20Produktframtagning%20(PFRI).%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202022%2F2023.%20%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3EStudierna%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20%C3%A5rskurs%204%20och%205%2C%20inom%20civilingenj%C3%B6rsprogrammet%20Industriell%20ekonomi%2C%20300%20hp%2C%20sker%20inom%20ramen%20f%C3%B6r%20masterprogrammet%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management).%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3ESe%20Kurs-%20och%20programkatalogen%3A%26nbsp%3Bwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Ch3%20id%3D%5C%22inriktningtillmpadmatematiktmai%5C%22%3EInriktning%3A%20Till%C3%A4mpad%20matematik%20(TMAI)%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22obligatoriskakurser-4%5C%22%3EObligatoriska%20kurser%3C%2Fh4%3E%5Cn%3Ctable%3E%5Cn%3Cthead%3E%5Cn%3Ctr%3E%5Cn%3Cth%3EKurskod%3C%2Fth%3E%5Cn%3Cth%3EKursnamn%3C%2Fth%3E%5Cn%3Cth%3EOmfattning%3C%2Fth%3E%5Cn%3Cth%3EUtbildningsniv%C3%A5%3C%2Fth%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Fthead%3E%5Cn%3Ctbody%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EDD1418%3C%2Ftd%3E%5Cn%3Ctd%3ESpr%C3%A5kteknologi%20med%20introduktion%20till%20maskininl%C3%A4rning%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1310%3C%2Ftd%3E%5Cn%3Ctd%3ENationalekonomi%20f%C3%B6r%20I%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1311%3C%2Ftd%3E%5Cn%3Ctd%3EFinansiering%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3EME1317%3C%2Ftd%3E%5Cn%3Ctd%3EPersonal-%20och%20arbetsledning%3C%2Ftd%3E%5Cn%3Ctd%3E6%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF100X%3C%2Ftd%3E%5Cn%3Ctd%3EExamensarbete%20inom%20till%C3%A4mpad%20matematik%20och%20industriell%20ekonomi%2C%20grundniv%C3%A5%3C%2Ftd%3E%5Cn%3Ctd%3E15%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EGrundniv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF2863%3C%2Ftd%3E%5Cn%3Ctd%3ESystemteknik%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF2930%3C%2Ftd%3E%5Cn%3Ctd%3ERegressionsanalys%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3Ctr%3E%5Cn%3Ctd%3ESF2940%3C%2Ftd%3E%5Cn%3Ctd%3ESannolikhetsteori%3C%2Ftd%3E%5Cn%3Ctd%3E7.5%20hp%3C%2Ftd%3E%5Cn%3Ctd%3EAvancerad%20niv%C3%A5%3C%2Ftd%3E%5Cn%3C%2Ftr%3E%5Cn%3C%2Ftbody%3E%5Cn%3C%2Ftable%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation-4%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202022%2F2023.%20%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3EStudierna%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20%C3%A5rskurs%204%20och%205%2C%20inom%20civilingenj%C3%B6rsprogrammet%20Industriell%20ekonomi%2C%20300%20hp%2C%20sker%20inom%20ramen%20f%C3%B6r%20masterprogrammet%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management).%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3ESe%20Kurs-%20och%20programkatalogen%3A%20Masterprogram%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management)%3A%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3Ewww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%3C%2Fem%3E%3C%2Fp%3E%22%2C%22kurslistaar4%22%3A%22%3Ch3%20id%3D%5C%22gemensammakurser%5C%22%3EGemensamma%20kurser%3C%2Fh3%3E%5Cn%3Ch3%20id%3D%5C%22inriktningenergisystemochhllbarutvecklingehui%5C%22%3EInriktning%3A%20Energisystem%20och%20h%C3%A5llbar%20utveckling%20(EHUI)%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3EStudierna%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20%C3%A5rskurs%204%20och%205%2C%20inom%20civilingenj%C3%B6rsprogrammet%20Industriell%20ekonomi%2C%20300hp%2C%20sker%20inom%20ramen%20f%C3%B6r%20masterprogrammet%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management).%3C%2Fp%3E%5Cn%3Cp%3ESe%20Kurs-%20och%20programkatalogen%3A%20Masterprogram%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management)%3A%3C%2Fp%3E%5Cn%3Cp%3Ewww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%3C%2Fp%3E%5Cn%3Ch3%20id%3D%5C%22inriktningproduktochproduktionsutvecklingppui%5C%22%3EInriktning%3A%20Produkt-%20och%20produktionsutveckling%20(PPUI)%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation-1%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3E%3Cem%3EStudierna%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20%C3%A5rskurs%204%20och%205%2C%20inom%20civilingenj%C3%B6rsprogrammet%20Industriell%20ekonomi%2C%20300%20hp%2C%20sker%20inom%20ramen%20f%C3%B6r%20masterprogrammet%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management).%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3ESe%20Kurs-%20och%20programkatalogen%3A%26nbsp%3Bwww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Ch3%20id%3D%5C%22inriktningtillmpadmatematiktmai%5C%22%3EInriktning%3A%20Till%C3%A4mpad%20matematik%20(TMAI)%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation-2%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3EStudierna%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20%C3%A5rskurs%204%20och%205%2C%20inom%20civilingenj%C3%B6rsprogrammet%20Industriell%20ekonomi%2C%20300%20hp%2C%20sker%20inom%20ramen%20f%C3%B6r%20masterprogrammet%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management).%3C%2Fp%3E%5Cn%3Cp%3ESe%20Kurs-%20och%20programkatalogen%3A%20Masterprogram%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management)%3A%3C%2Fp%3E%5Cn%3Cp%3Ewww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%3C%2Fp%3E%22%2C%22kurslistaar5%22%3A%22%3Ch3%20id%3D%5C%22gemensammakurser%5C%22%3EGemensamma%20kurser%3C%2Fh3%3E%5Cn%3Ch3%20id%3D%5C%22inriktningenergisystemochhllbarutvecklingehui%5C%22%3EInriktning%3A%20Energisystem%20och%20h%C3%A5llbar%20utveckling%20(EHUI)%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3EStudierna%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20%C3%A5rskurs%204%20och%205%2C%20inom%20civilingenj%C3%B6rsprogrammet%20Industriell%20ekonomi%2C%20300hp%2C%20sker%20inom%20ramen%20f%C3%B6r%20masterprogrammet%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management).%3C%2Fp%3E%5Cn%3Cp%3ESe%20Kurs-%20och%20programkatalogen%3A%20Masterprogram%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management)%3A%3C%2Fp%3E%5Cn%3Cp%3Ewww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%3C%2Fp%3E%5Cn%3Ch3%20id%3D%5C%22inriktningtillmpadmatematiktmai%5C%22%3EInriktning%3A%20Till%C3%A4mpad%20matematik%20(TMAI)%3C%2Fh3%3E%5Cn%3Ch4%20id%3D%5C%22kompletterandeinformation-1%5C%22%3EKompletterande%20information%3C%2Fh4%3E%5Cn%3Cp%3EStudierna%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20%C3%A5rskurs%204%20och%205%2C%20inom%20civilingenj%C3%B6rsprogrammet%20Industriell%20ekonomi%2C%20300%20hp%2C%20sker%20inom%20ramen%20f%C3%B6r%20masterprogrammet%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management).%3C%2Fp%3E%5Cn%3Cp%3ESe%20Kurs-%20och%20programkatalogen%3A%20Masterprogram%20Industriell%20ekonomi%20-%20TIEMM%20(Industrial%20Engineering%20and%20Management)%3A%3C%2Fp%3E%5Cn%3Cp%3Ewww.kth.se%2Fstudent%2Fkurser%2Fprogram%2Ftiemm%2F%3C%2Fp%3E%22%2C%22utbildningensgenomforande%22%3A%22%3Cp%3EDetta%20avsnitt%20beskriver%20utbildningens%20genomf%C3%B6rande%20och%20ska%20inneh%C3%A5lla%20uppgifter%20om%20uppl%C3%A4gg%2C%20kurser%2C%20betygssystem%2C%20villkor%20f%C3%B6r%20deltagande%20samt%20examensarbete%20och%20examen%20(om%20relevant).%3C%2Fp%3E%22%2C%22utbildningensupplagg%22%3A%22%3Cp%3E%3Cstrong%3EL%C3%A4s%C3%A5ret%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EL%C3%A4s%C3%A5ret%20omfattar%20tv%C3%A5%20terminer%20om%2020%20veckor%20vardera.%20Varje%20termin%20%C3%A4r%20indelad%20i%20tv%C3%A5%20l%C3%A4sperioder.%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3E%C3%85rskurs%201-3%20-%20Studier%20p%C3%A5%20grundniv%C3%A5%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EUtbildningen%20utf%C3%B6rs%20inom%20teknikomr%C3%A5det%20Industriell%20ekonomi%2C%20vilket%20utg%C3%B6r%20en%20kombination%20av%20%C3%A4mnet%20industriell%20ekonomi%20samt%20ett%20annat%20tekniskt%20%C3%A4mne.%3C%2Fp%3E%5Cn%3Cp%3EUtbildningens%20grundniv%C3%A5%20inleds%20med%20ett%20antal%20grundl%C3%A4ggande%20kurser%20i%20matematik%20och%20naturvetenskap%2C%20industriell%20ekonomi%20samt%20programspecifika%20%C3%A4mneskurser.%20Fr%C3%A5n%20och%20med%20%C3%A5rskurs%20tv%C3%A5%20l%C3%A4ses%20ocks%C3%A5%20kurser%20inom%20vald%20teknikinriktning.%3C%2Fp%3E%5Cn%3Cp%3EDe%20inledande%20tre%20%C3%A5ren%20avslutas%20med%20ett%20examensarbete%20p%C3%A5%20grundniv%C3%A5%20som%20omfattar%2015%20h%C3%B6gskolepo%C3%A4ng%20och%20som%20utf%C3%B6rs%20inom%20ramen%20f%C3%B6r%20en%20kurs%20p%C3%A5%20den%20teknikinstitution%20som%20ansvarar%20f%C3%B6r%20%C3%B6vriga%20teknikkurser%20p%C3%A5%20den%20valda%20teknikinriktningen%2C%20i%20samarbete%20med%20institutionen%20f%C3%B6r%20industriell%20ekonomi%20och%20organisation.%20F%C3%B6r%20att%20p%C3%A5b%C3%B6rja%20examensarbete%2C%20grundniv%C3%A5%2C%20finns%20villkor%20och%20beh%C3%B6righetskrav.%20Mer%20information%20finns%20i%20kursens%20kursplan.%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3E%C3%85rskurs%204-5%20%E2%80%93%20F%C3%B6rdjupning%20p%C3%A5%20avancerad%20niv%C3%A5%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EDe%20avslutande%20tv%C3%A5%20%C3%A5ren%20av%20civilingenj%C3%B6rsutbildningen%20i%20Industriell%20ekonomi%20sker%20inom%20ramen%20f%C3%B6r%20masterprogrammet%20Industriell%20ekonomi%20som%20ger%20en%20f%C3%B6rdjupning%20p%C3%A5%20avancerad%20niv%C3%A5.%20Den%20teknikinriktning%20som%20l%C3%A4ses%20p%C3%A5%20grundniv%C3%A5%20ger%20den%20studerande%20m%C3%B6jligheten%20att%20v%C3%A4lja%20mellan%20tv%C3%A5%20till%20tre%20tekniksp%C3%A5r%20p%C3%A5%20masterprogrammet.%20F%C3%B6rdjupningen%20inneh%C3%A5ller%20kurser%20inom%20industriell%20ekonomi%2C%20valt%20tekniksp%C3%A5r%20samt%20programspecifika%20%C3%A4mneskurser%2C%20huvudsakligen%20p%C3%A5%20avancerad%20niv%C3%A5.%20D%C3%A4rut%C3%B6ver%20tillkommer%20helt%20valbara%20kurser.%3C%2Fp%3E%5Cn%3Cp%3EUtbildningen%20avslutas%20med%20ett%20examensarbete%20p%C3%A5%20avancerad%20niv%C3%A5%20omfattande%2030%20h%C3%B6gskolepo%C3%A4ng%20motsvarande%2020%20veckors%20heltidsstudier.%20F%C3%B6r%20att%20p%C3%A5b%C3%B6rja%20examensarbete%2C%20avancerad%20niv%C3%A5%2C%20finns%20villkor%20och%20beh%C3%B6righetskrav.%20Mer%20information%20finns%20i%20kursens%20kursplan.%3C%2Fp%3E%5Cn%3Cp%3EExamensarbetet%20kan%20genomf%C3%B6ras%20inom%20huvudomr%C3%A5det%20industriell%20ekonomi%20eller%20inom%20huvudomr%C3%A5det%20f%C3%B6r%20valt%20tekniksp%C3%A5r.%20P%C3%A5%20detta%20s%C3%A4tt%20m%C3%B6jligg%C3%B6rs%20att%20den%20studerande%20sj%C3%A4lv%20kan%20styra%20m%C3%B6jligheten%20att%20ans%C3%B6ka%20om%20en%20generell%20masterexamen%2C%20antingen%20inom%20industriell%20ekonomi%20eller%20inom%20sitt%20tekniksp%C3%A5r.%3C%2Fp%3E%22%2C%22inriktningar%22%3A%5B%22PPUI%22%2C%22TMAI%22%2C%22DTOI%22%2C%22EHUI%22%5D%2C%22fardigheterOchFormagor%22%3A%22%3Cul%3E%5Cn%3Cli%3Evisa%20f%C3%B6rm%C3%A5ga%20att%20sj%C3%A4lvst%C3%A4ndigt%2C%20s%C3%A5v%C3%A4l%20som%20i%20grupp%2C%20kunna%20oms%C3%A4tta%20kunskaper%20och%20f%C3%B6rm%C3%A5gor%20i%20praktisk%20handling%20med%20h%C3%A4nsyn%20tagen%20till%20relevanta%20vetenskapliga%20och%20yrkesm%C3%A4ssiga%20bed%C3%B6mningar.%3C%2Fli%3E%5Cn%3Cli%3Evisa%20f%C3%B6rm%C3%A5ga%20att%20identifiera%2C%20analysera%20och%20l%C3%B6sa%20tekniska%2C%20ekonomiska%20och%20organisatoriska%20problem.%26nbsp%3B.%3C%2Fli%3E%5Cn%3Cli%3Evisa%20f%C3%B6rm%C3%A5ga%20att%20s%C3%A4tta%20ramar%2C%20best%C3%A4mma%20resurs%C3%A5tg%C3%A5ng%20samt%20leda%20processer%20f%C3%B6r%20probleml%C3%B6sning%20och%20genomf%C3%B6rande.%3C%2Fli%3E%5Cn%3Cli%3Evisa%20f%C3%B6rm%C3%A5ga%20att%20bed%C3%B6ma%20huruvida%20tekniska%20system%20och%20verksamheter%20bidrar%20till%20h%C3%A5llbar%20utveckling.%26nbsp%3B.%3C%2Fli%3E%5Cn%3Cli%3Evisa%20professionella%20f%C3%A4rdigheter%26nbsp%3B%20s%C3%A5som%20ledarskap%2C%20projektledning%2C%20teamwork%20och%20kommunikation%20som%20kr%C3%A4vs%20f%C3%B6r%20ett%20arbete%20som%20ingenj%C3%B6r%20i%20ledande%20befattning%20eller%20som%20ledare%20i%20teknikintensiva%20f%C3%B6retag.%3C%2Fli%3E%5Cn%3C%2Ful%3E%22%2C%22varderingsformagaOchForhallningssatt%22%3A%22%3Cul%3E%5Cn%3Cli%3EVisa%20f%C3%B6rm%C3%A5ga%20att%20kunna%20reflektera%20kring%20ansvarstagande%20och%20etiska%20fr%C3%A5gor%20inom%20tekniska%2C%20organisatoriska%2C%20ekonomiska%2C%20ekologiska%20och%20samh%C3%A4lleliga%20system.%3C%2Fli%3E%5Cn%3Cli%3Evisa%20medvetenhet%20om%20hur%20egna%20personliga%20v%C3%A4rderingar%20och%20st%C3%A4llningstaganden%20p%C3%A5verkar%20definition%20och%20bed%C3%B6mningar%20av%20tekniska%2C%20organisatoriska%20och%20ekonomiska%20problem.%3C%2Fli%3E%5Cn%3Cli%3Evisa%20ett%20kritiskt%20f%C3%B6rh%C3%A5llningss%C3%A4tt%20till%20metoder%2C%20och%20-teorier%20samt%20till%20hur%20kunskap%20utvecklas%20inom%20naturvetenskap%2C%20teknik%20och%20samh%C3%A4llsvetenskap.%3C%2Fli%3E%5Cn%3C%2Ful%3E%22%2C%22arskursinformationAr1%22%3A%22%3Cp%3EKurs%20DD1301%20%C3%A4r%20valfri%20att%20l%C3%A4sa%2C%20dvs%20det%20%C3%A4r%20inget%20krav%20att%20man%20m%C3%A5ste%20l%C3%A4sa%20den.%3C%2Fp%3E%5Cn%3Cp%3EFr%20o%20m%20kull-22%20utg%C3%A5r%20kurs%20DD1315.%20Ers%C3%A4tts%20av%20ny%20kurs%20DD1317%20Programmeringsteknik.%3C%2Fp%3E%22%2C%22arskursinformationAr2%22%3A%22%3Cp%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202025%2F2026%20%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fp%3E%5Cn%3Cp%3E%C3%84ven%20SK1110%20Elektromagnetism%20och%20v%C3%A5gr%C3%B6relsel%C3%A4ra%207%2C5%26nbsp%3Bhp%20%C3%A4r%20en%20programgemensam%20kurs%20p%C3%A5%20CINEK%202.%3Cbr%20%2F%3E%5CnObservera%20att%20den%20l%C3%A4ses%20i%20antingen%20period%203%20eller%204%20beroende%20p%C3%A5%20val%20av%20teknikinriktning.%3C%2Fp%3E%22%2C%22arskursinformationAr3%22%3A%22%3Cp%3EBaserat%20p%C3%A5%20l%C3%A4s%C3%A5rsplan%20beslutad%20f%C3%B6r%20l%C3%A4s%C3%A5ret%202022%2F2023%26nbsp%3B%C3%84ndringar%20kan%20ske%20f%C3%B6r%20kommande%20l%C3%A4s%C3%A5r.%3C%2Fp%3E%22%2C%22giltighet%22%3A%22%3Cp%3EG%C3%A4ller%20f%C3%B6r%20antagna%20till%20utbildningen%20fr%20o%20m%20HT24%3C%2Fp%3E%22%2C%22utbildningensMal%22%3A%22%3Cp%3EUt%C3%B6ver%20de%20m%C3%A5l%20som%20specificeras%20i%20H%C3%B6gskolef%C3%B6rordningen%20skall%20en%20civilingenj%C3%B6r%20som%20utexaminerats%20fr%C3%A5n%20Industriell%20ekonomi%2C%20KTH%20%E2%80%A6%3C%2Fp%3E%22%2C%22kunskapOchForstaelse%22%3A%22%3Cul%3E%5Cn%3Cli%3Evisa%20f%C3%B6rdjupade%20kunskaper%20inom%20matematik%2C%20naturvetenskap%20och%20teknik%20inom%20en%20vald%20teknikinriktning.%3C%2Fli%3E%5Cn%3Cli%3Evisa%20f%C3%B6rdjupade%20kunskaper%20inom%20industriell%20ekonomi%20samt%20om%20relationen%20teknik-ekonomi-samh%C3%A4lle.%3C%2Fli%3E%5Cn%3Cli%3Evisa%20kunskap%20om%20hur%20ekonomiska%20verksamheter%20och%20dess%20legala%20och%20institutionella%20ramar%20kan%20beskrivas%2C%20m%C3%A4tas%2C%20utvecklas%20och%20f%C3%B6rvaltas.%3C%2Fli%3E%5Cn%3Cli%3Evisa%20kunskap%20om%20hur%20olika%20typer%20av%20etablerad%20och%20ny%20teknologi%20kan%20st%C3%B6dja%20eller%20vidareutveckla%20verksamheter.%3C%2Fli%3E%5Cn%3Cli%3Evisa%20kunskap%20om%20etablerade%20metoder%2C%20modeller%20och%20teorier%20inom%20managementomr%C3%A5det%20f%C3%B6r%20att%20initiera%2C%20planera%2C%20aff%C3%A4rsutveckla%2C%20f%C3%B6lja%20upp%20och%20leda%20olika%20typer%20av%20industriella%20och%20teknikbaserade%20verksamheter.%3C%2Fli%3E%5Cn%3Cli%3Evisa%20kunskap%20om%20ledning%20och%20utveckling%20av%20verksamheter%20utg%C3%A5ende%20fr%C3%A5n%20b%C3%A5de%20olika%20intressenter%20och%20olika%20perspektiv%2C%20samt%20visa%20insikt%20om%20m%C3%B6jliga%20konfliktomr%C3%A5den%20i%20relation%20till%20detta.%3C%2Fli%3E%5Cn%3Cli%3Evisa%20kunskap%20om%20vetenskapliga%20metoder%20f%C3%B6r%20att%20analysera%2C%20bearbeta%20och%20v%C3%A4rdera%20fakta%20samt%20k%C3%A4nnedom%20om%20hur%20kunskap%20utvecklas%20inom%20naturvetenskap%2C%20teknik%20och%20samh%C3%A4llsvetenskap.%3C%2Fli%3E%5Cn%3C%2Ful%3E%22%2C%22utbildningensOmfattningOchInnehall%22%3A%22%3Cp%3ECivilingenj%C3%B6rsutbildningen%20i%20Industriell%20ekonomi%20omfattar%26nbsp%3B300%20h%C3%B6gskolepo%C3%A4ng%2C%20vilket%20i%20normal%20studietakt%20motsvarar%205%20%C3%A5rs%20heltidsstudier%20(10%20terminer).%3C%2Fp%3E%5Cn%3Cp%3EUtbildningens%20f%C3%B6rsta%20tre%20%C3%A5r%20(180%20h%C3%B6gskolepo%C3%A4ng)%20%C3%A4r%20i%20huvudsak%20p%C3%A5%20grundniv%C3%A5.%3C%2Fp%3E%5Cn%3Cp%3EUnder%20de%20tv%C3%A5%20avslutande%20%C3%A5ren%20(120%20h%C3%B6gskolepo%C3%A4ng)%20l%C3%A4ser%20den%20studerande%20ett%20masterprogram.%3Cbr%20%2F%3E%5CnMasterprogrammens%20kurser%20bedrivs%20i%20huvudsak%20p%C3%A5%20avancerad%20niv%C3%A5.%3C%2Fp%3E%5Cn%3Cp%3EInom%20utbildningen%20finns%20fyra%20teknikinriktningar%20p%C3%A5%20grundniv%C3%A5.%20Dessa%20teknikinriktningar%20ger%20beh%C3%B6righet%20till%20olika%20tekniksp%C3%A5r%20inom%20masterprogrammet%20industriell%20ekonomi.%3C%2Fp%3E%5Cn%3Cp%3EL%C3%A4s%C3%A5ret%202024%2F2025%20ges%20f%C3%B6ljande%20teknikinriktningar%20f%C3%B6r%20civilingenj%C3%B6rsutbildningen%20i%20Industriell%20ekonomi%20*%3C%2Fp%3E%5Cn%3Cul%3E%5Cn%3Cli%3EDatateknik%3C%2Fli%3E%5Cn%3Cli%3EEnergisystem%20och%20h%C3%A5llbar%20utveckling%3C%2Fli%3E%5Cn%3Cli%3EProdukt%20och%20produktionsutveckling%3C%2Fli%3E%5Cn%3Cli%3ETill%C3%A4mpad%20matematik%3C%2Fli%3E%5Cn%3C%2Ful%3E%5Cn%3Cp%3E*%20Utbudet%20av%20teknikinriktningar%20kan%20komma%20att%20revideras.%20Aktuell%20lista%20%C3%B6ver%20teknikinriktningarna%20finns%20p%C3%A5%20KTHs%20studentwebb%20f%C3%B6r%20respektive%20l%C3%A4s%C3%A5r.%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3EUndervisningsspr%C3%A5k%3C%2Fstrong%3E%3Cbr%20%2F%3E%5CnUndervisningen%20p%C3%A5%20grundniv%C3%A5%20de%20f%C3%B6rsta%20tre%20%C3%A5ren%20sker%20i%20huvudsak%20p%C3%A5%20svenska%2C%20men%20engelsk%20litteratur%20%C3%A4r%20vanligt.%20De%20avslutande%20tv%C3%A5%20%C3%A5rens%20kurser%20sker%20i%20huvudsak%20p%C3%A5%20engelska.%3C%2Fp%3E%22%2C%22behorighetOchUrval%22%3A%22%3Cp%3EF%C3%B6r%20antagning%20till%20civilingenj%C3%B6rsutbildningen%20i%20industriell%20ekonomi%20kr%C3%A4vs%20grundl%C3%A4ggande%20beh%C3%B6righet%20till%20h%C3%B6gskolestudier%2C%20samt%20s%C3%A4rskild%20beh%C3%B6righet%20enligt%20f%C3%B6ljande%3A%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3EGymnasieskolan%20fr%C3%A5n%20och%20med%201%20juli%202011%20och%20gymnasial%20vuxenutbildning%20fr%C3%A5n%20och%20med%201%20juli%202012%20(Gy11%2FVux12)%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3ES%C3%A4rskild%20beh%C3%B6righet%20motsvarande%3A%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EMatematik%204%3C%2Fp%3E%5Cn%3Cp%3EFysik%202%3C%2Fp%3E%5Cn%3Cp%3EKemi%201%3C%2Fp%3E%5Cn%3Cp%3EI%20vart%20och%20ett%20av%20%C3%A4mnena%20kr%C3%A4vs%20l%C3%A4gst%20betyget%20E.%26nbsp%3B%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3EGymnasieskolan%20f%C3%B6re%201%20juli%202011%20och%20gymnasial%20vuxenutbildning%20f%C3%B6re%201%20juli%202012%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3ES%C3%A4rskild%20beh%C3%B6righet%20motsvarande%3A%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EMatematik%20E%3C%2Fp%3E%5Cn%3Cp%3EFysik%20B%3C%2Fp%3E%5Cn%3Cp%3EKemi%20A%3C%2Fp%3E%5Cn%3Cp%3EI%20vart%20och%20ett%20av%20%C3%A4mnena%20kr%C3%A4vs%20l%C3%A4gst%20betyget%20Godk%C3%A4nt%20eller%203.%3C%2Fp%3E%22%2C%22kurser%22%3A%22%3Cp%3EUtbildningen%20sker%20i%20kursform.%20Kurslistor%20finns%20i%20bilaga%201.%3C%2Fp%3E%5Cn%3Cp%3EI%20utbildningen%20ing%C3%A5r%20obligatoriska%2C%20villkorligt%20valbara%2C%20rekommenderade%20och%20valfria%20kurser.%20De%20obligatoriska%20och%20villkorligt%20valfria%20kurserna%20definieras%20f%C3%B6r%20varje%20%C3%A5rskurs%20och%20teknikinriktning%20i%20kurslistor.%20De%20olika%20kursernas%20m%C3%A5l%2C%20beh%C3%B6righetskrav%2C%20inneh%C3%A5ll%20samt%20kursfordringar%20%C3%A5terfinns%20i%20kursplanerna.%3C%2Fp%3E%5Cn%3Cp%3EUndervisnings-%20och%20examinationsformerna%20varierar%20mellan%20kurserna.%20Dessa%20framg%C3%A5r%20i%20respektive%20kurs%20kursplan.%3C%2Fp%3E%5Cn%3Cp%3EValfri%20kurs%20kan%20v%C3%A4ljas%20ur%20KTHs%20kursutbud.%20%C3%84ven%20kurser%20fr%C3%A5n%20andra%20h%C3%B6gskolor%2Funiversitet%20kan%20tillgodor%C3%A4knas%2C%20om%20examenskraven%20uppfylls.%3C%2Fp%3E%5Cn%3Cp%3E%3Cem%3EF%C3%B6r%20valfria%20kurser%20g%C3%A4ller%20f%C3%B6ljande%20begr%C3%A4nsningar%3A%3C%2Fem%3E%3C%2Fp%3E%5Cn%3Cul%3E%5Cn%3Cli%3EValfri%20kurs%20f%C3%A5r%20inte%20l%C3%A4sas%20i%20%C3%A5rskurs%201.%3C%2Fli%3E%5Cn%3Cli%3EAntalet%20h%C3%B6gskolepo%C3%A4ng%20som%20f%C3%A5r%20v%C3%A4ljas%20per%20termin%20%C3%A4r%20begr%C3%A4nsat.%3C%2Fli%3E%5Cn%3Cli%3EValfri%20kurs%20f%C3%A5r%20ej%20motsvara%20befintlig%20programkurs%20eller%20annan%20redan%20tillgodor%C3%A4knad%20kurs%20till%20betydande%20del%3C%2Fli%3E%5Cn%3Cli%3EH%C3%B6gskolef%C3%B6rberedande%20kurser%20f%C3%A5r%20ej%20medr%C3%A4knas%20som%20valfri%20kurs%3C%2Fli%3E%5Cn%3Cli%3EValfri%20kurs%20kan%20v%C3%A4ljas%20men%20ska%20vara%20relevant%20f%C3%B6r%20yrkesrollen%20som%20ingenj%C3%B6r.%3C%2Fli%3E%5Cn%3C%2Ful%3E%22%2C%22betygssystem%22%3A%22%3Cp%3EF%C3%B6r%20kurser%20p%C3%A5%20KTH%20anv%C3%A4nds%20en%20sjugradig%20m%C3%A5lrelaterad%20betygsskala%20A-F%20som%20slutbetyg%20f%C3%B6r%20kurser%20p%C3%A5%20grundniv%C3%A5%20och%20avancerad%20niv%C3%A5.%20A-E%20%C3%A4r%20godk%C3%A4nda%20betyg%20med%20A%20som%20h%C3%B6gsta%20betyg.%20Betygen%20godk%C3%A4nd%20(P)%20och%20underk%C3%A4nd%20(F)%20anv%C3%A4nds%20som%20slutbetyg%20d%C3%A5%20s%C3%A4rskilda%20sk%C3%A4l%20f%C3%B6religger.%3C%2Fp%3E%5Cn%3Cp%3EBetygsskalan%20framg%C3%A5r%20av%20respektive%20kursplan.%3C%2Fp%3E%22%2C%22villkorForDeltagande%22%3A%22%3Cp%3EF%C3%B6r%20deltagande%20kr%C3%A4vs%20antagning%20till%20kurs%20inom%20programmet%20samt%20registrering%20p%C3%A5%20kurs.%3C%2Fp%3E%5Cn%3Cp%3EF%C3%B6r%20fortsatta%20studier%20kr%C3%A4vs%20att%20s%C3%A4rskild%20beh%C3%B6righet%20till%20kurs%20uppfylls.%20Krav%20p%C3%A5%20s%C3%A4rskild%20beh%C3%B6righet%20specificeras%20i%20respektive%20kursplan.%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3EVal%20av%20teknikinriktning%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EVal%20av%20teknikinriktning%20sker%20under%20h%C3%B6stterminen%20i%20%C3%A5rskurs%202.%3C%2Fp%3E%5Cn%3Cp%3EDet%20finns%20ingen%20platsbegr%C3%A4nsning%20p%C3%A5%20de%20olika%20teknikinriktningarna.%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3EVal%20av%20masterprogram%20%E2%80%93%20tekniksp%C3%A5r%20inom%20masterprogram%20Industriell%20ekonomi%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EInf%C3%B6r%20%C3%A5rskurs%204%20v%C3%A4ljer%20den%20studerande%20ett%20masterprogram%2C%20som%20%C3%A4r%20p%C3%A5%20avancerad%20niv%C3%A5%2C%20inom%20ramen%20f%C3%B6r%20sin%20civilingenj%C3%B6rsutbildning.%20Studerande%20p%C3%A5%20civilingenj%C3%B6rsprogrammet%20i%20Industriell%20ekonomi%20v%C3%A4ljer%20%C3%A4ven%20tekniksp%C3%A5r%20inom%20masterprogrammet.%3C%2Fp%3E%5Cn%3Cp%3EF%C3%B6rutom%20de%20generella%20villkoren%20f%C3%B6r%20deltagande%20i%20undervisningen%20f%C3%B6r%20studier%20i%20%C3%A5rskurs%204%2F%C3%A5rskurs%201%20p%C3%A5%20masterprogram%2C%20g%C3%A4ller%20s%C3%A4rskilda%20beh%C3%B6righetskrav%20till%20masterprogrammet.%3C%2Fp%3E%5Cn%3Cp%3EInformation%20om%20hur%20ans%C3%B6kan%20till%20masterprogram%20ska%20g%C3%B6ras%2C%20f%C3%A5r%20du%20fr%C3%A5n%20utbildningskansliet.%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3E%3Cem%3EKrav%20f%C3%B6r%20beh%C3%B6righet%20till%20masterprogram%3A%3C%2Fem%3E%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EF%C3%B6r%20att%20vara%20beh%C3%B6rig%20till%20avancerad%20niv%C3%A5%20inom%20KTH%3As%20civilingenj%C3%B6rsprogram%20kr%C3%A4vs%20165%20h%C3%B6gskolepo%C3%A4ng%20fr%C3%A5n%20%C3%A5rskurs%201%E2%80%933%20varav%20minst%20110%20h%C3%B6gskolepo%C3%A4ng%20fr%C3%A5n%20%C3%A5rskurs%201%E2%80%932.%20Examensarbete%20p%C3%A5%20grundniv%C3%A5%20om%2015%20hp%20ska%20vara%20slutf%C3%B6rt%20innan%20studierna%20p%C3%A5%20masterprogrammet%20p%C3%A5b%C3%B6rjas.%20Eventuellt%20ytterligare%20s%C3%A4rskilda%20beh%C3%B6righetskrav%20f%C3%B6rekommer%20och%20framg%C3%A5r%20av%20respektive%20utbildningsplan.%3C%2Fp%3E%22%2C%22examensarbete%22%3A%22%3Cp%3E%3Cstrong%3EExamensarbete%2C%20grundniv%C3%A5%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EI%20utbildningen%20ing%C3%A5r%20ett%20examensarbete%20f%C3%B6r%20teknologie%20kandidatexamen%20som%20omfattar%2015%20h%C3%B6gskolepo%C3%A4ng.%20Examensarbetet%20utf%C3%B6rs%20p%C3%A5%20v%C3%A5rterminen%20i%20%C3%A5rskurs%203.%3C%2Fp%3E%5Cn%3Cp%3EExamensarbetet%20kan%20p%C3%A5b%C3%B6rjas%20n%C3%A4r%20kursens%20s%C3%A4rskilda%20beh%C3%B6righetskrav%20%C3%A4r%20uppfyllda.%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3EExamensarbete%2C%20avancerad%20niv%C3%A5%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EI%20utbildningen%20ing%C3%A5r%20ett%20examensarbete%20f%C3%B6r%20civilingenj%C3%B6rsexamen%20som%20omfattar%26nbsp%3B30%20h%C3%B6gskolepo%C3%A4ng.%3C%2Fp%3E%5Cn%3Cp%3EExamensarbetskursen%20utg%C3%B6r%20den%20avslutande%20delen%20av%20utbildningen.%20Examensarbetet%20kan%20p%C3%A5b%C3%B6rjas%20n%C3%A4r%20kursens%20s%C3%A4rskilda%20beh%C3%B6righetskrav%20%C3%A4r%20uppfyllda.%3C%2Fp%3E%22%2C%22examen%22%3A%22%3Cp%3EF%C3%B6r%20att%20avl%C3%A4gga%20civilingenj%C3%B6rsexamen%20i%20Industriell%20ekonomi%20(eng.%20Master%20of%20Science%20in%20Engineering%2C%20Degree%20Program%20Industrial%20Engineering%20and%20Management)%20kr%C3%A4vs%20godk%C3%A4nt%20betyg%20i%20samtliga%20kurser%20som%20ing%C3%A5r%20i%20den%20studerandes%20studieplan.%20Studieplanen%20ska%20omfatta%20300%20h%C3%B6gskolepo%C3%A4ng%20vari%20ing%C3%A5r%20ett%20examensarbete%20p%C3%A5%20grundniv%C3%A5%20omfattande%2015%20h%C3%B6gskolepo%C3%A4ng%20samt%20ett%20examensarbete%20p%C3%A5%20avancerad%20niv%C3%A5%20omfattande%2030%20h%C3%B6gskolepo%C3%A4ng.%3C%2Fp%3E%5Cn%3Cp%3EFrivilliga%20introduktionskurser%20samt%20f%C3%B6rberedande%20kurser%20f%C3%A5r%20ej%20ing%C3%A5%20i%20examen.%3C%2Fp%3E%5Cn%3Cp%3EKurser%20som%20inneh%C3%A5llsm%C3%A4ssigt%20motsvarar%20annan%20eller%20andra%20kurser%20inom%20programmet%20kan%20ej%20medr%C3%A4knas%20inom%20ramen%20f%C3%B6r%20de%20300%20h%C3%B6gskolepo%C3%A4ng%20som%20ligger%20till%20grund%20f%C3%B6r%20examen%3C%2Fp%3E%5Cn%3Cp%3EValfria%20kurser%20ska%20bidra%20till%20programm%C3%A5len%20i%20Industriell%20ekonomi%20samt%20yrkesrollen%20som%20civilingenj%C3%B6r.%3C%2Fp%3E%5Cn%3Cp%3E%3Cstrong%3EAns%C3%B6kan%20om%20examen%3C%2Fstrong%3E%3C%2Fp%3E%5Cn%3Cp%3EDen%20studerande%20har%20m%C3%B6jlighet%20att%20ans%C3%B6ka%20om%20f%C3%B6ljande%20tre%20examina%3A%3C%2Fp%3E%5Cn%3Cul%3E%5Cn%3Cli%3E%3Cp%3E%3Cstrong%3EGenerell%20examen%20p%C3%A5%20grundniv%C3%A5%3C%2Fstrong%3E%3Cbr%20%2F%3E%5CnTeknologie%20kandidatexamen%3Cbr%20%2F%3E%5CnBachelor%20of%20Science%20(180%20credits)%3C%2Fp%3E%3C%2Fli%3E%5Cn%3Cli%3E%3Cp%3E%3Cstrong%3EYrkesexamen%20p%C3%A5%20avancerad%20niv%C3%A5%3C%2Fstrong%3E%3Cbr%20%2F%3E%5CnCivilingenj%C3%B6rsexamen%3Cbr%20%2F%3E%5CnDegree%20of%20Master%20of%20Science%20in%20Engineering%2C%3C%2Fp%3E%3C%2Fli%3E%5Cn%3Cli%3E%3Cp%3E%3Cstrong%3EGenerell%20examen%20p%C3%A5%20avancerad%20niv%C3%A5%3C%2Fstrong%3E%3Cbr%20%2F%3E%5CnTeknologie%20masterexamen%3Cbr%20%2F%3E%5CnDegree%20of%20Master%20of%20Science%20(120%20credits)%3C%2Fp%3E%3C%2Fli%3E%5Cn%3C%2Ful%3E%22%7D%2C%22programmeCode%22%3A%22CINEK%22%2C%22programmeName%22%3A%22Civilingenj%C3%B6rsutbildning%20i%20industriell%20ekonomi%22%2C%22term%22%3A%2220242%22%2C%22lengthInStudyYears%22%3A5%2C%22thisHostBaseUrl%22%3Anull%7D";</script>
+
+<!---->
+
+  <div id="app"></div>
+    </div>
+  </div>
+  <!--indexOff: all-->
+  <!-- add "scroll-to-top" button when scrolled down -->
+  <div id="back-to-top" role="link" aria-label="Till sidans topp"></div>
+  <footer class="kth-footer student-web">
+      <div class="kth-footer__content">
+              
+  
+  
+  
+  
+    <div class="columnSplitterWrapper" data-cid="1.1066523" lang="sv">
+      
+      <div class="columnSplitter  using4Columns ">
+        <div class="col c1">
+          
+  
+  
+  
+  
+    <div class="block list links" data-cid="1.1066524" lang="sv">
+      <h2>Studentwebben</h2>
+      
+      <ul>
+        <li><a href="/student/studier">Studier</a></li>
+        <li><a href="/student/stod">Stöd och vägledning</a></li>
+        <li><a href="/student/it">IT och digitala tjänster</a></li>
+        <li><a href="/student/kontakt">Kontakt</a></li>
+      </ul>
+    </div>
+  
+  
+  
+        </div>
+        <div class="col c2">
+          
+  
+  
+  
+  
+    <div class="block list links" data-cid="1.1066531" lang="sv">
+      <h2>Tjänster</h2>
+      
+      <ul>
+        <li><a href="/student/studier/schema">Schema</a></li>
+        <li><a href="https://canvas.kth.se/">Canvas</a></li>
+        <li><a href="http://webmail.kth.se">Webbmejl</a></li>
+        <li><a href="/student/it/studenttjanster/personligamenyn">Personliga menyn</a></li>
+        <li><a href="https://www.student.ladok.se/student/app/studentwebb/">Ladok för studenter</a></li>
+      </ul>
+    </div>
+  
+  
+  
+        </div>
+        <div class="col c3">
+          
+  
+  
+  
+  
+    <div class="block list links" data-cid="1.1066534" lang="sv">
+      <h2>Kontakt</h2>
+      
+      <ul>
+        <li><a href="/student/kontakt/kontaktuppgifter/kontakta-utbildningsprogram-1.1170401">Kontakta utbildningsprogram</a></li>
+        <li><a href="/student/kontakt/kontaktuppgifter/kontakta-kurs-1.1171899">Kontakta kurs</a></li>
+        <li><a href="/student/it/contact">IT-support</a></li>
+        <li><a href="/student/kontakt/campus/kth-entre">KTH Entré</a></li>
+        <li><a href="/student/kontakt/campus/kth-biblioteket-1.2479">KTH Biblioteket</a></li>
+      </ul>
+    </div>
+  
+  
+  
+        </div>
+        <div class="col c4">
+          
+  
+  
+  
+  
+    <article class="block teaser top white" data-cid="1.1083631" lang="sv">
+      
+      <div class="teaserBody   ">
+        
+        
+        <div class="lead">
+          
+          
+        
+          
+          <p><strong>KTH</strong><br> <em>100 44 Stockholm<br> +46 8 790 60 00<br>
+        
+      
+        
+          
+  
+  
+  
+  
+    <a class="block link" data-cid="1.1083633" lang="sv" href="mailto:info@kth.se">info@kth.se</a>
+  
+  
+  
+          
+        
+      
+        
+          
+          </em><br> &nbsp;</p>
+        
+      
+        </div>
+        
+      </div>
+    </article>
+  
+  
+  
+        </div>
+      </div>
+    </div>
+  
+  
+  
+      </div>
+  </footer>
+  <!--indexOn: all-->  <script src="/student/kurser/static/app.js?v=2.0.0-20260427.1_59b0"></script>
+</body>
+
+</html>

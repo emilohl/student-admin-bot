@@ -1,0 +1,185 @@
+# Study-plan atlas: declarative topic -> studyProgramme field mapping.
+#
+# Each KTH program page embeds a `__compressedApplicationStore__` JSON blob.
+# On `/omfattning` and `/genomforande` it carries a `studyProgramme` object
+# whose ~25 fields together form the entire utbildningsplan. Different
+# schools at KTH populate different fields with the same kind of information
+# (e.g. CTFYS/CDATE put master-program lists in `arskursinformationAr4`,
+# CINEK/CMEDT put them in `utbildningensupplagg`/`specialisations`).
+#
+# This file declares, per topic:
+#   - bilingual labels used as chunk metadata (so retrieval can rank on them)
+#   - an ordered list of fields/pages where the answer plausibly lives
+#
+# Adding a topic = edit this YAML; no code change needed. The loader
+# (study_plan_atlas.py) builds an inverse field->topic_label map for
+# stamping chunks at ingest time. Fields not listed here still produce
+# chunks, just with their raw field name as the section label.
+#
+# Field reference syntax:
+#   studyProgramme.<key>           - field on the studyProgramme object
+#   page:/<slug>                   - sidebar page (fallback when SPA store has nothing)
+
+version: 1
+
+topics:
+  master_programs:
+    label_sv: "Valbara masterprogram"
+    label_en: "Available master programs"
+    look_in:
+      - studyProgramme.arskursinformationAr4   # CTFYS, CDATE, CMAST: explicit list
+      - studyProgramme.arskursinformationAr5   # CTFYS, CDATE
+      - studyProgramme.utbildningensupplagg    # CINEK, CMEDT, CMAST: narrative
+      - studyProgramme.specialisations         # all programs (structured)
+      - page:/inriktningar
+    notes: |
+      Civilingenjör 5y programs route students into a master in years 4-5.
+      Different schools document the mapping in different fields — keep all
+      candidates so retrieval ranks the populated one.
+
+  exchange_studies:
+    label_sv: "Utbytesstudier"
+    label_en: "Exchange studies"
+    look_in:
+      - studyProgramme.utlandsstudier
+
+  thesis:
+    label_sv: "Examensarbete"
+    label_en: "Thesis / degree project"
+    look_in:
+      - studyProgramme.examensarbete
+
+  eligibility:
+    label_sv: "Behörighet och urval"
+    label_en: "Eligibility and selection"
+    look_in:
+      - studyProgramme.behorighetOchUrval
+      - page:/behorighet
+
+  grading:
+    label_sv: "Betygssystem"
+    label_en: "Grading system"
+    look_in:
+      - studyProgramme.betygssystem
+
+  goals:
+    label_sv: "Utbildningens mål"
+    label_en: "Programme objectives"
+    look_in:
+      - studyProgramme.utbildningensMal
+      - page:/mal
+
+  scope:
+    label_sv: "Utbildningens omfattning och innehåll"
+    label_en: "Programme scope and content"
+    look_in:
+      - studyProgramme.utbildningensOmfattningOchInnehall
+
+  structure:
+    label_sv: "Utbildningens upplägg"
+    label_en: "Programme structure"
+    look_in:
+      - studyProgramme.utbildningensupplagg
+
+  delivery:
+    label_sv: "Utbildningens genomförande"
+    label_en: "Programme delivery"
+    look_in:
+      - studyProgramme.utbildningensgenomforande
+      - page:/genomforande
+
+  credit_transfer:
+    label_sv: "Tillgodoräknande"
+    label_en: "Credit transfer"
+    look_in:
+      - studyProgramme.tillgodoraknande
+
+  participation_conditions:
+    label_sv: "Villkor för deltagande"
+    label_en: "Participation conditions"
+    look_in:
+      - studyProgramme.villkorForDeltagande
+
+  knowledge_outcomes:
+    label_sv: "Kunskapsmål"
+    label_en: "Learning outcomes"
+    look_in:
+      - studyProgramme.kunskapOchForstaelse
+      - studyProgramme.fardigheterOchFormagor
+      - studyProgramme.varderingsformagaOchForhallningssatt
+
+  degree:
+    label_sv: "Examen"
+    label_en: "Degree"
+    look_in:
+      - studyProgramme.examen
+
+  validity:
+    label_sv: "Giltighet"
+    label_en: "Validity"
+    look_in:
+      - studyProgramme.giltighet
+      - studyProgramme.giltigfran
+
+  course_overview:
+    label_sv: "Kurser"
+    label_en: "Courses"
+    look_in:
+      - studyProgramme.kurser
+
+  # Year-N narrative blocks. Years 4-5 of civilingenjör programs typically
+  # carry master-program selection rules (claimed by `master_programs` above
+  # — the inverse map prefers earlier-listed topics). Years 1-3 carry generic
+  # programme-flow notes.
+  year_1_info:
+    label_sv: "Årskurs 1 (information)"
+    label_en: "Year 1 (programme info)"
+    look_in:
+      - studyProgramme.arskursinformationAr1
+      - studyProgramme.kurslistaar1
+  year_2_info:
+    label_sv: "Årskurs 2 (information)"
+    look_in:
+      - studyProgramme.arskursinformationAr2
+      - studyProgramme.kurslistaar2
+  year_3_info:
+    label_sv: "Årskurs 3 (information)"
+    look_in:
+      - studyProgramme.arskursinformationAr3
+      - studyProgramme.kurslistaar3
+      - studyProgramme.infoVvkurserAr3
+  year_4_info:
+    label_sv: "Årskurs 4 (information)"
+    look_in:
+      - studyProgramme.kurslistaar4
+  year_5_info:
+    label_sv: "Årskurs 5 (information)"
+    look_in:
+      - studyProgramme.kurslistaar5
+
+  # Year-by-year structured course tables (per-Valvillkor buckets) come from
+  # `/arskursN` pages and are labelled directly by the chunker; this entry
+  # documents the source and is not used for the inverse field map.
+  year_courses:
+    label_sv_pattern: "Årskurs {n} ({bucket})"
+    label_en_pattern: "Year {n} ({bucket})"
+    look_in:
+      - "curriculums[0].studyYears.{n}"
+
+# Bucket labels used when grouping per-year courses by Valvillkor.
+valvillkor_labels:
+  O:
+    label_sv: "Obligatoriska"
+    label_en: "Mandatory"
+  V:
+    label_sv: "Valbara"
+    label_en: "Elective"
+  VV:
+    label_sv: "Villkorligt valbara"
+    label_en: "Conditionally elective"
+  K:
+    label_sv: "Kompletterande"
+    label_en: "Supplementary"
+  R:
+    label_sv: "Rekommenderade"
+    label_en: "Recommended"
