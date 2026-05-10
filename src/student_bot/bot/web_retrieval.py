@@ -1155,6 +1155,378 @@ def _programme_page_text_with_store(html: str, visible_body: str, page_url: str 
     return f"{base}\n\n{appendix}".strip()
 
 
+# ---------------------------------------------------------------------------
+# Structured per-section chunking for KTH programme pages.
+#
+# The legacy single-chunk-per-page approach (capped at _MAX_DYNAMIC_WEB_CHUNK_CHARS)
+# meant year-1 content dominated the LLM prompt budget; later year info and
+# the studyProgramme narrative often got crowded out. Instead we walk the
+# SPA store and emit one chunk per logical section, labelled via the curated
+# atlas (data/study_plan_atlas.yaml) so retrieval can rank on user intent.
+# ---------------------------------------------------------------------------
+
+_MAX_STUDYPLAN_CHUNK_CHARS = 6_000  # per-field cap; avoids one giant blob
+_MAX_STUDYPLAN_CHUNKS_PER_PAGE = 30  # belt-and-braces against pathological pages
+
+_VALVILLKOR_BUCKET_LABELS_SV: dict[str, str] = {
+    "O": "Obligatoriska",
+    "V": "Valbara",
+    "VV": "Villkorligt valbara",
+    "K": "Kompletterande",
+    "KV": "Konditionsvalfria",
+    "VK": "Villkorligt valbara",
+    "R": "Rekommenderade",
+}
+
+
+def _strip_html_to_text(value: str) -> str:
+    """Cheap HTML-to-text — programme freetext fields are short and well-formed."""
+    if not value:
+        return ""
+    soup = BeautifulSoup(value, "lxml")
+    text = soup.get_text(" ", strip=True)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _flatten_text(value: object) -> str:
+    """Best-effort flatten of a studyProgramme field into plain text."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return _strip_html_to_text(value)
+    if isinstance(value, list):
+        parts: list[str] = []
+        for item in value:
+            if isinstance(item, str):
+                t = _strip_html_to_text(item)
+                if t:
+                    parts.append(t)
+            elif isinstance(item, dict):
+                # specialisations / similar: pick code + label + description.
+                kod = item.get("kod") or item.get("code") or ""
+                ben = item.get("benamning") or item.get("name") or item.get("title") or ""
+                besk = item.get("beskrivning") or item.get("description") or ""
+                head = " ".join(b for b in [str(kod), str(ben)] if b).strip()
+                body = _strip_html_to_text(str(besk)) if besk else ""
+                if head and body:
+                    parts.append(f"{head}: {body}")
+                elif head:
+                    parts.append(head)
+                elif body:
+                    parts.append(body)
+        return "\n".join(p for p in parts if p)
+    if isinstance(value, dict):
+        # Rare — flatten nested string values.
+        return "\n".join(
+            _strip_html_to_text(v) for v in value.values() if isinstance(v, str) and v.strip()
+        )
+    return ""
+
+
+def _truncate_studyplan_text(text: str) -> str:
+    if len(text) <= _MAX_STUDYPLAN_CHUNK_CHARS:
+        return text
+    return text[:_MAX_STUDYPLAN_CHUNK_CHARS].rstrip() + "\n…"
+
+
+def _build_studyplan_chunk(
+    *,
+    text: str,
+    page_url: str,
+    fragment: str,
+    section_path: str,
+    doc_title: str,
+    fetched_at: int,
+    is_stale: bool = False,
+) -> RetrievedChunk:
+    if not text:
+        raise ValueError("empty chunk text")
+    rel_source = f"{page_url}#{fragment}" if fragment else page_url
+    chunk_id = f"web:{rel_source}"
+    return RetrievedChunk(
+        chunk_id=chunk_id,
+        text=_truncate_studyplan_text(text),
+        rel_source=rel_source,
+        doc_title=doc_title,
+        doc_type="html",
+        language="sv",
+        section_path=section_path,
+        chunk_index=0,
+        chroma_distance=0.0,
+        rerank_score=2.5 if is_stale else 3.5,
+        source_url=page_url,
+        fetched_at=fetched_at,
+        is_stale=is_stale,
+    )
+
+
+def _studyplan_chunks_from_studyprogramme(
+    sp: dict,
+    *,
+    programme_name: str,
+    page_url: str,
+    fetched_at: int,
+    is_stale: bool,
+    lang: str = "sv",
+) -> list[RetrievedChunk]:
+    """One chunk per non-empty studyProgramme.<field>. Atlas labels the section."""
+    from student_bot.bot.study_plan_atlas import get_atlas
+
+    atlas = get_atlas()
+    out: list[RetrievedChunk] = []
+    for key, raw in sp.items():
+        text = _flatten_text(raw)
+        if len(text) < 20:  # skip empty / boilerplate stubs
+            continue
+        topic_label = atlas.label_for_field(key, lang) or key
+        section_path = f"{topic_label} (studieplan, fält: {key})"
+        title_prefix = programme_name.strip() if programme_name else "Studieplan"
+        doc_title = f"{title_prefix} studieplan: {topic_label}"
+        try:
+            out.append(
+                _build_studyplan_chunk(
+                    text=text,
+                    page_url=page_url,
+                    fragment=key,
+                    section_path=section_path,
+                    doc_title=doc_title,
+                    fetched_at=fetched_at,
+                    is_stale=is_stale,
+                )
+            )
+        except ValueError:
+            continue
+        if len(out) >= _MAX_STUDYPLAN_CHUNKS_PER_PAGE:
+            break
+    return out
+
+
+def _studyplan_chunks_from_year_page(
+    store: dict,
+    *,
+    programme_name: str,
+    year: int,
+    page_url: str,
+    fetched_at: int,
+    is_stale: bool,
+) -> list[RetrievedChunk]:
+    """Per-bucket chunks from /arskursN — one per non-empty Valvillkor group."""
+    curriculums = store.get("curriculums") if isinstance(store, dict) else None
+    if not isinstance(curriculums, list) or not curriculums:
+        return []
+    cy0 = curriculums[0]
+    if not isinstance(cy0, dict):
+        return []
+    study_years = cy0.get("studyYears") or []
+    target = next(
+        (y for y in study_years if isinstance(y, dict) and int(y.get("yearNumber") or 0) == year),
+        None,
+    )
+    if not isinstance(target, dict):
+        return []
+
+    free_text_lines: list[str] = []
+    for ft in target.get("freeTexts") or []:
+        if isinstance(ft, dict):
+            tx = ft.get("Text")
+            if isinstance(tx, str) and tx.strip():
+                free_text_lines.append(_strip_html_to_text(tx))
+
+    raw_courses = target.get("courses")
+    out: list[RetrievedChunk] = []
+
+    # Some programs (e.g. CINEK arskurs1) ship the year-N course list as an
+    # HTML string instead of a structured list. We can't bucket by Valvillkor
+    # without parsing the HTML, so emit a single chunk preserving the markup
+    # text. Years 2+ on the same program switch to structured lists, which the
+    # bucket loop below handles normally.
+    if isinstance(raw_courses, str) and raw_courses.strip():
+        text_body = _strip_html_to_text(raw_courses)
+        if len(text_body) >= 20:
+            lines: list[str] = [f"## Årskurs {year} – kurslista"]
+            if free_text_lines:
+                lines.append("\n".join(f"_Notis:_ {t}" for t in free_text_lines))
+            lines.append("")
+            lines.append(text_body)
+            text = "\n".join(lines).strip()
+            title_prefix = programme_name.strip() if programme_name else "Årskurs"
+            try:
+                out.append(
+                    _build_studyplan_chunk(
+                        text=text,
+                        page_url=page_url,
+                        fragment=f"arskurs{year}",
+                        section_path=f"Årskurs {year} – kurslista",
+                        doc_title=f"{title_prefix} årskurs {year}",
+                        fetched_at=fetched_at,
+                        is_stale=is_stale,
+                    )
+                )
+            except ValueError:
+                pass
+        return out
+
+    buckets: dict[str, list[dict]] = defaultdict(list)
+    for c in raw_courses or []:
+        if not isinstance(c, dict):
+            continue
+        raw_vv = c.get("Valvillkor") or c.get("valvillkor") or "?"
+        vv = raw_vv.strip() if isinstance(raw_vv, str) else "?"
+        if not vv:
+            vv = "?"
+        buckets[vv].append(c)
+
+    for vv in _sort_valvillkor_keys(list(buckets.keys())):
+        bucket_label = _VALVILLKOR_BUCKET_LABELS_SV.get(vv, f"Valvillkor {vv}")
+        rows: list[str] = []
+        for c in sorted(buckets[vv], key=lambda x: str(x.get("kod") or "")):
+            row = _markdown_course_line_from_curriculum_row(c)
+            if row:
+                rows.append(row)
+        if not rows:
+            continue
+        lines: list[str] = [f"## Årskurs {year} – {bucket_label} ({vv})"]
+        if free_text_lines:
+            lines.append("\n".join(f"_Notis:_ {t}" for t in free_text_lines))
+        lines.append("")
+        lines.extend(rows)
+        text = "\n".join(lines).strip()
+        title_prefix = programme_name.strip() if programme_name else "Årskurs"
+        try:
+            out.append(
+                _build_studyplan_chunk(
+                    text=text,
+                    page_url=page_url,
+                    fragment=f"arskurs{year}-{vv}",
+                    section_path=f"Årskurs {year} – {bucket_label} ({vv})",
+                    doc_title=f"{title_prefix} årskurs {year} ({bucket_label})",
+                    fetched_at=fetched_at,
+                    is_stale=is_stale,
+                )
+            )
+        except ValueError:
+            continue
+        if len(out) >= _MAX_STUDYPLAN_CHUNKS_PER_PAGE:
+            break
+    return out
+
+
+def _studyplan_chunks_from_specializations(
+    store: dict,
+    *,
+    programme_name: str,
+    page_url: str,
+    fetched_at: int,
+    is_stale: bool,
+) -> list[RetrievedChunk]:
+    sp_field = store.get("specializations") if isinstance(store, dict) else None
+    if not isinstance(sp_field, list) or not sp_field:
+        # Some programs put specializations under studyProgramme.specialisations.
+        sp_obj = store.get("studyProgramme") if isinstance(store, dict) else None
+        if isinstance(sp_obj, dict):
+            sp_field = sp_obj.get("specialisations")
+    if not isinstance(sp_field, list) or not sp_field:
+        return []
+    out: list[RetrievedChunk] = []
+    for item in sp_field:
+        if not isinstance(item, dict):
+            continue
+        kod = str(item.get("kod") or item.get("code") or "").strip()
+        ben = str(item.get("benamning") or item.get("name") or "").strip()
+        besk = _strip_html_to_text(str(item.get("beskrivning") or item.get("description") or ""))
+        body_lines: list[str] = []
+        head = " ".join(b for b in [kod, ben] if b)
+        if head:
+            body_lines.append(f"## {head}")
+        if besk:
+            body_lines.append(besk)
+        text = "\n\n".join(body_lines).strip()
+        if len(text) < 10:
+            continue
+        title_prefix = programme_name.strip() if programme_name else "Inriktning"
+        try:
+            out.append(
+                _build_studyplan_chunk(
+                    text=text,
+                    page_url=page_url,
+                    fragment=f"inriktning-{kod or 'x'}",
+                    section_path=f"Inriktning: {kod} {ben}".strip(),
+                    doc_title=f"{title_prefix} inriktning: {kod} {ben}".strip(),
+                    fetched_at=fetched_at,
+                    is_stale=is_stale,
+                )
+            )
+        except ValueError:
+            continue
+        if len(out) >= _MAX_STUDYPLAN_CHUNKS_PER_PAGE:
+            break
+    return out
+
+
+def _studyplan_chunks_from_html(
+    html: str,
+    *,
+    final_url: str,
+    fetched_at: int,
+    lang: str = "sv",
+    is_stale: bool = False,
+) -> list[RetrievedChunk]:
+    """Walk the SPA store on a /student/kurser/program/... page and emit one
+    chunk per logical section (studyProgramme field, year-bucket, or
+    specialisation). Returns ``[]`` when the store is missing — callers fall
+    back to the legacy single-chunk path.
+    """
+    store = _compressed_application_store(html)
+    if not isinstance(store, dict):
+        return []
+    programme_name = str(store.get("programmeName") or "").strip()
+    path = urlsplit(final_url).path
+    is_omfattning_or_genomforande = path.endswith("/omfattning") or path.endswith("/genomforande")
+    is_inriktningar = path.endswith("/inriktningar")
+    year = _program_page_year_from_url(final_url)
+
+    chunks: list[RetrievedChunk] = []
+
+    if is_omfattning_or_genomforande:
+        sp = store.get("studyProgramme")
+        if isinstance(sp, dict):
+            chunks.extend(
+                _studyplan_chunks_from_studyprogramme(
+                    sp,
+                    programme_name=programme_name,
+                    page_url=final_url,
+                    fetched_at=fetched_at,
+                    is_stale=is_stale,
+                    lang=lang,
+                )
+            )
+
+    if year is not None:
+        chunks.extend(
+            _studyplan_chunks_from_year_page(
+                store,
+                programme_name=programme_name,
+                year=year,
+                page_url=final_url,
+                fetched_at=fetched_at,
+                is_stale=is_stale,
+            )
+        )
+
+    if is_inriktningar:
+        chunks.extend(
+            _studyplan_chunks_from_specializations(
+                store,
+                programme_name=programme_name,
+                page_url=final_url,
+                fetched_at=fetched_at,
+                is_stale=is_stale,
+            )
+        )
+
+    return chunks[:_MAX_STUDYPLAN_CHUNKS_PER_PAGE]
+
+
 def _program_links(html: str, base_url: str) -> list[str]:
     soup = BeautifulSoup(html, "lxml")
     out: list[str] = []
@@ -1591,17 +1963,28 @@ def _dedupe_urls(urls: list[str]) -> list[str]:
 
 
 def _programme_term_bundle_urls(url: str) -> list[str]:
-    """For /program/<CODE>/<TERM>(/arskursN), return a stable study-plan bundle:
-    base term page + year pages + common sidebar pages."""
+    """For /program/<CODE>/<TERM>(/arskursN), return a stable study-plan bundle.
+
+    Order matters: the fetcher visits URLs in this order and stops at
+    ``max_pages_per_query``. ``/omfattning`` carries the full
+    ``studyProgramme.*`` payload that the per-section chunker expands into
+    ~25 small chunks, so it comes right after the base term page. Year
+    pages follow with their concrete Valvillkor data. ``/genomforande``
+    embeds the same ``studyProgramme`` object as ``/omfattning`` and is
+    placed late as a defensive fallback only.
+    """
     path = urlsplit(_canonicalize(url)).path
     m = _PROGRAM_TERM_RE.fullmatch(path)
     if not m:
         return [_canonicalize(url)]
     code, term, _year = m.group(1).upper(), m.group(2), m.group(3)
     base = _canonicalize(f"https://{_KTH_HOST}/student/kurser/program/{code}/{term}")
+    primary_sidebar = ("omfattning",)
+    other_sidebar = tuple(slug for slug in _PROGRAM_SIDEBAR_SLUGS if slug not in primary_sidebar)
     out: list[str] = [base]
+    out.extend([f"{base}/{slug}" for slug in primary_sidebar])
     out.extend([f"{base}/arskurs{n}" for n in range(1, 6)])
-    out.extend([f"{base}/{slug}" for slug in _PROGRAM_SIDEBAR_SLUGS])
+    out.extend([f"{base}/{slug}" for slug in other_sidebar])
     return _dedupe_urls(out)
 
 
@@ -1789,25 +2172,42 @@ def maybe_fetch_dynamic_web(
             now = int(time.time())
             cache.put(CachedPage(url=final_url, title=title, content=content, fetched_at=now))
             log.info("dynamic-web: cached %s", final_url)
-            source_urls.append(final_url)
-            section = _program_page_section_label(final_url)
-            chunks.append(
-                RetrievedChunk(
-                    chunk_id=f"web:{final_url}",
-                    text=content,
-                    rel_source=final_url,
-                    doc_title=title,
-                    doc_type="html",
-                    language="sv",
-                    section_path=section,
-                    chunk_index=0,
-                    chroma_distance=0.0,
-                    rerank_score=3.5,
-                    source_url=final_url,
-                    fetched_at=now,
-                    is_stale=False,
+            # Programme pages: prefer the per-section structured chunker so
+            # studyProgramme.* fields and per-year Valvillkor buckets each
+            # become individually-retrievable chunks instead of one 36KB blob.
+            structured: list[RetrievedChunk] = []
+            if "/student/kurser/program/" in final_url:
+                structured = _studyplan_chunks_from_html(
+                    html, final_url=final_url, fetched_at=now, lang="sv"
                 )
-            )
+            if structured:
+                source_urls.append(final_url)
+                chunks.extend(structured)
+                log.info(
+                    "dynamic-web: emitted %d structured chunks from %s",
+                    len(structured),
+                    final_url,
+                )
+            else:
+                source_urls.append(final_url)
+                section = _program_page_section_label(final_url)
+                chunks.append(
+                    RetrievedChunk(
+                        chunk_id=f"web:{final_url}",
+                        text=content,
+                        rel_source=final_url,
+                        doc_title=title,
+                        doc_type="html",
+                        language="sv",
+                        section_path=section,
+                        chunk_index=0,
+                        chroma_distance=0.0,
+                        rerank_score=3.5,
+                        source_url=final_url,
+                        fetched_at=now,
+                        is_stale=False,
+                    )
+                )
             if "/student/kurser/program/" in final_url:
                 for u in _program_links(html, final_url):
                     if len(queue) + len(visited) >= max_pages:
@@ -1833,6 +2233,11 @@ def maybe_fetch_dynamic_web(
             used_stale = True
             stale_days = max(stale_days, age)
             log.info("dynamic-web: using cached page %s (age=%sd)", cached.url, age)
+            # Stale-cache content is text-only (HTML wasn't preserved), so we
+            # can't re-derive structured chunks here. Surface the cached body
+            # as a single chunk and rely on the rerank score gradient (2.5 vs
+            # the 3.5 used by structured chunks) so fresh structured content
+            # outranks stale dumps when both are present.
             source_urls.append(cached.url)
             section = _program_page_section_label(cached.url)
             chunks.append(

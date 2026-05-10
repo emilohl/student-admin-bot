@@ -19,6 +19,8 @@ import sys
 from contextlib import contextmanager
 from typing import Any
 
+from pathlib import Path
+
 from student_bot.bot import course_resolver, web_retrieval
 from student_bot.bot.course_resolver import (
     _candidate_phrase,
@@ -28,16 +30,21 @@ from student_bot.bot.course_resolver import (
     resolve_course_intent,
 )
 from student_bot.bot.memory import ConversationMemory
+from student_bot.bot.study_plan_atlas import get_atlas
 from student_bot.bot.web_retrieval import (
     _alias_score,
     _extract_program_candidates,
     _level_prior_from_question,
     _program_level,
+    _programme_term_bundle_urls,
     _resolve_multi_program_candidates,
+    _studyplan_chunks_from_html,
     is_multi_program_clarification_assistant_message,
     merge_programme_clarification_followup,
 )
 from student_bot.config import get_config
+
+_FIXTURES = Path(__file__).parent / "fixtures"
 
 _FAIL = 0
 
@@ -350,6 +357,131 @@ def section_memory() -> None:
     _check("clear drops the slot", mem.get_program_code("u", "t") is None)
 
 
+# -----------------------------------------------------------------------------
+# Section 8: study-plan atlas + structured chunker (per-section coverage)
+# -----------------------------------------------------------------------------
+
+
+def section_studyplan_chunks() -> None:
+    print("\n[study-plan atlas + chunker]")
+    atlas = get_atlas()
+    _check("atlas loaded with topics", len(atlas.topics) > 0, str(len(atlas.topics)))
+    _check(
+        "atlas: arskursinformationAr4 -> Valbara masterprogram",
+        atlas.label_for_field("arskursinformationAr4", "sv") == "Valbara masterprogram",
+    )
+    _check(
+        "atlas: utbildningensupplagg -> Utbildningens upplägg (primary)",
+        atlas.label_for_field("utbildningensupplagg", "sv") == "Utbildningens upplägg",
+    )
+    _check(
+        "atlas: utlandsstudier -> Utbytesstudier",
+        atlas.label_for_field("utlandsstudier", "sv") == "Utbytesstudier",
+    )
+
+    # Bundle reorder: /omfattning must come before any /arskursN.
+    bundle = _programme_term_bundle_urls(
+        "https://www.kth.se/student/kurser/program/CTFYS/20242/arskurs2"
+    )
+    omf_idx = next(i for i, u in enumerate(bundle) if u.endswith("/omfattning"))
+    first_year_idx = next(i for i, u in enumerate(bundle) if "/arskurs" in u)
+    _check(
+        "bundle order: /omfattning before /arskursN",
+        omf_idx < first_year_idx,
+        f"omf_idx={omf_idx} first_year_idx={first_year_idx}",
+    )
+
+    # CTFYS /omfattning fixture: master-program list comes from arskursinformationAr4.
+    fix = _FIXTURES / "ctfys_omfattning.html"
+    if not fix.exists():
+        _check("CTFYS fixture present", False, f"missing {fix}")
+        return
+    html = fix.read_text(encoding="utf-8")
+    chunks = _studyplan_chunks_from_html(
+        html,
+        final_url="https://www.kth.se/student/kurser/program/CTFYS/20242/omfattning",
+        fetched_at=0,
+    )
+    _check("CTFYS /omfattning produces chunks", len(chunks) > 0, str(len(chunks)))
+
+    master_chunks = [c for c in chunks if "Valbara masterprogram" in c.section_path]
+    _check(
+        "CTFYS: at least one 'Valbara masterprogram' chunk",
+        len(master_chunks) >= 1,
+        f"got {len(master_chunks)}",
+    )
+    arskursinfo4 = [c for c in master_chunks if "arskursinformationAr4" in c.rel_source]
+    _check(
+        "CTFYS: arskursinformationAr4 chunk lists actual master names",
+        bool(arskursinfo4)
+        and any("matematik" in c.text.lower() and "fysik" in c.text.lower() for c in arskursinfo4),
+        f"hits={[c.text[:80] for c in arskursinfo4]}",
+    )
+
+    # CINEK: master-program info lives in different fields. Atlas should
+    # still surface findable chunks even though arskursinformationAr4 is
+    # absent on this program.
+    fix2 = _FIXTURES / "cinek_omfattning.html"
+    if fix2.exists():
+        html2 = fix2.read_text(encoding="utf-8")
+        chunks2 = _studyplan_chunks_from_html(
+            html2,
+            final_url="https://www.kth.se/student/kurser/program/CINEK/20242/omfattning",
+            fetched_at=0,
+        )
+        _check("CINEK /omfattning produces chunks", len(chunks2) > 0, str(len(chunks2)))
+        cinek_topics = {c.section_path.split(" (")[0] for c in chunks2}
+        _check(
+            "CINEK: 'Valbara masterprogram' surfaces (via specialisations)",
+            "Valbara masterprogram" in cinek_topics,
+            f"topics={sorted(cinek_topics)[:8]}",
+        )
+        _check(
+            "CINEK: 'Utbildningens upplägg' surfaces",
+            "Utbildningens upplägg" in cinek_topics,
+            f"topics={sorted(cinek_topics)[:8]}",
+        )
+
+    # Year-page chunker: each non-empty Valvillkor bucket = one chunk.
+    fix3 = _FIXTURES / "ctfys_arskurs4.html"
+    if fix3.exists():
+        html3 = fix3.read_text(encoding="utf-8")
+        chunks3 = _studyplan_chunks_from_html(
+            html3,
+            final_url="https://www.kth.se/student/kurser/program/CTFYS/20242/arskurs4",
+            fetched_at=0,
+        )
+        # CTFYS year 4 is empty (master phase), but the chunker shouldn't crash.
+        _check("CTFYS arskurs4 chunker runs without error", isinstance(chunks3, list))
+
+    # CINEK year 4 is empty on the civilingenjör track (master phase). Year 1
+    # ships as a single HTML string (not a structured list), so the chunker
+    # falls back to a single year-level chunk. Years 2+ on CINEK use the
+    # structured list shape and emit per-Valvillkor bucket chunks.
+    fix4 = _FIXTURES / "cinek_arskurs1.html"
+    if fix4.exists():
+        html4 = fix4.read_text(encoding="utf-8")
+        chunks4 = _studyplan_chunks_from_html(
+            html4,
+            final_url="https://www.kth.se/student/kurser/program/CINEK/20242/arskurs1",
+            fetched_at=0,
+        )
+        year_chunks = [c for c in chunks4 if c.section_path.startswith("Årskurs 1")]
+        _check(
+            "CINEK arskurs1 (HTML-string shape): emits >=1 year-level chunk",
+            len(year_chunks) >= 1,
+            f"got {len(year_chunks)}; section_paths={[c.section_path for c in chunks4][:5]}",
+        )
+        _check(
+            "CINEK arskurs1: chunk text mentions Obligatoriska kurser",
+            any(
+                "obligatoriska" in c.text.lower() or "kurskod" in c.text.lower()
+                for c in year_chunks
+            ),
+            f"texts={[c.text[:60] for c in year_chunks]}",
+        )
+
+
 def main() -> int:
     print("Program / course disambiguation tests (offline)")
     section_alias_score()
@@ -359,6 +491,7 @@ def main() -> int:
     section_clarification_followup()
     section_course_resolver()
     section_memory()
+    section_studyplan_chunks()
     print(f"\n{('FAILED ' + str(_FAIL)) if _FAIL else 'OK'} — failures={_FAIL}")
     return 1 if _FAIL else 0
 
