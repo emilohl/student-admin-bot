@@ -305,10 +305,27 @@ class LogDB:
 
     # --- analytics helpers ---
 
-    def stats_by_topic(self, since_ts: int = 0) -> list[dict]:
+    @staticmethod
+    def _channel_clause(channel: str | None) -> tuple[str, tuple]:
+        """Return (sql_fragment, params) for filtering qa_log by channel.
+
+        channel: None or 'all' → no filter; 'web' → channel_type = 'W';
+        'mm' → channel_type != 'W' (Mattermost rows use D/O/P/G/...).
+        Fragment is empty or starts with ' AND '.
+        """
+        if channel in (None, "all"):
+            return "", ()
+        if channel == "web":
+            return " AND q.channel_type = ?", ("W",)
+        if channel == "mm":
+            return " AND q.channel_type != ?", ("W",)
+        raise ValueError(f"unknown channel filter: {channel!r}")
+
+    def stats_by_topic(self, since_ts: int = 0, channel: str | None = None) -> list[dict]:
+        ch_sql, ch_params = self._channel_clause(channel)
         with self._lock, self._connect() as conn:
             rows = conn.execute(
-                """
+                f"""
                 SELECT
                     COALESCE(q.topic, 'unclassified') AS topic,
                     COUNT(*) AS n,
@@ -319,11 +336,11 @@ class LogDB:
                     COUNT(DISTINCT f.id) AS feedback_count
                 FROM qa_log q
                 LEFT JOIN feedback f ON f.qa_id = q.id
-                WHERE q.ts >= ?
+                WHERE q.ts >= ?{ch_sql}
                 GROUP BY topic
                 ORDER BY n DESC
                 """,
-                (since_ts,),
+                (since_ts, *ch_params),
             ).fetchall()
         return [
             {
@@ -338,22 +355,30 @@ class LogDB:
             for r in rows
         ]
 
-    def overall_counts(self, since_ts: int = 0) -> dict:
+    def overall_counts(self, since_ts: int = 0, channel: str | None = None) -> dict:
+        ch_sql, ch_params = self._channel_clause(channel)
+        # `q.` alias is required by _channel_clause but the inner query has no
+        # join, so we alias the table.
         with self._lock, self._connect() as conn:
             r = conn.execute(
-                """
+                f"""
                 SELECT
                     COUNT(*),
                     SUM(CASE WHEN gate_pass = 1 THEN 1 ELSE 0 END),
                     AVG(latency_ms)
-                FROM qa_log WHERE ts >= ?
+                FROM qa_log q WHERE q.ts >= ?{ch_sql}
                 """,
-                (since_ts,),
+                (since_ts, *ch_params),
             ).fetchone()
-            anon = conn.execute(
-                "SELECT COALESCE(SUM(n), 0) FROM anon_counter WHERE bucket_ts >= ?",
-                (since_ts,),
-            ).fetchone()[0]
+            # anon_counter has no channel column — only show its total when
+            # the user is viewing unfiltered stats.
+            if channel in (None, "all"):
+                anon = conn.execute(
+                    "SELECT COALESCE(SUM(n), 0) FROM anon_counter WHERE bucket_ts >= ?",
+                    (since_ts,),
+                ).fetchone()[0]
+            else:
+                anon = 0
         return {
             "logged": int(r[0] or 0),
             "answered": int(r[1] or 0),
@@ -361,19 +386,26 @@ class LogDB:
             "anon": int(anon),
         }
 
-    def series_buckets(self, since_ts: int, bucket_seconds: int) -> list[dict]:
+    def series_buckets(
+        self,
+        since_ts: int,
+        bucket_seconds: int,
+        channel: str | None = None,
+    ) -> list[dict]:
         """Group qa_log into fixed-width time buckets for the stats page chart.
 
         Returns one dict per bucket present in the window, sorted ascending by
         timestamp. Buckets with zero rows are omitted; the front-end fills gaps.
         Token columns coalesce NULL → 0 so old (pre-migration) rows count as
-        zero-token rather than breaking the SUM.
+        zero-token rather than breaking the SUM. `channel` filters to web-only
+        or Mattermost-only rows.
         """
         if bucket_seconds <= 0:
             raise ValueError("bucket_seconds must be positive")
+        ch_sql, ch_params = self._channel_clause(channel)
         with self._lock, self._connect() as conn:
             rows = conn.execute(
-                """
+                f"""
                 SELECT
                     (q.ts / ?) * ?                                AS bucket_ts,
                     COUNT(*)                                      AS n,
@@ -384,11 +416,11 @@ class LogDB:
                     SUM(CASE WHEN f.sentiment = 'negative' THEN 1 ELSE 0 END) AS thumbs_down
                 FROM qa_log q
                 LEFT JOIN feedback f ON f.qa_id = q.id
-                WHERE q.ts >= ?
+                WHERE q.ts >= ?{ch_sql}
                 GROUP BY bucket_ts
                 ORDER BY bucket_ts ASC
                 """,
-                (bucket_seconds, bucket_seconds, since_ts),
+                (bucket_seconds, bucket_seconds, since_ts, *ch_params),
             ).fetchall()
         return [
             {

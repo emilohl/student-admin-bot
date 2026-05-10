@@ -1,3 +1,23 @@
+/* Figtree variable font (weights 400..700), vendored under /static/vendor/
+   to avoid an external CDN dependency. Two subsets are loaded via
+   unicode-range so the browser only fetches latin-ext when needed. */
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("vendor/figtree-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("vendor/figtree-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 :root {
   /* KTH brand palette (Grafisk manual v1.2 via kth-document.cls). */
   --kth-white: #FFFFFF;
@@ -281,4 +301,45 @@ html[lang="en"] .lang-sv { display: none; }
 .stats-logy input { vertical-align: middle; margin-right: 4px; }
 
 .stats-charts canvas { max-width: 100%; }
+.stats-chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.stats-chart-head h3 { margin: 1em 0 0.4em; }
+.stats-export {
+  background: var(--card);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.stats-export:hover { color: var(--fg); border-color: var(--accent); }
 .stats-users-summary { color: var(--muted); }
+
+.stats-channel {
+  display: inline-flex;
+  gap: 0;
+  margin: 4px 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.stats-channel-btn {
+  padding: 4px 14px;
+  font: inherit;
+  color: var(--fg);
+  background: var(--card);
+  text-decoration: none;
+  border-right: 1px solid var(--border);
+}
+.stats-channel-btn:last-child { border-right: none; }
+.stats-channel-btn:hover { background: var(--kth-sand); }
+.stats-channel-btn.active {
+  background: var(--accent);
+  color: var(--kth-white);
+}

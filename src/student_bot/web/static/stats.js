@@ -4,6 +4,34 @@
 (function () {
   if (typeof Chart === "undefined") return;
 
+  // Paint a white background under everything Chart.js draws so the
+  // exported PNG captures axis labels and ticks against a solid backdrop
+  // (the live page already shows white via the .card, so this is invisible
+  // in the UI). Letting Chart.js handle the fill — instead of compositing
+  // the canvas afterwards — avoids HiDPI / responsive-sizing edge cases
+  // where the post-hoc copy clipped tick labels.
+  // Match the page font and size up the chart text so axis labels and
+  // legend entries are easy to read in screenshots and live. The vendored
+  // Figtree @font-face in style.css is what the page uses; falling back to
+  // Arial keeps charts legible if the woff2 fails to load.
+  Chart.defaults.font.family = '"Figtree", Arial, sans-serif';
+  Chart.defaults.font.size = 14;
+  Chart.defaults.plugins.legend.labels.font = { size: 14 };
+  Chart.defaults.plugins.tooltip.bodyFont = { size: 14 };
+  Chart.defaults.plugins.tooltip.titleFont = { size: 14 };
+
+  Chart.register({
+    id: "white-bg",
+    beforeDraw: (chart) => {
+      const { ctx } = chart;
+      ctx.save();
+      ctx.globalCompositeOperation = "destination-over";
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, chart.width, chart.height);
+      ctx.restore();
+    },
+  });
+
   const STORE_RANGE = "stats.range";
   const STORE_LOGY = "stats.logy";
 
@@ -18,26 +46,53 @@
     ratio: "#000061",      // kth-navy
   };
 
+  // hex (#RRGGBB) → rgba(r,g,b,a). Used for fills so two overlapping
+  // filled curves stay visible — opaque fills hide the smaller series.
+  function withAlpha(hex, alpha) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+    if (!m) return hex;
+    const v = parseInt(m[1], 16);
+    return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${alpha})`;
+  }
+
+  // Channel filter is owned by the server (URL query param). The page
+  // exposes it via [data-channel] on the stats card so the chart endpoint
+  // sees the same view as the server-rendered tables.
+  function activeChannel() {
+    const card = document.querySelector(".stats-card[data-channel]");
+    const v = card && card.dataset.channel;
+    return v === "web" || v === "mm" ? v : "all";
+  }
+
   const seriesUrl = (range) => {
     const base = location.pathname.replace(/\/$/, "");
-    return `${base}/series?range=${encodeURIComponent(range)}`;
+    const ch = activeChannel();
+    const params = new URLSearchParams({ range });
+    if (ch !== "all") params.set("ch", ch);
+    return `${base}/series?${params.toString()}`;
   };
 
+  const RANGES = ["24h", "72h", "14d", "90d"];
   function activeRange() {
     const v = localStorage.getItem(STORE_RANGE);
-    return v === "14d" || v === "90d" ? v : "72h";
+    return RANGES.includes(v) ? v : "72h";
   }
   function logYEnabled() {
     return localStorage.getItem(STORE_LOGY) === "1";
   }
 
   // Time format for the x-axis tick labels — bucket size implied by the range.
+  // Buckets are dense (gap-filled by the server) so even spacing on the
+  // category axis already represents real time.
   function tickFormatter(range) {
-    const fmt72 = new Intl.DateTimeFormat(undefined, { hour: "2-digit", day: "2-digit", month: "short" });
+    const fmtTime = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+    const fmtDayHour = new Intl.DateTimeFormat(undefined, { day: "2-digit", month: "short", hour: "2-digit", hourCycle: "h23" });
     const fmtDay = new Intl.DateTimeFormat(undefined, { day: "2-digit", month: "short" });
     return (value) => {
       const d = new Date(value);
-      return range === "72h" ? fmt72.format(d) : fmtDay.format(d);
+      if (range === "24h") return fmtTime.format(d);
+      if (range === "72h") return fmtDayHour.format(d);
+      return fmtDay.format(d);
     };
   }
 
@@ -58,6 +113,7 @@
           ticks: {
             autoSkip: true,
             maxRotation: 0,
+            maxTicksLimit: 12,
             callback: function (val) {
               return tickFormatter(range)(this.getLabelForValue(val));
             },
@@ -77,6 +133,21 @@
     };
   }
 
+  // Render legend swatches as a thin colored bar (matching the line marks
+  // on the chart) instead of the default filled rectangle. Chart.js's
+  // built-in pointStyle:"line" renders too thinly to read as a line, so we
+  // shrink the rectangle's height to ~chart line thickness instead.
+  function lineLegendOpts(opts) {
+    opts.plugins = opts.plugins || {};
+    opts.plugins.legend = opts.plugins.legend || {};
+    opts.plugins.legend.labels = {
+      ...(opts.plugins.legend.labels || {}),
+      boxWidth: 28,
+      boxHeight: 4,
+    };
+    return opts;
+  }
+
   function tokensOpts(range, logY) {
     const base = commonOpts(range, logY);
     base.scales.y.position = "left";
@@ -87,7 +158,7 @@
       grid: { drawOnChartArea: false },
       ticks: { precision: 0 },
     };
-    return base;
+    return lineLegendOpts(base);
   }
 
   function feedbackOpts(range) {
@@ -97,7 +168,7 @@
     base.scales.y.ticks = {
       callback: (v) => `${Math.round(v * 100)}%`,
     };
-    return base;
+    return lineLegendOpts(base);
   }
 
   function buildLabels(buckets) {
@@ -106,6 +177,7 @@
 
   function makeRequestsData(buckets) {
     const labels = buildLabels(buckets);
+    const FILL_ALPHA = 0.35;
     return {
       labels,
       datasets: [
@@ -113,7 +185,7 @@
           label: T("stats.chart.requests.answered"),
           data: buckets.map((b) => b.n_answered),
           borderColor: CHART_COLORS.answered,
-          backgroundColor: CHART_COLORS.answered,
+          backgroundColor: withAlpha(CHART_COLORS.answered, FILL_ALPHA),
           tension: 0.25,
           stack: "req",
           fill: true,
@@ -122,7 +194,7 @@
           label: T("stats.chart.requests.refused"),
           data: buckets.map((b) => Math.max(0, b.n - b.n_answered)),
           borderColor: CHART_COLORS.refused,
-          backgroundColor: CHART_COLORS.refused,
+          backgroundColor: withAlpha(CHART_COLORS.refused, FILL_ALPHA),
           tension: 0.25,
           stack: "req",
           fill: true,
@@ -236,6 +308,53 @@
     refresh();
   }
 
+  async function exportChartPng(chart, filename) {
+    if (!chart) return;
+    // Wait until the page's web fonts are ready before snapshotting, so
+    // the export doesn't capture an Arial fallback on a cold render.
+    if (document.fonts && document.fonts.ready) {
+      try { await document.fonts.ready; } catch (_) { /* non-fatal */ }
+    }
+    // Chart.js's own serializer captures axes, tick labels, legend, and
+    // datasets at whatever resolution the canvas backing store is currently
+    // at. To get a high-res export (suitable for slides / posters) we
+    // temporarily crank the chart's devicePixelRatio so it re-rasters at
+    // ~3× display size, grab the PNG, then restore. With animation: false
+    // the resize is a single frame — invisible in practice.
+    const HIRES_DPR = 3;
+    const oldDpr = chart.options.devicePixelRatio;
+    chart.options.devicePixelRatio = HIRES_DPR;
+    let url;
+    try {
+      chart.resize();
+      url = chart.toBase64Image("image/png", 1);
+    } finally {
+      chart.options.devicePixelRatio = oldDpr;
+      chart.resize();
+    }
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  function exportFilename(chartKey) {
+    const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    return `student-bot-${chartKey}-${currentRange}-${activeChannel()}-${date}.png`;
+  }
+
+  function wireExportButtons() {
+    document.querySelectorAll("[data-export-chart]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const key = btn.dataset.exportChart;
+        if (!charts[key]) return;
+        exportChartPng(charts[key], exportFilename(key));
+      });
+    });
+  }
+
   function wireLogyToggle() {
     const cb = document.getElementById("stats-logy");
     if (!cb) return;
@@ -249,6 +368,7 @@
   function init() {
     wireRangeButtons();
     wireLogyToggle();
+    wireExportButtons();
     fetchAndRender(currentRange);
     document.addEventListener("i18n:langchange", () => {
       if (lastData) render(lastData.buckets || [], currentRange);
