@@ -107,9 +107,17 @@ _GENERIC_ALIAS_TOKENS = {
     "programme",
     "utbildning",
     "utbildningsplan",
+    # Both ö- and o-forms: the alias file uses "civilingenjör…" (with ö) but
+    # earlier versions of this blocklist only had the ASCII spelling, so the
+    # generic prefix wasn't being filtered out of real aliases — which
+    # silently inflated `_alias_strong_tokens` denominators and skewed
+    # `_alias_score` against the longer (more specific) civilingenjör aliases.
     "civilingenjorsutbildning",
+    "civilingenjörsutbildning",
     "civilingenjorsprogram",
+    "civilingenjörsprogram",
     "civilingenjor",
+    "civilingenjör",
     "kth",
     "the",
     "and",
@@ -570,11 +578,38 @@ def _alias_strong_tokens(alias: str) -> set[str]:
     return {t for t in tokens if len(t) >= 4 and t not in _GENERIC_ALIAS_TOKENS}
 
 
-def _alias_score(alias: str, qn: str, q_tokens: set[str]) -> tuple[float, bool]:
+def _alias_token_frequency(aliases: dict[str, str]) -> dict[str, int]:
+    """How many distinct aliases each strong token appears in.
+
+    Used by the historical-program rescue logic to require at least one
+    *rare* matched token before keeping a discontinued candidate in
+    disambiguation. A common subject token like `matematik` (present in many
+    aliases) shouldn't be enough on its own to rescue an extinct master from
+    the recency drop — but a rare token like `fusionsenergi` (1 alias)
+    should still rescue TFEPM when the user types it explicitly.
+    """
+    freq: dict[str, int] = {}
+    for alias in aliases:
+        for t in _alias_strong_tokens(alias):
+            freq[t] = freq.get(t, 0) + 1
+    return freq
+
+
+def _alias_score(
+    alias: str, qn: str, q_tokens: set[str], q_strong_tokens: set[str]
+) -> tuple[float, bool]:
     """Score a normalised alias against a normalised question.
 
-    Score = fraction of the alias's discriminative ('strong') tokens present
-    in the question, plus 0.5 if the full alias phrase appears verbatim.
+    Combines two coverages so an alias has to match a meaningful fraction of
+    *both* sides — the alias's strong tokens AND the user's strong tokens —
+    before it scores well. Without the query-side factor, a one-token alias
+    like "masterprogram, matematik" gets coverage=1.0 from any query that
+    mentions "matematik", overshadowing the more specific match for queries
+    like "teknisk matematik" → "civilingenjörsutbildning i teknisk matematik".
+
+    Score = (alias_coverage * query_coverage) + 0.5 if the full alias phrase
+    appears verbatim in the question.
+
     Returns (score, verbatim_phrase_present). Score 0 = no match.
     """
     if not alias:
@@ -587,9 +622,13 @@ def _alias_score(alias: str, qn: str, q_tokens: set[str]) -> tuple[float, bool]:
     inter = strong & q_tokens
     if not inter:
         return 0.0, False
-    coverage = len(inter) / len(strong)
+    alias_coverage = len(inter) / len(strong)
+    # Query-side coverage. If the user typed no strong tokens at all (very
+    # short query like "ctfys" with only the code), default to 1.0 so we
+    # don't penalise short verbatim-code queries that route through here.
+    query_coverage = len(inter) / len(q_strong_tokens) if q_strong_tokens else 1.0
     verbatim = alias in qn
-    return coverage + (0.5 if verbatim else 0.0), verbatim
+    return alias_coverage * query_coverage + (0.5 if verbatim else 0.0), verbatim
 
 
 def _program_level(code: str) -> str:
@@ -716,6 +755,7 @@ def _extract_program_candidates(
     }
     qn = _norm(question)
     q_tokens = set(re.findall(r"[a-z0-9åäö]+", qn))
+    q_strong_tokens = {t for t in q_tokens if len(t) >= 4 and t not in _GENERIC_ALIAS_TOKENS}
 
     verbatim_codes: list[str] = []
     for code in _PROGRAM_CODE_RE.findall(question):
@@ -736,7 +776,7 @@ def _extract_program_candidates(
         # verbatim-codes pass above handles those.
         if alias and alias.upper() == code:
             continue
-        score, verbatim = _alias_score(alias, qn, q_tokens)
+        score, verbatim = _alias_score(alias, qn, q_tokens, q_strong_tokens)
         if score < min_score:
             continue
         prev = by_code.get(code)
@@ -750,20 +790,39 @@ def _extract_program_candidates(
         elif verbatim and not prev.verbatim:
             prev.verbatim = True
 
-    if not by_code:
-        # Backstop: curated colloquial names ("teknisk fysik" -> [CTFYS, TTFYM])
-        nicknames = _load_program_nicknames(cfg)
-        for phrase, codes in nicknames.items():
-            if phrase and phrase in qn:
-                for c in codes:
-                    if c not in by_code:
-                        by_code[c] = _ProgramCandidate(
-                            code=c,
-                            score=0.8,
-                            matched_alias=f"<nickname:{phrase}>",
-                            verbatim=False,
-                        )
-                break  # one nickname phrase is enough; avoid stacking entries
+    # Curated colloquial-name override. If a phrase from
+    # `data/program_nicknames.json` appears in the query, treat its candidate
+    # codes as authoritative: keep verbatim-typed codes, keep the nickname
+    # codes themselves (boosting them if they were below threshold), and drop
+    # alias-only matches that aren't in the curated set. Lets the operator
+    # pin a high-traffic colloquial phrase like "teknisk matematik" to CTMAT
+    # without having to re-derive it via alias scoring.
+    nicknames = _load_program_nicknames(cfg)
+    nickname_codes: list[str] = []
+    matched_phrase = ""
+    for phrase, codes in nicknames.items():
+        if phrase and phrase in qn:
+            nickname_codes = [c for c in codes if c not in nickname_codes]
+            matched_phrase = phrase
+            break
+    if nickname_codes:
+        verbatim_set = set(verbatim_codes)
+        kept: dict[str, _ProgramCandidate] = {}
+        for code in nickname_codes:
+            existing = by_code.get(code)
+            if existing is not None:
+                kept[code] = existing
+            else:
+                kept[code] = _ProgramCandidate(
+                    code=code,
+                    score=0.8,
+                    matched_alias=f"<nickname:{matched_phrase}>",
+                    verbatim=False,
+                )
+        for code, cand in by_code.items():
+            if code in verbatim_set:
+                kept.setdefault(code, cand)
+        by_code = kept
 
     if not by_code and program_prior and re.fullmatch(r"[A-Z]{5}", program_prior):
         # Conversation prior: use the last resolved program when the current
@@ -794,6 +853,47 @@ def _extract_program_candidates(
                 c for c in candidates if c.verbatim and c.code not in {n.code for n in narrowed}
             ]
             candidates = narrowed + verbatim_extras
+
+    # Recency penalty: programmes whose most recent intake is older than
+    # `historical_program_years` (default 8) get their score halved and may
+    # fall below the alias threshold. Skipped for verbatim-typed codes (the
+    # user explicitly named it) and for nickname-listed codes (the operator
+    # explicitly chose to keep them in the candidate pool). Uses the cached
+    # term list (6h TTL) — only fires for candidates that already survived
+    # alias scoring, so it doesn't slow down the typical single-candidate
+    # path. Last-resort safety: any exception keeps the candidate in.
+    if len(candidates) > 1:
+        cutoff_year = _current_calendar_year() - cfg.dynamic_web.historical_program_years
+        nickname_set = set(nickname_codes)
+        kept_after_recency: list[_ProgramCandidate] = []
+        for cand in candidates:
+            if cand.verbatim or cand.code in nickname_set:
+                kept_after_recency.append(cand)
+                continue
+            try:
+                terms = _cached_terms_for_code(cfg, cand.code)
+            except Exception:
+                kept_after_recency.append(cand)
+                continue
+            bounds = _intake_year_bounds_from_terms(terms)
+            if bounds is None:
+                kept_after_recency.append(cand)
+                continue
+            if bounds[1] < cutoff_year:
+                cand.score *= 0.5
+                if cand.score < min_score:
+                    log.info(
+                        "dynamic-web: dropping %s after recency penalty "
+                        "(last intake %d < cutoff %d, score %.2f < min %.2f)",
+                        cand.code,
+                        bounds[1],
+                        cutoff_year,
+                        cand.score,
+                        min_score,
+                    )
+                    continue
+            kept_after_recency.append(cand)
+        candidates = kept_after_recency
 
     candidates.sort(key=lambda c: (-c.score, c.code))
     return candidates, verbatim_codes
@@ -2018,19 +2118,30 @@ def _resolve_multi_program_candidates(
     has_current = any(is_current(t) for _, t, _ in candidates)
 
     verbatim_typed = set(_PROGRAM_CODE_RE.findall(question))
+    token_freq = _alias_token_frequency(aliases)
+    rare_token_threshold = cfg.dynamic_web.discriminator_rare_token_max_aliases
 
     def discriminator_present(code: str) -> bool:
-        """User typed at least one of the alias's discriminative tokens.
+        """User typed enough discriminative tokens to override the
+        historical-program suppression.
 
-        Used to override the historical-program suppression: e.g. typing
-        'fusionsenergi' keeps TFEPM in the disambiguation list even though
-        its last intake is older than the cutoff.
+        Requires: full match of an alias's strong-token set AND at least one
+        of those matched tokens being *rare* across the alias corpus
+        (appearing in ≤ `discriminator_rare_token_max_aliases` aliases). The
+        rarity gate stops a discontinued programme from being rescued by a
+        query that only mentions a common subject term like `matematik` —
+        but `fusionsenergi` (unique to TFEPM) still rescues that one.
         """
         for alias, c in aliases.items():
             if c != code or not alias:
                 continue
             strong = _alias_strong_tokens(alias)
-            if strong and len(strong & q_tokens) == len(strong):
+            if not strong:
+                continue
+            matched = strong & q_tokens
+            if len(matched) != len(strong):
+                continue
+            if any(token_freq.get(t, 0) <= rare_token_threshold for t in matched):
                 return True
         return False
 

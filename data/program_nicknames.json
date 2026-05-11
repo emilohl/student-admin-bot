@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "_comment": "Curated colloquial program names. Each entry maps a phrase to the candidate program codes a current student could plausibly mean. Used as a backstop when alias scoring in web_retrieval.py fails to narrow to a single code. Add entries when conversation logs surface a recurring informal term that the official KTH alias list cannot resolve cleanly.",
+  "_comment": "Curated colloquial program names. Each entry maps a phrase to the candidate program codes a current student could plausibly mean. When a phrase appears in the query, its candidate codes override alias scoring: any alias-only matches outside the curated set are dropped (verbatim-typed codes are kept). Add entries when conversation logs surface a recurring informal term that alias scoring can't resolve cleanly.",
   "entries": {
     "teknisk fysik": {
       "candidates": ["CTFYS", "TTFYM"],
@@ -11,6 +11,16 @@
       "candidates": ["CTFYS", "TTFYM"],
       "lang": "en",
       "note": "Usually the 5-year civilingenjör (CTFYS) or the 2-year master (TTFYM). TFEPM (nuclear fusion science and engineering physics) was discontinued in 2010."
+    },
+    "teknisk matematik": {
+      "candidates": ["CTMAT"],
+      "lang": "sv",
+      "note": "Civilingenjörsprogrammet i teknisk matematik (CTMAT). Utan denna override drog alias-scoring in TMTHM (masterprogram, matematik — sista intag 2012) som spurious candidate, eftersom dess enda strong-token \"matematik\" matchade fullt ut."
+    },
+    "engineering mathematics": {
+      "candidates": ["CTMAT"],
+      "lang": "en",
+      "note": "Civilingenjör programme in engineering mathematics (CTMAT)."
     }
   }
 }

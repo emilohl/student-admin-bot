@@ -180,6 +180,14 @@ class DynamicWebConfig(BaseModel):
     # Minimum alias score (coverage of discriminative tokens) required to
     # treat a program alias as a candidate match.
     alias_min_score: float = 0.6
+    # In `_resolve_multi_program_candidates`, a historical (older than
+    # historical_program_years) candidate is rescued only if the user's
+    # query contains all of an alias's strong tokens AND at least one of
+    # those tokens is *rare* — appearing in this many aliases or fewer
+    # across the whole alias set. Keeps common subject terms like
+    # `matematik` from trivially rescuing extinct masters; lets unique
+    # discriminators like `fusionsenergi` still rescue TFEPM.
+    discriminator_rare_token_max_aliases: int = 3
 
 
 class UrlIngestConfig(BaseModel):

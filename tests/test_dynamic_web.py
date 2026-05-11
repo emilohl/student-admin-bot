@@ -186,6 +186,8 @@ def test_extract_targets_does_not_match_generic_masterprogram_alias(monkeypatch)
             "civilingenjorsutbildning i teknisk fysik": "CTFYS",
         },
     )
+    # Isolate from curated nicknames so this test verifies alias scoring only.
+    monkeypatch.setattr(wr, "_load_program_nicknames", lambda _cfg: {})
     q = "Vad ar programkoden for masterprogrammet i teknisk fysik?"
     out = _extract_targets_with_cfg(q, cfg)
     assert "https://www.kth.se/student/kurser/program/CTFYS" in out
@@ -202,10 +204,128 @@ def test_extract_targets_prefers_multiword_program_alias_over_single_subject(mon
             "civilingenjorsutbildning i teknisk fysik": "CTFYS",
         },
     )
+    # Isolate from curated nicknames so this test verifies alias scoring only.
+    monkeypatch.setattr(wr, "_load_program_nicknames", lambda _cfg: {})
     q = "Vad har masterprogrammet i teknisk fysik for programkod?"
     out = _extract_targets_with_cfg(q, cfg)
     assert "https://www.kth.se/student/kurser/program/CTFYS" in out
     assert "https://www.kth.se/student/kurser/program/FYSIK" not in out
+
+
+def test_extract_targets_teknisk_matematik_drops_master_math_via_query_coverage(monkeypatch):
+    """Regression for #39 — query 'teknisk matematik' must not pull a master
+    program that only matches 'matematik' through the alias scoring asymmetry.
+
+    The civilingenjör alias has both 'teknisk' and 'matematik' as strong
+    tokens (CTMAT); the master-math alias has only 'matematik'. Pre-fix, both
+    scored 1.0 by alias-side coverage alone. With the query-coverage factor
+    now multiplied in, the master alias drops to 0.5 (1 of 2 query strong
+    tokens explained) — below the 0.6 threshold — and never reaches
+    disambiguation."""
+    cfg = get_config()
+    monkeypatch.setattr(
+        wr,
+        "_get_program_aliases",
+        lambda _cfg: {
+            "civilingenjörsutbildning i teknisk matematik": "CTMAT",
+            "masterprogram, matematik": "TMTHM",
+        },
+    )
+    monkeypatch.setattr(wr, "_load_program_nicknames", lambda _cfg: {})
+    out = _extract_targets_with_cfg("utbildningsplan för teknisk matematik", cfg)
+    assert "https://www.kth.se/student/kurser/program/CTMAT" in out
+    assert "https://www.kth.se/student/kurser/program/TMTHM" not in out
+
+
+def test_extract_targets_teknisk_matematik_nickname_override(monkeypatch):
+    """The curated nickname override in `data/program_nicknames.json` pins
+    'teknisk matematik' to CTMAT even when other math-flavoured aliases
+    happen to score above threshold."""
+    cfg = get_config()
+    monkeypatch.setattr(
+        wr,
+        "_get_program_aliases",
+        lambda _cfg: {
+            "civilingenjörsutbildning i teknisk matematik": "CTMAT",
+            "masterprogram, ingenjörstillämpad matematik": "TITMM",
+            # Add a same-token decoy so alias scoring alone would still surface
+            # other candidates.
+            "matematik och teknik": "FAKE1",
+        },
+    )
+    monkeypatch.setattr(
+        wr,
+        "_load_program_nicknames",
+        lambda _cfg: {"teknisk matematik": ["CTMAT"]},
+    )
+    out = _extract_targets_with_cfg("utbildningsplan för teknisk matematik", cfg)
+    assert "https://www.kth.se/student/kurser/program/CTMAT" in out
+    # Other math-flavoured candidates should not survive the nickname override.
+    assert "https://www.kth.se/student/kurser/program/TITMM" not in out
+    assert "https://www.kth.se/student/kurser/program/FAKE1" not in out
+
+
+def test_extract_targets_recency_penalty_drops_discontinued_program(monkeypatch):
+    """A historical program (no intake since 2012) gets its alias score
+    halved and falls below the 0.6 threshold, even when the alias scoring
+    alone would otherwise rank it equally with a current civilingenjör
+    candidate. Two aliases that both match the query's strong tokens fully:
+    only recency should distinguish them."""
+    cfg = get_config()
+    monkeypatch.setattr(
+        wr,
+        "_get_program_aliases",
+        lambda _cfg: {
+            "civilingenjörsutbildning i teknisk matematik": "CTMAT",
+            # Hypothetical alias that matches the query exactly the same way
+            # as the CTMAT alias — both have strong tokens {teknisk, matematik}
+            # and score 1.0 against "teknisk matematik". Without recency,
+            # this would force a disambiguation prompt.
+            "masterprogram i teknisk matematik": "TMTHM",
+        },
+    )
+    monkeypatch.setattr(wr, "_load_program_nicknames", lambda _cfg: {})
+    # Stub the term fetcher: CTMAT current, TMTHM last took students in 2012.
+    monkeypatch.setattr(
+        wr,
+        "_cached_terms_for_code",
+        lambda _cfg, code: {"CTMAT": ["20242"], "TMTHM": ["20122"]}.get(code, []),
+    )
+    out = _extract_targets_with_cfg("utbildningsplan för teknisk matematik", cfg)
+    assert "https://www.kth.se/student/kurser/program/CTMAT" in out
+    assert "https://www.kth.se/student/kurser/program/TMTHM" not in out
+
+
+def test_discriminator_rare_token_required_for_historical_rescue(monkeypatch):
+    """Historical-program rescue in disambiguation requires a *rare*
+    matched token (≤ 3 aliases). 'matematik' is common (4 aliases here) so
+    a discontinued master with only that token should NOT be rescued."""
+    cfg = get_config()
+    aliases = {
+        "civilingenjörsutbildning i teknisk matematik": "CTMAT",
+        "masterprogram, matematik": "TMTHM",
+        "masterprogram, ingenjörstillämpad matematik": "TITMM",
+        "masterprogram, tillämpad matematik och beräkningsmatematik": "TTMAM",
+        # 4 aliases all contain "matematik" → not rare → not a rescue token.
+    }
+    monkeypatch.setattr(wr, "_get_program_aliases", lambda _cfg: aliases)
+    # Stub terms: CTMAT current, TMTHM historical (last 2012).
+    monkeypatch.setattr(
+        wr,
+        "_cached_terms_for_code",
+        lambda _cfg, code: {"CTMAT": ["20242"], "TMTHM": ["20122"]}.get(code, []),
+    )
+    resolution = wr._resolve_multi_program_candidates(
+        cfg,
+        "teknisk matematik",
+        [
+            "https://www.kth.se/student/kurser/program/CTMAT",
+            "https://www.kth.se/student/kurser/program/TMTHM",
+        ],
+    )
+    # CTMAT current + TMTHM historical → without a rare discriminator,
+    # TMTHM is suppressed and the resolver returns just CTMAT.
+    assert resolution.resolved_code == "CTMAT"
 
 
 def test_build_doc_url_keeps_absolute_web_urls():
