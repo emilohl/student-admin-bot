@@ -17,6 +17,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import secrets
 import subprocess
 import threading
@@ -54,6 +55,24 @@ from student_bot.web.md_render import render_file
 
 
 log = logging.getLogger("student_bot.web")
+
+
+def _mask_secret(value: str, *, keep: int = 6) -> str:
+    """Return a log-safe rendering of a token-like secret.
+
+    Shows the first `keep` characters followed by an ellipsis when the value
+    is long enough to be a real secret. Operators can recognise *which*
+    token is configured (matching `.env`) without leaking enough to hijack
+    a session. Empty / short values are surfaced as `<unset>` /
+    `<short>` so an accidental log line still shows that something's wrong
+    without revealing the actual value.
+    """
+    if not value:
+        return "<unset>"
+    if len(value) <= keep:
+        return "<short>"
+    return f"{value[:keep]}…"
+
 
 WEB_PKG_DIR = Path(__file__).resolve().parent
 STATIC_DIR = WEB_PKG_DIR / "static"
@@ -1165,6 +1184,26 @@ def main(host: str | None, port: int | None, reload: bool):
 
         logging.getLogger("uvicorn.access").addFilter(_SuppressSystemLoadAccessLog())
 
+    # When a user follows the capability URL `?access=<WEB_ACCESS_TOKEN>`,
+    # uvicorn writes the full request line — including the token — to its
+    # access log. Mask the token so logs and log shipments can't be used to
+    # hijack a session. Applied unconditionally; there's no operator benefit
+    # to seeing the full token in the access log.
+    class _RedactAccessTokenAccessLog(logging.Filter):
+        _ACCESS_QS_RE = re.compile(r"(access=)[^&\s\"'\\]+")
+
+        def filter(self, record: logging.LogRecord) -> bool:
+            msg = record.getMessage()
+            redacted = self._ACCESS_QS_RE.sub(r"\1<redacted>", msg)
+            if redacted != msg:
+                # Replace msg+args so any later formatting doesn't reapply
+                # the original arguments (which would re-leak the token).
+                record.msg = redacted
+                record.args = ()
+            return True
+
+    logging.getLogger("uvicorn.access").addFilter(_RedactAccessTokenAccessLog())
+
     cfg = get_config()
     bind_host = host or cfg.web.bind_host
     bind_port = port or cfg.web.port
@@ -1183,7 +1222,12 @@ def main(host: str | None, port: int | None, reload: bool):
             )
             raise SystemExit(2)
         token = os.environ.get("WEB_ACCESS_TOKEN", "")
-        log.info("auth enabled. login URL: http://%s:%s/?access=%s", bind_host, bind_port, token)
+        log.info(
+            "auth enabled. login URL: http://%s:%s/?access=%s",
+            bind_host,
+            bind_port,
+            _mask_secret(token),
+        )
     else:
         log.info("auth disabled. binding to http://%s:%s", bind_host, bind_port)
         if bind_host != "127.0.0.1":
