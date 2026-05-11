@@ -142,14 +142,16 @@ composer.addEventListener("submit", async (e) => {
             firstToken = false;
             firstTokenAt = performance.now();
           }
+          const stick = nearBottom();
           botMsg.body.appendChild(document.createTextNode(data));
-          messages.scrollTop = messages.scrollHeight;
+          if (stick) messages.scrollTop = messages.scrollHeight;
         } else if (event === "jargon") {
           const prefixEl = botMsg.body.querySelector(".msg-prefix");
           if (prefixEl) {
+            const stick = nearBottom();
             prefixEl.appendChild(document.createTextNode(data));
+            if (stick) messages.scrollTop = messages.scrollHeight;
           }
-          messages.scrollTop = messages.scrollHeight;
         } else if (event === "thinking") {
           // Show "<bot> funderar…" beside the dots while the model is in
           // its <think>...</think> phase. Cleared on "end" or when the
@@ -191,7 +193,9 @@ composer.addEventListener("submit", async (e) => {
       finalMeta.client_ttft_ms = Math.max(0, Math.round(firstTokenAt - reqStartedAt));
       finalMeta.client_tps = tokEst / genSecs;
     }
+    const stick = nearBottom();
     decorateBot(botMsg, finalMeta);
+    if (stick) messages.scrollTop = messages.scrollHeight;
     if (perfEnabled) updatePerfPanel(finalMeta);
   }
 });
@@ -292,6 +296,16 @@ function parseSSE(block) {
     else if (line.startsWith("data:")) data += line.slice(5).replace(/^\s/, "") + "\n";
   }
   return { event, data: data.replace(/\n$/, "") };
+}
+
+// True if the message list is scrolled to (or within a small slop of) the
+// bottom. Streaming-time appends consult this before pinning the scroll so
+// the user can scroll up to read earlier parts of a long reply without each
+// new token yanking them back down. Evaluate BEFORE appending content —
+// once the new node is in the DOM, scrollHeight grows and the predicate
+// returns false even though the user was at the bottom a moment ago.
+function nearBottom() {
+  return messages.scrollHeight - messages.scrollTop - messages.clientHeight < 40;
 }
 
 function appendUser(text) {
