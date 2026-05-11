@@ -52,6 +52,13 @@ el("#start").addEventListener("click", () => {
 });
 
 el("#reset").addEventListener("click", async () => {
+  // Confirm before discarding a non-empty conversation. Skip the prompt
+  // when the thread is already empty (no work to lose).
+  if (state.thread.length) {
+    const msg = (window.t && window.t("chat.reset.confirm"))
+      || "Vill du börja om? Den nuvarande tråden raderas.";
+    if (!window.confirm(msg)) return;
+  }
   await fetch("api/reset", {
     method: "POST",
     credentials: "include",
@@ -61,7 +68,7 @@ el("#reset").addEventListener("click", async () => {
   messages.innerHTML = "";
   state.thread = [];
   refreshExportButton();
-  statusEl.textContent = window.t ? window.t("chat.newthread") : "ny tråd";
+  statusEl.textContent = window.t ? window.t("chat.newthread") : "tråden rensad";
 });
 
 el("#export").addEventListener("click", () => {
