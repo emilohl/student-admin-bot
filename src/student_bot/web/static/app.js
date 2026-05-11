@@ -884,6 +884,8 @@ function renderMarkdown(text) {
   // Small markdown subset used in chat:
   // - paragraphs + hard line breaks
   // - unordered + ordered lists
+  // - ATX headings (# .. ######)
+  // - horizontal rules (--- / *** / ___ on a line of their own)
   // - **bold**, _italic_, links
   //
   // Intentionally *not* a full markdown parser; keep deterministic and safe.
@@ -926,8 +928,29 @@ function renderMarkdown(text) {
 
   for (const rawLine of lines) {
     const line = rawLine.replace(/\s+$/, ""); // trim end only
+    // Headings: `#` to `######` followed by a space and content. Check
+    // before list/hr so a `# heading` line doesn't get re-parsed as text.
+    const heading = line.match(/^(#{1,6})\s+(.+)$/);
+    // Horizontal rule: a line that is ONLY 3+ of `-`, `*`, or `_`. The
+    // anchored `\s*$` keeps `***bold***` and `- list item` out.
+    const hr = line.match(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/);
     const ul = line.match(/^\s*[*-]\s+(.+)$/);
     const ol = line.match(/^\s*(\d+)\.\s+(.+)$/);
+
+    if (heading) {
+      flushPara();
+      flushList();
+      const level = heading[1].length;
+      html += `<h${level}>${renderInline(heading[2])}</h${level}>`;
+      continue;
+    }
+
+    if (hr) {
+      flushPara();
+      flushList();
+      html += "<hr>";
+      continue;
+    }
 
     if (ul || ol) {
       flushPara();

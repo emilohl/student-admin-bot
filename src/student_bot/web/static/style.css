@@ -158,6 +158,30 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .msg .body li { margin: 2px 0; }
 .msg.bot .body ul,
 .msg.bot .body ol { white-space: normal; }
+/* Headings rendered from the LLM-emitted `#`..`######` markdown. Kept
+   close to body-text size so a structured reply doesn't dominate the
+   chat bubble; browser defaults would render h1/h2 as banner-sized. */
+.msg .body h1,
+.msg .body h2,
+.msg .body h3,
+.msg .body h4,
+.msg .body h5,
+.msg .body h6 {
+  margin: 12px 0 4px;
+  line-height: 1.25;
+  font-weight: 600;
+}
+.msg .body h1 { font-size: 1.15em; }
+.msg .body h2 { font-size: 1.10em; }
+.msg .body h3 { font-size: 1.05em; }
+.msg .body h4,
+.msg .body h5,
+.msg .body h6 { font-size: 1em; }
+.msg .body hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 12px 0;
+}
 /* Jargon / transparency note streamed before answer tokens (SSE event `jargon`). */
 .msg .body .msg-prefix {
   display: block;
