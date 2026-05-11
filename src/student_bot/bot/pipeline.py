@@ -214,7 +214,7 @@ def _rate_limited_message(cfg: Config, lang: str) -> str:
     n = cfg.guardrails.rate_limit_per_minute
     if lang == "en":
         return f"Slow down — you can ask up to {n} questions per minute."
-    return f"Lugna ner dig lite — högst {n} frågor per minut."
+    return f"Lugna ner dig lite – högst {n} frågor per minut."
 
 
 def _render(
@@ -674,7 +674,7 @@ def _run_once(cfg: Config, console: Console, q: str, *, show_context: bool, no_s
 
 
 def _repl(cfg: Config, console: Console, *, show_context: bool):
-    """REPL mode — same conversation memory model the bot uses for threads."""
+    """REPL mode – same conversation memory model the bot uses for threads."""
     memory = ConversationMemory(cfg)
     console.print("[bold]student-bot[/bold] interactive mode. Empty line or :q to exit.")
     user_id = "cli"
@@ -727,7 +727,7 @@ def _repl(cfg: Config, console: Console, *, show_context: bool):
 def _print_context(console: Console, chunks: list[RetrievedChunk]):
     console.print("[bold cyan]Retrieved context:[/bold cyan]")
     for i, c in enumerate(chunks, 1):
-        section = c.section_path or "—"
+        section = c.section_path or "–"
         page = f" p.{c.page_start}" if c.page_start else ""
         preview = c.text.strip().replace("\n", " ")
         if len(preview) > 200:
