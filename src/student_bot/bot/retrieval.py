@@ -57,6 +57,7 @@ def retrieve(
     cfg: Config,
     query: str,
     corpus_programme_substrings: frozenset[str] | None = None,
+    query_language: str | None = None,
 ) -> RetrievalResult:
     coll = get_chroma_collection(cfg)
     qvec = encode_query(cfg, query).tolist()
@@ -110,6 +111,16 @@ def retrieve(
     scores = get_reranker(cfg).predict(pairs).tolist()
     for c, s in zip(candidates, scores):
         c.rerank_score = float(s)
+
+    # Soft language preference. Adds `language_bonus` to chunks tagged with
+    # the same language as the query before the final sort, so parallel SV/EN
+    # sources that the reranker scores near each other resolve to the user's
+    # language. Chunks with no language tag (older ingest, web-fetched paths)
+    # are not penalised — they just don't get the bonus.
+    if query_language and cfg.reranker.language_bonus:
+        for c in candidates:
+            if c.language and c.language == query_language:
+                c.rerank_score += cfg.reranker.language_bonus
 
     candidates.sort(key=lambda c: c.rerank_score, reverse=True)
     reranked = candidates[: cfg.reranker.keep]

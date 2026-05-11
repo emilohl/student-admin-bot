@@ -56,6 +56,13 @@ class RerankerConfig(BaseModel):
     device: str = "cpu"
     candidates: int = 20
     keep: int = 5
+    # Soft preference for chunks whose language matches the query language.
+    # Added to the cross-encoder logit AFTER reranking, before sorting and
+    # before the gate. Small enough that a clearly better cross-language
+    # chunk still wins; large enough to break ties between near-equal
+    # parallel SV/EN sources. Set to 0 to disable. Tune via `eval/run_eval.py`
+    # if you change embedding/reranker or the corpus language mix.
+    language_bonus: float = 0.5
 
 
 class GateConfig(BaseModel):
