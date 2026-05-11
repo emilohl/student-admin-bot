@@ -87,7 +87,7 @@ def main(eval_file: Path, show_failures: bool):
             q_used, _ = jargon.expand_query(q, lang=entry.get("lang"))
         else:
             q_used = q
-        result = retrieve(cfg, q_used)
+        result = retrieve(cfg, q_used, query_language=entry.get("lang"))
         gate = evaluate_gate(cfg, result)
 
         if kind == "in_domain":

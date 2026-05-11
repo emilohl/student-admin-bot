@@ -417,7 +417,12 @@ def answer(
         )
     else:
         corpus_terms = corpus_programme_substrings_for_query(expanded_q)
-        retrieval = retrieve(cfg, expanded_q, corpus_programme_substrings=corpus_terms)
+        retrieval = retrieve(
+            cfg,
+            expanded_q,
+            corpus_programme_substrings=corpus_terms,
+            query_language=lang,
+        )
         gate = evaluate_gate(cfg, retrieval)
 
     if not gate.passed:
