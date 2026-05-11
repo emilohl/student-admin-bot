@@ -128,7 +128,9 @@ composer.addEventListener("submit", async (e) => {
       }),
     });
     if (!resp.ok || !resp.body) {
-      botMsg.body.textContent = `[error ${resp.status}]`;
+      const tw = botMsg.body.querySelector(".thinking-wrap");
+      if (tw) tw.remove();
+      botMsg.render.textContent = `[error ${resp.status}]`;
       return;
     }
     const reader = resp.body.getReader();
@@ -149,9 +151,8 @@ composer.addEventListener("submit", async (e) => {
             firstToken = false;
             firstTokenAt = performance.now();
           }
-          const stick = nearBottom();
-          botMsg.body.appendChild(document.createTextNode(data));
-          if (stick) messages.scrollTop = messages.scrollHeight;
+          botMsg.entry.raw += data;
+          scheduleRender(botMsg);
         } else if (event === "jargon") {
           const prefixEl = botMsg.body.querySelector(".msg-prefix");
           if (prefixEl) {
@@ -182,9 +183,8 @@ composer.addEventListener("submit", async (e) => {
   } catch (err) {
     const tw = botMsg.body.querySelector(".thinking-wrap");
     if (tw) tw.remove();
-    botMsg.body.appendChild(
-      document.createTextNode(`\n[stream error: ${err.message}]`)
-    );
+    if (botMsg.entry) botMsg.entry.raw += `\n[stream error: ${err.message}]`;
+    scheduleRender(botMsg);
     firstToken = false;
   } finally {
     el("#send").disabled = false;
@@ -194,8 +194,9 @@ composer.addEventListener("submit", async (e) => {
     if (Object.prototype.hasOwnProperty.call(finalMeta, "performance_panel_enabled")) {
       setPerfEnabled(!!finalMeta.performance_panel_enabled);
     }
-    if (firstTokenAt && botMsg.body.textContent) {
-      const tokEst = estimateTokens(botMsg.body.textContent);
+    const rawText = botMsg.entry?.raw || "";
+    if (firstTokenAt && rawText) {
+      const tokEst = estimateTokens(rawText);
       const genSecs = Math.max(0.001, (performance.now() - firstTokenAt) / 1000);
       finalMeta.client_ttft_ms = Math.max(0, Math.round(firstTokenAt - reqStartedAt));
       finalMeta.client_tps = tokEst / genSecs;
@@ -346,13 +347,35 @@ function appendBot() {
       "<span></span><span></span><span></span>" +
     "</span>" +
     '<span class="thinking-label" hidden></span>';
+  // Live-rendered markdown container. Streamed tokens accumulate in
+  // botMsg.entry.raw and are re-rendered here on each animation frame so
+  // the user sees formatting (bold, lists, links) as the answer arrives
+  // rather than only after decorateBot runs at end-of-stream.
+  const render = document.createElement("div");
+  render.className = "msg-render";
   body.appendChild(prefix);
   body.appendChild(thinking);
+  body.appendChild(render);
   wrap.appendChild(meta);
   wrap.appendChild(body);
   messages.appendChild(wrap);
   messages.scrollTop = messages.scrollHeight;
-  return { wrap, meta, body };
+  return { wrap, meta, body, render };
+}
+
+// Coalesce per-token markdown re-renders to ~60Hz via requestAnimationFrame.
+// After decorateBot runs, further schedules are no-ops — the final pass owns
+// the rendered HTML (with numbered citations, sources block, and tip).
+function scheduleRender(botMsg) {
+  if (!botMsg || !botMsg.render || !botMsg.entry) return;
+  if (botMsg._decorated || botMsg._renderRaf) return;
+  botMsg._renderRaf = requestAnimationFrame(() => {
+    botMsg._renderRaf = 0;
+    if (botMsg._decorated) return;
+    const stick = nearBottom();
+    botMsg.render.innerHTML = renderMarkdown(botMsg.entry.raw || "");
+    if (stick) messages.scrollTop = messages.scrollHeight;
+  });
 }
 
 function decorateBot(botMsg, meta) {
@@ -374,9 +397,15 @@ function decorateBot(botMsg, meta) {
   // [doc · section] markers the LLM emitted; only sources that were
   // actually cited inline appear in the references list, renumbered
   // in order of first appearance.
-  const raw = botMsg.body.textContent;
   const prefixEl = botMsg.body.querySelector(".msg-prefix");
   const jargonText = (prefixEl?.textContent || "").trim();
+  // Mirror the pre-live-render behaviour: merge the jargon prefix into the
+  // raw text fed to splitMessage so it gets markdown-rendered alongside the
+  // body (e.g. `_Tolkar X._` becomes italic). No separator between prefix
+  // and body matches the old `body.textContent` concatenation. The prefix
+  // div is emptied below so the jargon isn't shown twice.
+  const streamedRaw = botMsg.entry?.raw || "";
+  const raw = (prefixEl?.textContent || "") + (streamedRaw || botMsg.body.textContent);
   const { body, sources: allSources, tip } = splitMessage(raw);
   const serverSources = Array.isArray(meta.sources) ? meta.sources : [];
   const sourceCandidates = Array.isArray(meta.source_candidates) ? meta.source_candidates : [];
@@ -402,7 +431,19 @@ function decorateBot(botMsg, meta) {
     html += renderSources(serverSources, meta.lang || "sv");
   }
   if (tip) html += renderTip(tip);
-  botMsg.body.innerHTML = html;
+  // Cancel any pending live re-render and target the live element so the
+  // jargon prefix (.msg-prefix) stays in place. Falls back to replacing
+  // the whole body if .msg-render is somehow missing.
+  if (botMsg._renderRaf) {
+    cancelAnimationFrame(botMsg._renderRaf);
+    botMsg._renderRaf = 0;
+  }
+  botMsg._decorated = true;
+  const renderTarget = botMsg.render || botMsg.body;
+  renderTarget.innerHTML = html;
+  // Empty the prefix since its content was merged into the rendered body
+  // above; otherwise the jargon line would appear twice.
+  if (prefixEl) prefixEl.textContent = "";
 
   // Snapshot the parts of the answer we want to keep in the exportable
   // thread log. `body` retains markdown links and inline citation markers;
