@@ -1188,7 +1188,7 @@ def main(host: str | None, port: int | None, reload: bool):
         log.info("auth disabled. binding to http://%s:%s", bind_host, bind_port)
         if bind_host != "127.0.0.1":
             log.warning(
-                "WEB_BIND_HOST is %s but auth is disabled – anyone reaching "
+                "WEB_BIND_HOST is %s but auth is disabled — anyone reaching "
                 "this host can chat. Set WEB_AUTH_ENABLED=true.",
                 bind_host,
             )

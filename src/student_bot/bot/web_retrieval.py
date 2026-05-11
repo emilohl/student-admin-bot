@@ -399,7 +399,7 @@ def _bilingual_missing_kth_course_message(codes: list[str]) -> tuple[str, str]:
         f"KTH:s kurssidor listar ingen kurs med koden {tail} – sidan är bara en tom "
         "mall, så kurskoden finns troligen inte. Kontrollera stavningen på kth.se eller "
         "antagning.se. Vid behov, kontakta studievägledningen.",
-        f"KTH's course pages do not list code(s) {tail} – the response is only an empty "
+        f"KTH's course pages do not list code(s) {tail} — the response is only an empty "
         "template, so the code likely does not exist. Double-check spelling on kth.se or "
         "antagning.se; contact study counseling if needed.",
     )
@@ -412,7 +412,7 @@ def _bilingual_missing_kth_program_message(codes: list[str]) -> tuple[str, str]:
         f"KTH:s programkatalog listar ingen utbildning med koden {tail} – sidan är bara "
         "en tom stub (inga antagningsomgångar i KTH:s data). Kontrollera koden på "
         "https://www.kth.se/student/kurser/kurser-inom-program eller antagning.se.",
-        f"KTH's programme catalogue has no programme with code {tail} – the page is only "
+        f"KTH's programme catalogue has no programme with code {tail} — the page is only "
         "an empty stub (no admission rounds in KTH's data). Verify the code on "
         "https://www.kth.se/student/kurser/kurser-inom-program?l=en or universityadmissions.se.",
     )

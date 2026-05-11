@@ -199,11 +199,11 @@ LITERACY_FOOTERS_SV = [
     "_Tips: boten är ett komplement, inte en ersättning för studievägledaren – särskilt vid beslut som påverkar dina studier._",
 ]
 LITERACY_FOOTERS_EN = [
-    "_Tip: click the sources and double-check against the documents – the bot can be wrong even when it sounds confident._",
+    "_Tip: click the sources and double-check against the documents — the bot can be wrong even when it sounds confident._",
     "_Tip: an LLM can sound convincing while being wrong. Trust the sources, not the tone._",
     "_Tip: the bot only knows the documents it was indexed on. For personal cases, contact the study counselor._",
     "_Tip: your questions are logged anonymously to improve the bot. Send `!privacy off` to disable logging._",
-    "_Tip: this bot complements but doesn't replace the study counselor – especially for decisions affecting your studies._",
+    "_Tip: this bot complements but doesn't replace the study counselor — especially for decisions affecting your studies._",
 ]
 
 

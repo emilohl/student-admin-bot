@@ -213,7 +213,7 @@ def _too_long_message(cfg: Config, lang: str) -> str:
 def _rate_limited_message(cfg: Config, lang: str) -> str:
     n = cfg.guardrails.rate_limit_per_minute
     if lang == "en":
-        return f"Slow down – you can ask up to {n} questions per minute."
+        return f"Slow down — you can ask up to {n} questions per minute."
     return f"Lugna ner dig lite – högst {n} frågor per minut."
 
 
