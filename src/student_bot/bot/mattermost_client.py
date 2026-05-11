@@ -199,7 +199,7 @@ class StudentBot:
             return None
 
     def _react(self, post_id: str, emoji_name: str) -> None:
-        """Add a reaction as the bot user. Failures are logged and swallowed —
+        """Add a reaction as the bot user. Failures are logged and swallowed –
         a deleted post or transient API error must not crash the worker."""
         if not post_id or not self.bot_user_id:
             return
@@ -251,7 +251,7 @@ class StudentBot:
                     if lang == "sv"
                     else "| Term | Means | Definition |\n|---|---|---|"
                 )
-                rows = [f"| {e.term} | {e.expansion} | {e.definition or '—'} |" for e in entries]
+                rows = [f"| {e.term} | {e.expansion} | {e.definition or '–'} |" for e in entries]
                 msg = "\n".join([head, *rows])
             self._post(job.channel_id, msg, job.root_id)
             return True

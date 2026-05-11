@@ -152,7 +152,7 @@ def format_source_display_label(cfg: Config, c: RetrievedChunk) -> str:
         primary = f"{primary} (cache)"
     section_part = (c.section_path or "").strip()
     if section_part and section_part.lower() not in primary.lower():
-        section_suffix = f" — {section_part}"
+        section_suffix = f" – {section_part}"
     else:
         section_suffix = ""
     page_suffix = f", s. {c.page_start}" if c.page_start else ""
@@ -192,18 +192,18 @@ def format_sources_block(
 # the README's "five concepts" list — keep these short so they don't bury
 # the answer.
 LITERACY_FOOTERS_SV = [
-    "_Tips: klicka på källorna och dubbelkolla svaren mot dokumenten — boten kan ha fel även när den låter säker._",
+    "_Tips: klicka på källorna och dubbelkolla svaren mot dokumenten – boten kan ha fel även när den låter säker._",
     "_Tips: en stor språkmodell (LLM) kan låta övertygande utan att ha rätt. Lita på källorna, inte på tonen._",
-    "_Tips: boten känner bara till dokumenten den indexerats på. För personliga ärenden — kontakta studievägledaren._",
+    "_Tips: boten känner bara till dokumenten den indexerats på. För personliga ärenden – kontakta studievägledaren._",
     "_Tips: dina frågor loggas anonymt för att förbättra boten. Skicka `!privacy off` om du vill stänga av loggning._",
-    "_Tips: boten är ett komplement, inte en ersättning för studievägledaren — särskilt vid beslut som påverkar dina studier._",
+    "_Tips: boten är ett komplement, inte en ersättning för studievägledaren – särskilt vid beslut som påverkar dina studier._",
 ]
 LITERACY_FOOTERS_EN = [
-    "_Tip: click the sources and double-check against the documents — the bot can be wrong even when it sounds confident._",
+    "_Tip: click the sources and double-check against the documents – the bot can be wrong even when it sounds confident._",
     "_Tip: an LLM can sound convincing while being wrong. Trust the sources, not the tone._",
     "_Tip: the bot only knows the documents it was indexed on. For personal cases, contact the study counselor._",
     "_Tip: your questions are logged anonymously to improve the bot. Send `!privacy off` to disable logging._",
-    "_Tip: this bot complements but doesn't replace the study counselor — especially for decisions affecting your studies._",
+    "_Tip: this bot complements but doesn't replace the study counselor – especially for decisions affecting your studies._",
 ]
 
 
@@ -247,6 +247,7 @@ def apply_citation_numbering(
         title = c.doc_title
         section = (c.section_path or "").strip()
         if section:
+            by_full[f"{title} – {section}"] = i
             by_full[f"{title} — {section}"] = i
             by_full[f"{title} · {section}"] = i
         by_title.setdefault(title, []).append(i)
@@ -266,18 +267,22 @@ def apply_citation_numbering(
         idx = by_full.get(content)
         if idx is not None:
             return idx
-        idx = by_full.get(content.replace(" · ", " — "))
-        if idx is not None:
-            return idx
-        idx = by_full.get(content.replace(" — ", " · "))
-        if idx is not None:
-            return idx
+        # Try every cross-translation between the three accepted separators
+        # (`·`, em-dash `—`, en-dash `–`). The LLM can emit any of them.
+        for src, dst in ((" · ", " — "), (" — ", " · "), (" · ", " – "), (" – ", " · ")):
+            idx = by_full.get(content.replace(src, dst))
+            if idx is not None:
+                return idx
         # Longest-prefix match: handles `[Title · Section · Extra]` when the
         # LLM appends invented segments to a registered Title+Section.
-        parts = re.split(r"\s+[·—]\s+", content)
+        parts = re.split(r"\s+[·—–]\s+", content)
         for k in range(len(parts) - 1, 0, -1):
             prefix = " · ".join(parts[:k])
-            idx = by_full.get(prefix) or by_full.get(prefix.replace(" · ", " — "))
+            idx = (
+                by_full.get(prefix)
+                or by_full.get(prefix.replace(" · ", " — "))
+                or by_full.get(prefix.replace(" · ", " – "))
+            )
             if idx is not None:
                 return idx
         if not allow_title_only:
@@ -300,7 +305,7 @@ def apply_citation_numbering(
         content = m.group(1).strip()
         # Require a citation-shaped separator so we never rewrite ordinary
         # parentheticals like "(t.ex. ...)" or "(KEX-jobb)".
-        if " · " not in content and " — " not in content:
+        if " · " not in content and " — " not in content and " – " not in content:
             return m.group(0)
         idx = _match(content, allow_title_only=False)
         if idx is None:
@@ -388,7 +393,7 @@ def format_for_mattermost(cfg, result) -> tuple[str, list[dict] | None]:
             link_label = "Visa dokument" if lang == "sv" else "Open document"
             field_value = f"[{link_label}]({url})"
         else:
-            field_value = "—"
+            field_value = "–"
         fields.append(
             {
                 "title": _truncate_field_value(field_title, 200),

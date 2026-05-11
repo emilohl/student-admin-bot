@@ -349,7 +349,7 @@ def _compiled_patterns(cfg: Config) -> list[re.Pattern[str]]:
 
 
 def _canonicalize(url: str) -> str:
-    """Normalize KTH URLs — host/scheme, collapse path slashes, strip query and fragment."""
+    """Normalize KTH URLs – host/scheme, collapse path slashes, strip query and fragment."""
     s = urlsplit(url)
     path = re.sub(r"/{2,}", "/", s.path or "/")
     return urlunsplit((_KTH_SCHEME, _KTH_HOST, path.rstrip("/") or "/", "", ""))
@@ -370,7 +370,7 @@ def _kth_course_code_from_course_url(url: str) -> str | None:
 
 
 def _is_kth_placeholder_course_shell(title: str) -> bool:
-    """True when KTH returns the empty course SPA (h1 is repeated «undefined»)."""
+    """True when KTH returns the empty course SPA (h1 is repeated "undefined")."""
     raw = (title or "").strip()
     if not raw:
         return False
@@ -379,9 +379,9 @@ def _is_kth_placeholder_course_shell(title: str) -> bool:
 
 
 def _programme_root_title_is_unknown_code_shell(title: str) -> bool:
-    """True when the HTML `<title>` is only «CODE (CODE), Utbildningsplaner» (unknown programme).
+    """True when the HTML `<title>` is only "CODE (CODE), Utbildningsplaner" (unknown programme).
 
-    KTH serves HTTP 200 for invented codes; the visible «utbildningsplan saknas» text is
+    KTH serves HTTP 200 for invented codes; the visible "utbildningsplan saknas" text is
     client-rendered, but the document title stays in this stub form server-side.
     """
     if not title:
@@ -396,10 +396,10 @@ def _bilingual_missing_kth_course_message(codes: list[str]) -> tuple[str, str]:
     uniq = list(dict.fromkeys(codes))
     tail = uniq[0] if len(uniq) == 1 else ", ".join(uniq)
     return (
-        f"KTH:s kurssidor listar ingen kurs med koden {tail} — sidan är bara en tom "
+        f"KTH:s kurssidor listar ingen kurs med koden {tail} – sidan är bara en tom "
         "mall, så kurskoden finns troligen inte. Kontrollera stavningen på kth.se eller "
         "antagning.se. Vid behov, kontakta studievägledningen.",
-        f"KTH's course pages do not list code(s) {tail} — the response is only an empty "
+        f"KTH's course pages do not list code(s) {tail} – the response is only an empty "
         "template, so the code likely does not exist. Double-check spelling on kth.se or "
         "antagning.se; contact study counseling if needed.",
     )
@@ -409,10 +409,10 @@ def _bilingual_missing_kth_program_message(codes: list[str]) -> tuple[str, str]:
     uniq = list(dict.fromkeys(codes))
     tail = uniq[0] if len(uniq) == 1 else ", ".join(uniq)
     return (
-        f"KTH:s programkatalog listar ingen utbildning med koden {tail} — sidan är bara "
+        f"KTH:s programkatalog listar ingen utbildning med koden {tail} – sidan är bara "
         "en tom stub (inga antagningsomgångar i KTH:s data). Kontrollera koden på "
         "https://www.kth.se/student/kurser/kurser-inom-program eller antagning.se.",
-        f"KTH's programme catalogue has no programme with code {tail} — the page is only "
+        f"KTH's programme catalogue has no programme with code {tail} – the page is only "
         "an empty stub (no admission rounds in KTH's data). Verify the code on "
         "https://www.kth.se/student/kurser/kurser-inom-program?l=en or universityadmissions.se.",
     )
@@ -929,10 +929,10 @@ def _truncate_web_chunk_text(text: str) -> str:
 _VALVILLKOR_LABEL_SV: dict[str, str] = {
     "O": "Obligatoriska kurser (O)",
     "V": "Valfria kurser (V)",
-    "VV": "Valbara kurslistor — villkorligt valbara (VV)",
+    "VV": "Valbara kurslistor – villkorligt valbara (VV)",
     "K": "Konditionsvalfria kurser (K)",
     "KV": "Konditionsvalfria kurser (KV)",
-    "VK": "Valbara kurslistor — villkorligt valbara (VK)",
+    "VK": "Valbara kurslistor – villkorligt valbara (VK)",
 }
 _VALVILLKOR_SORT_ORDER: tuple[str, ...] = ("O", "K", "KV", "VV", "VK", "V")
 
@@ -955,12 +955,12 @@ def _sort_valvillkor_keys(keys: list[str]) -> list[str]:
 
 
 def _format_hp_sv_number(n: float) -> str:
-    """Swedish-style hp string, e.g. 4 -> «4,0 hp», 7.5 -> «7,5 hp»."""
+    """Swedish-style hp string, e.g. 4 -> "4,0 hp", 7.5 -> "7,5 hp"."""
     return f"{float(n):.1f}".replace(".", ",") + " hp"
 
 
 def _credits_suffix_sv(c: dict) -> str:
-    """Return « (7,5 hp)» from omfattning / credits fields, or ``\"\"`` if unknown."""
+    """Return " (7,5 hp)" from omfattning / credits fields, or ``\"\"`` if unknown."""
     blocks: list[dict] = [c]
     inner = c.get("course")
     if isinstance(inner, dict):
@@ -1003,7 +1003,7 @@ def _markdown_course_line_from_curriculum_row(c: dict) -> str | None:
     name_s = name.strip() if isinstance(name, str) else ""
     hp = _credits_suffix_sv(c)
     if name_s:
-        return f"- **{cc}** — {name_s}{hp}"
+        return f"- **{cc}** – {name_s}{hp}"
     return f"- **{cc}**{hp}"
 
 
@@ -1036,7 +1036,7 @@ def _course_list_flat_fallback_from_store(store: dict) -> str:
                     )
                     name_s = name.strip() if isinstance(name, str) else ""
                     hp = _credits_suffix_sv(o)
-                    lines.append(f"- **{cc}** — {name_s}{hp}" if name_s else f"- **{cc}**{hp}")
+                    lines.append(f"- **{cc}** – {name_s}{hp}" if name_s else f"- **{cc}**{hp}")
                     seen.add(cc)
             for v in o.values():
                 walk(v)
@@ -1088,7 +1088,7 @@ def _course_list_plaintext_from_store(store: dict | None, *, focus_year: int | N
                     "**O** = obligatoriska kurser; "
                     "**V** = valfria kurser; "
                     "**VV** = valbara kurslistor (villkorligt valbara / villkorligt valfria; "
-                    "eng. ungefär «conditionally elective» — val inom godkända listor enligt planen). "
+                    "eng. ungefär “conditionally elective” – val inom godkända listor enligt planen). "
                     "Andra koder (t.ex. K) beskrivs i respektive rubrik._"
                 )
                 years_sorted = sorted(
@@ -1180,7 +1180,7 @@ _VALVILLKOR_BUCKET_LABELS_SV: dict[str, str] = {
 
 
 def _strip_html_to_text(value: str) -> str:
-    """Cheap HTML-to-text — programme freetext fields are short and well-formed."""
+    """Cheap HTML-to-text – programme freetext fields are short and well-formed."""
     if not value:
         return ""
     soup = BeautifulSoup(value, "lxml")
@@ -1310,7 +1310,7 @@ def _studyplan_chunks_from_year_page(
     fetched_at: int,
     is_stale: bool,
 ) -> list[RetrievedChunk]:
-    """Per-bucket chunks from /arskursN — one per non-empty Valvillkor group."""
+    """Per-bucket chunks from /arskursN – one per non-empty Valvillkor group."""
     curriculums = store.get("curriculums") if isinstance(store, dict) else None
     if not isinstance(curriculums, list) or not curriculums:
         return []
@@ -1497,7 +1497,7 @@ def _studyplan_chunks_from_html(
 ) -> list[RetrievedChunk]:
     """Walk the SPA store on a /student/kurser/program/... page and emit one
     chunk per logical section (studyProgramme field, year-bucket, or
-    specialisation). Returns ``[]`` when the store is missing — callers fall
+    specialisation). Returns ``[]`` when the store is missing – callers fall
     back to the legacy single-chunk path.
     """
     store = _compressed_application_store(html)
@@ -1824,6 +1824,17 @@ def _intake_year_bounds_from_terms(terms: list[str]) -> tuple[int, int] | None:
     return min(years), max(years)
 
 
+def _has_spring_intake(terms: list[str]) -> bool:
+    """True if any 5-digit term ends in `1` (spring/VT). Civilingenjör programmes
+    never satisfy this – they only admit in autumn – so the clarification example
+    suppresses the VT prompt for them."""
+    for t in terms:
+        s = str(t)
+        if re.fullmatch(r"\d{5}", s) and s[4] == "1":
+            return True
+    return False
+
+
 def _clarify_program_terms_sv(program_code: str, terms: list[str]) -> str:
     span = _intake_year_bounds_from_terms(terms)
     span_line = ""
@@ -1833,9 +1844,10 @@ def _clarify_program_terms_sv(program_code: str, terms: list[str]) -> str:
             span_line = f"\nJust nu finns webbdata för ungefär **{y0}** som startår."
         else:
             span_line = f"\nJust nu finns webbdata för år mellan **{y0}** och **{y1}**."
+    example = "**HT2024** eller **VT2025**" if _has_spring_intake(terms) else "**HT2024**"
     return (
         f"För att visa rätt utbildningsplan för **{program_code}** behöver jag veta "
-        "vilken antagningsomgång som gäller. Skriv gärna t.ex. **HT2024** eller **VT2025**."
+        f"vilken antagningsomgång som gäller. Skriv gärna t.ex. {example}."
         f"{span_line}"
     )
 
@@ -2000,7 +2012,7 @@ def _resolve_multi_program_candidates(
     def is_current(terms: list[str]) -> bool:
         bounds = _intake_year_bounds_from_terms(terms)
         if not bounds:
-            return True  # unknown — treat as current
+            return True  # unknown – treat as current
         return bounds[1] >= cutoff
 
     has_current = any(is_current(t) for _, t, _ in candidates)
@@ -2066,9 +2078,14 @@ def _clarify_program_terms_en(program_code: str, terms: list[str]) -> str:
             span_line = (
                 f"\nStudy-plan pages on the web cover roughly years **{y0}** through **{y1}**."
             )
+    example = (
+        "**autumn intake (HT2024)** or **spring (VT2025)**"
+        if _has_spring_intake(terms)
+        else "**autumn intake (HT2024)**"
+    )
     return (
         f"To show the right study plan for **{program_code}**, which **admission round** applies to you? "
-        "Please mention e.g. **autumn intake (HT2024)** or **spring (VT2025)**."
+        f"Please mention e.g. {example}."
         f"{span_line}"
     )
 

@@ -207,7 +207,7 @@ function estimateTokens(text) {
 }
 
 function formatPct(v) {
-  return Number.isFinite(v) ? `${v.toFixed(0)}%` : "—";
+  return Number.isFinite(v) ? `${v.toFixed(0)}%` : "–";
 }
 
 function updatePerfPanel(meta) {
@@ -218,7 +218,7 @@ function updatePerfPanel(meta) {
     const pct = Math.max(0, Math.min(100, (used / limit) * 100));
     perfContextEl.textContent = `${used}/${limit} (${pct.toFixed(0)}%)`;
   } else {
-    perfContextEl.textContent = "—";
+    perfContextEl.textContent = "–";
   }
 
   const ttft = Number.isFinite(meta.ttft_ms) ? meta.ttft_ms : meta.client_ttft_ms;
@@ -228,13 +228,13 @@ function updatePerfPanel(meta) {
   if (Number.isFinite(ttft)) parts.push(`TTFT ${formatDuration(ttft)}`);
   if (Number.isFinite(tps)) parts.push(`${tps.toFixed(1)} tok/s`);
   if (Number.isFinite(tok)) parts.push(`~${tok} tok`);
-  perfTokensEl.textContent = parts.length ? parts.join(" · ") : "—";
+  perfTokensEl.textContent = parts.length ? parts.join(" · ") : "–";
 
   applyMergedSystemLoad(meta.system_load, meta.host_system_load);
 }
 
 function formatDuration(ms) {
-  if (!Number.isFinite(ms)) return "—";
+  if (!Number.isFinite(ms)) return "–";
   if (ms < 1000) return `${Math.round(ms)} ms`;
   return `${(ms / 1000).toFixed(1)} s`;
 }
@@ -510,10 +510,13 @@ function buildCitationLookup(sources) {
   for (const s of sources) {
     const noPage = s.label.replace(/,\s*s\.\s*\d+\s*$/, "").trim();
     lookup[noPage] = s;
-    lookup[noPage.replace(/\s+—\s+/g, " · ")] = s;
-    lookup[noPage.replace(/\s+·\s+/g, " — ")] = s;
+    // Server emits en-dash. Register dot- and em-dash variants so LLM
+    // citations using any of the three separators still resolve.
+    lookup[noPage.replace(/\s+–\s+/g, " · ")] = s;
+    lookup[noPage.replace(/\s+–\s+/g, " — ")] = s;
+    lookup[noPage.replace(/\s+·\s+/g, " – ")] = s;
 
-    const sep = noPage.indexOf(" — ");
+    const sep = noPage.indexOf(" – ");
     const title = sep > -1 ? noPage.slice(0, sep).trim() : noPage;
     titleCount[title] = (titleCount[title] || 0) + 1;
   }
@@ -522,7 +525,7 @@ function buildCitationLookup(sources) {
   // collapse two sources that share a title but differ by section/page.
   for (const s of sources) {
     const noPage = s.label.replace(/,\s*s\.\s*\d+\s*$/, "").trim();
-    const sep = noPage.indexOf(" — ");
+    const sep = noPage.indexOf(" – ");
     const title = sep > -1 ? noPage.slice(0, sep).trim() : noPage;
     if (titleCount[title] === 1 && !lookup[title]) {
       lookup[title] = s;
@@ -549,7 +552,7 @@ function normalizeCitationText(s) {
 
 function sourceTitleFromLabel(label) {
   const noPage = (label || "").replace(/,\s*(?:s|p)\.\s*\d+\s*$/, "").trim();
-  const sep = noPage.indexOf(" — ");
+  const sep = noPage.indexOf(" – ");
   return (sep > -1 ? noPage.slice(0, sep) : noPage).trim();
 }
 
@@ -633,14 +636,17 @@ function renderBodyWithCitations(body, allSources) {
       return `CIT${n}MARK`;
     }
     const src = lookup[trimmed]
+      || lookup[trimmed.replace(/\s+·\s+/g, " – ")]
       || lookup[trimmed.replace(/\s+·\s+/g, " — ")]
       || lookup[trimmed.replace(/\s+—\s+/g, " · ")]
+      || lookup[trimmed.replace(/\s+–\s+/g, " · ")]
       || lookup[inlineCitationTitle(trimmed)]
       || approximateSourceMatch(allSources, inlineCitationTitle(trimmed));
     if (!src) {
       // Last-resort fallback: if it looks like an inline source marker,
       // still number it and include it in the references list.
-      const looksLikeCitation = trimmed.includes(" · ") || trimmed.includes(" — ");
+      const looksLikeCitation =
+        trimmed.includes(" · ") || trimmed.includes(" — ") || trimmed.includes(" – ");
       if (!looksLikeCitation) return full;
       let syntheticN = syntheticByLabel.get(trimmed);
       if (!syntheticN) {
@@ -670,8 +676,8 @@ function renderBodyWithCitations(body, allSources) {
   return { html, citedSources: cited };
 }
 
-// Strip the " — Section" suffix and trailing ", s. N" page from a
-// server-formatted label so we can render "Title — Section, s. N".
+// Strip the " – Section" suffix and trailing ", s. N" page from a
+// server-formatted label so we can render "Title – Section, s. N".
 function parseSourceLabel(label) {
   let title = label;
   let page = null;
@@ -681,7 +687,7 @@ function parseSourceLabel(label) {
     page = pageMatch[1];
     title = title.slice(0, pageMatch.index).trim();
   }
-  const sectionIdx = title.indexOf(" — ");
+  const sectionIdx = title.indexOf(" – ");
   if (sectionIdx > -1) {
     section = title.slice(sectionIdx + 3).trim();
     title = title.slice(0, sectionIdx).trim();
@@ -695,7 +701,7 @@ function renderSources(sources, lang) {
   for (const s of sources) {
     const { title, section, page } = parseSourceLabel(s.label);
     const titleHtml = escapeHtml(title);
-    const sectionHtml = section ? ` — ${escapeHtml(section)}` : "";
+    const sectionHtml = section ? ` – ${escapeHtml(section)}` : "";
     const pageHtml = page ? `, ${pageLabel} ${escapeHtml(page)}` : "";
     const core = `${titleHtml}${sectionHtml}${pageHtml}`;
     const href = normalizeUrl(s.url);
@@ -712,7 +718,7 @@ function normalizeSourceLabel(label) {
   return (label || "")
     .toLowerCase()
     .replace(/\s+/g, " ")
-    .replace(/\s+·\s+/g, " — ")
+    .replace(/\s+·\s+/g, " – ")
     .trim();
 }
 
@@ -938,17 +944,17 @@ function exportSourcesHeading() {
 }
 
 function exportSourceLine(src) {
-  // Mirror `parseSourceLabel` in renderSources: split " — Section" suffix and
+  // Mirror `parseSourceLabel` in renderSources: split " – Section" suffix and
   // trailing ", s. N" page so the markdown text reads as in the chat bubble.
   const m = (src.label || "").match(/,\s*(?:s|p)\.\s*(\d+)\s*$/);
   let title = src.label || "";
   let page = "";
   if (m) { page = m[1]; title = title.slice(0, m.index).trim(); }
   let section = "";
-  const sepIdx = title.indexOf(" — ");
+  const sepIdx = title.indexOf(" – ");
   if (sepIdx > -1) { section = title.slice(sepIdx + 3).trim(); title = title.slice(0, sepIdx).trim(); }
   let body = title;
-  if (section) body += ` — ${section}`;
+  if (section) body += ` – ${section}`;
   if (page) body += `, s. ${page}`;
   const href = (src.url || "").trim();
   return href ? `[${body}](${href})` : body;

@@ -756,7 +756,7 @@ def _glossary_page(cfg: Config, base_path: str = "") -> HTMLResponse:
     rows = (
         "".join(
             f"<tr><td><code>{_h(e.term)}</code></td><td>{_h(e.expansion)}</td>"
-            f"<td>{_h(e.definition) or '—'}</td><td>{_h(e.lang)}</td></tr>"
+            f"<td>{_h(e.definition) or '–'}</td><td>{_h(e.lang)}</td></tr>"
             for e in j.all_entries()
         )
         or '<tr><td colspan="4" data-i18n="glossary.empty"></td></tr>'
@@ -799,7 +799,7 @@ async function submitJargon(e) {{
       lang: f.lang.value,
     }}),
   }});
-  if (r.ok) {{ status.textContent = window.t ? window.t('glossary.status.ok') : 'tack — förslaget köades för granskning'; f.reset(); }}
+  if (r.ok) {{ status.textContent = window.t ? window.t('glossary.status.ok') : 'tack – förslaget köades för granskning'; f.reset(); }}
   else {{ status.textContent = (window.t ? window.t('glossary.status.error') : 'fel') + ': ' + r.status; }}
   return false;
 }}
@@ -965,7 +965,7 @@ def _stats_series_response(db: LogDB, range_key: str, channel: str = "all") -> J
 def _format_relative_ts(now: int, ts: int) -> str:
     """Compact relative time (e.g. '3h', '2d') for the user-activity table."""
     if ts <= 0:
-        return "—"
+        return "–"
     delta = max(0, now - ts)
     if delta < 60:
         return "<1m"
@@ -1188,7 +1188,7 @@ def main(host: str | None, port: int | None, reload: bool):
         log.info("auth disabled. binding to http://%s:%s", bind_host, bind_port)
         if bind_host != "127.0.0.1":
             log.warning(
-                "WEB_BIND_HOST is %s but auth is disabled — anyone reaching "
+                "WEB_BIND_HOST is %s but auth is disabled – anyone reaching "
                 "this host can chat. Set WEB_AUTH_ENABLED=true.",
                 bind_host,
             )
