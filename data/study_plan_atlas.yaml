@@ -5,7 +5,7 @@
 # whose ~25 fields together form the entire utbildningsplan. Different
 # schools at KTH populate different fields with the same kind of information
 # (e.g. CTFYS/CDATE put master-program lists in `arskursinformationAr4`,
-# CINEK/CMEDT put them in `utbildningensupplagg`/`specialisations`).
+# CINEK/CMEDT put them in `utbildningensupplagg`).
 #
 # This file declares, per topic:
 #   - bilingual labels used as chunk metadata (so retrieval can rank on them)
@@ -30,12 +30,27 @@ topics:
       - studyProgramme.arskursinformationAr4   # CTFYS, CDATE, CMAST: explicit list
       - studyProgramme.arskursinformationAr5   # CTFYS, CDATE
       - studyProgramme.utbildningensupplagg    # CINEK, CMEDT, CMAST: narrative
-      - studyProgramme.specialisations         # all programs (structured)
-      - page:/inriktningar
     notes: |
       Civilingenjör 5y programs route students into a master in years 4-5.
       Different schools document the mapping in different fields — keep all
-      candidates so retrieval ranks the populated one.
+      candidates so retrieval ranks the populated one. The authoritative
+      per-year block (`eligibilityRequirementsMasterPrograms`) is handled
+      separately by `_eligibility_text_from_store`, not via the atlas.
+      `studyProgramme.specialisations` is NOT included here: it holds
+      inriktningar/tracks within the programme, not the list of master
+      programmes the civilingenjör maps to.
+
+  specializations:
+    label_sv: "Inriktningar (spår)"
+    label_en: "Specialisations (tracks)"
+    look_in:
+      - studyProgramme.specialisations
+      - page:/inriktningar
+    notes: |
+      `specialisations` is paths/tracks through a programme (often called
+      "spår" on master programmes, "inriktningar" on civilingenjör programmes
+      like CINEK). It is NOT the list of master programmes a civilingenjör
+      student can apply to — see the `master_programs` topic for that.
 
   exchange_studies:
     label_sv: "Utbytesstudier"

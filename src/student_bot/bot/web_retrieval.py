@@ -206,6 +206,125 @@ def program_study_intent_question(q: str) -> bool:
     return _parse_programme_year_level(q or "") is not None
 
 
+# Patterns whose answers don't actually depend on the user's cohort year — used
+# to suppress the "which admission round are you in?" clarification on
+# questions like "which masters can a CTFYS student apply to?" or
+# "what's the grading scale on CTFYS?" (issue #55). When matched, the bot
+# falls through to the newest available term silently. A specific year in
+# the question, or `parse_program_admission_hints`, still wins — this guard
+# only fires when there's nothing the user has signaled to anchor on.
+# Matches both English (`master`, `masters`, `masterprogram`,
+# `masterprogrammet`) and Swedish plurals (`mastrar`, `mastrarna`). The KTH
+# vernacular borrows the English root with Swedish endings, so we accept the
+# whole family.
+_MASTER_TOKEN_RE = re.compile(
+    r"\bmast(?:er(?:program(?:met|s)?|s)?|rar(?:na)?)\b",
+    re.IGNORECASE,
+)
+_ELIGIBILITY_TOKEN_RE = re.compile(
+    r"\b(?:behörig\w*|behorig\w*|krav|krävs|kravs|eligib\w*|requirement\w*|qualify\w*|qualif\w*)\b",
+    re.IGNORECASE,
+)
+_COURSE_LISTING_RE = re.compile(
+    r"\b(?:vilka\s+kurser|which\s+courses|lista\s+(?:alla\s+)?kurser|course\s+list|kurslista|ingår\s+i\s+programmet)\b",
+    re.IGNORECASE,
+)
+_GENERIC_METADATA_RE = re.compile(
+    r"\b(?:vad\s+heter|what\s+is\s+the\s+program(?:me)?(?:\s+called)?|hur\s+stort|how\s+(?:big|large)|antal\s+poäng|"
+    r"examen|betyg(?:sskalan|sskala|en)?|grading|grade\s+scale|study\s+load|credits|hp\b)\b",
+    re.IGNORECASE,
+)
+_MASTER_MAPPING_RE = re.compile(
+    r"\b(?:vilka\s+mast(?:er\w*|rar\w*)|which\s+master\w*|mappade?|mapped\s+to|"
+    r"which\s+masters?\s+(?:can|may))\b",
+    re.IGNORECASE,
+)
+
+
+def _question_is_master_eligibility(q: str) -> bool:
+    """True when the question is about which masters a civ-eng student can
+    apply to, or which courses qualify for a master. Used to ensure the
+    relevant civilingenjör programme's year pages (where the
+    `behörighetsgivande kurser per masterprogram` blocks live) get fetched,
+    rather than the master programme's own page which doesn't list those
+    courses.
+    """
+    if not q:
+        return False
+    text = q.strip()
+    if _MASTER_MAPPING_RE.search(text):
+        return True
+    if _MASTER_TOKEN_RE.search(text) and _ELIGIBILITY_TOKEN_RE.search(text):
+        return True
+    return False
+
+
+# Heuristic: codes assigned to civilingenjör programmes in the KTH alias
+# snapshot all start with `C`, plus a handful of legacy 3-year `T`-prefixed
+# högskoleingenjör codes (TIELF, TIMAF, TKEMV). Master programmes start with
+# `T` and end in `M`. The alias map is authoritative when available — this
+# regex is the cold-cache fallback.
+_CIV_CODE_HEURISTIC_RE = re.compile(r"^(?:C[A-Z]{4}|ARKIT|TIELF|TIMAF|TKEMV)$")
+_MASTER_CODE_HEURISTIC_RE = re.compile(r"^T[A-Z]{3}M$")
+
+
+def _is_civilingenjor_code(code: str, cfg: Config | None = None) -> bool:
+    """True when `code` is a civilingenjör (or arkitekt) programme code.
+
+    Prefers the alias snapshot — a code's primary Swedish alias starts with
+    `civilingenjör` for civ-eng programmes. Falls back to the prefix
+    heuristic when the alias cache hasn't been populated yet.
+    """
+    if not code:
+        return False
+    upper = code.strip().upper()
+    if not re.fullmatch(r"[A-Z]{5}", upper):
+        return False
+    if cfg is not None:
+        try:
+            aliases = _get_program_aliases(cfg)
+        except Exception:
+            aliases = {}
+        if aliases:
+            for alias, mapped in aliases.items():
+                if str(mapped).upper() == upper and "civilingenj" in alias.lower():
+                    return True
+            for alias, mapped in aliases.items():
+                if str(mapped).upper() == upper and (
+                    "arkitekt" in alias.lower() or "architecture" in alias.lower()
+                ):
+                    return True
+            return bool(_CIV_CODE_HEURISTIC_RE.match(upper))
+    return bool(_CIV_CODE_HEURISTIC_RE.match(upper))
+
+
+def _question_is_year_independent(q: str) -> bool:
+    """True for question shapes whose answers don't vary by admission year.
+
+    Used as an escape hatch around the multi-term clarification branch in
+    `_select_programme_urls`: when the question is general (eligibility,
+    mapping, programme metadata, course listing without a year qualifier),
+    we use the newest term unilaterally rather than re-prompting.
+    """
+    if not q:
+        return False
+    text = q.strip()
+    if _parse_programme_year_level(text) is not None:
+        # The user explicitly named a study year — that hint may or may not
+        # imply a cohort, but they've added enough specificity that we should
+        # stay on the regular admission-term track.
+        return False
+    if _MASTER_MAPPING_RE.search(text):
+        return True
+    if _MASTER_TOKEN_RE.search(text) and _ELIGIBILITY_TOKEN_RE.search(text):
+        return True
+    if _COURSE_LISTING_RE.search(text):
+        return True
+    if _GENERIC_METADATA_RE.search(text):
+        return True
+    return False
+
+
 def parse_program_admission_hints(q: str) -> AdmissionHints:
     """Prefer explicit five-digit rounds, then HT/VT / Swedish season, then weak context."""
     if not q:
@@ -1344,6 +1463,78 @@ def _truncate_studyplan_text(text: str) -> str:
     return text[:_MAX_STUDYPLAN_CHUNK_CHARS].rstrip() + "\n…"
 
 
+_PROGRAM_BUNDLE_BASE_RE = re.compile(
+    r"^(/student/kurser/program/[A-Z]{5}/\d{5})(?:/[a-z][a-z0-9-]*)?/?$",
+    re.I,
+)
+
+
+_KULL_TITLE_PROGRAMME_RE = re.compile(r"^(.+?)(?:\s+studieplan:|\s+årskurs\s+\d+|$)", re.IGNORECASE)
+
+
+def _kull_label_sv(term: str) -> str:
+    """KTH 5-digit programme term -> short cohort label, e.g. '20232' -> 'HT23'.
+
+    Matches the convention students use ("kull HT23"), distinct from the
+    long form `_term_label_sv` returns ("HT2023") which is used elsewhere.
+    """
+    if not (isinstance(term, str) and re.fullmatch(r"\d{5}", term)):
+        return ""
+    yy = term[2:4]
+    season = "HT" if term[4] == "2" else "VT"
+    return f"{season}{yy}"
+
+
+def _study_plan_title_with_kull(doc_title: str, page_url: str) -> str:
+    """For study-plan chunks, rewrite the doc_title so citations show the
+    admission cohort (`kull HTYY`).
+
+    The chunker emits titles like "CTFYS studieplan: Valbara masterprogram"
+    or "CTFYS årskurs 1: behörighetsgivande kurser". This helper extracts the
+    programme name (the prefix before "studieplan:" / "årskurs N") and
+    rewrites the title to "<programme_name>, Utbildningsplan kull HT23".
+    Leaves the title untouched when the URL doesn't fit a programme-term
+    pattern or the prefix can't be parsed.
+    """
+    if not doc_title:
+        return doc_title
+    path = urlsplit(_canonicalize(page_url)).path
+    m = _PROGRAM_BUNDLE_BASE_RE.match(path)
+    if not m:
+        return doc_title
+    term_match = re.search(r"/(\d{5})(?:/|$)", path)
+    if not term_match:
+        return doc_title
+    kull = _kull_label_sv(term_match.group(1))
+    if not kull:
+        return doc_title
+    name_match = _KULL_TITLE_PROGRAMME_RE.match(doc_title)
+    programme_name = (name_match.group(1) if name_match else doc_title).strip()
+    if not programme_name:
+        return doc_title
+    return f"{programme_name}, Utbildningsplan kull {kull}"
+
+
+def _studyplan_bundle_base_url(page_url: str) -> str:
+    """Strip any sidebar suffix (`/arskursN`, `/omfattning`, `/inriktningar`,
+    …) from a programme-term URL so all chunks within one study-plan bundle
+    share a single canonical citation target.
+
+    The KTH SPA renders the same studyProgramme JSON on every sidebar route,
+    so deep-linking to a per-section URL would just confuse a user who
+    clicked the citation expecting to find that specific section.
+
+    Returns the original URL when the path doesn't fit the
+    `/student/kurser/program/<CODE>/<TERM>[/<slug>]` pattern.
+    """
+    canonical = _canonicalize(page_url)
+    path = urlsplit(canonical).path
+    m = _PROGRAM_BUNDLE_BASE_RE.match(path)
+    if not m:
+        return canonical
+    return _canonicalize(f"https://{_KTH_HOST}{m.group(1)}")
+
+
 def _build_studyplan_chunk(
     *,
     text: str,
@@ -1358,18 +1549,28 @@ def _build_studyplan_chunk(
         raise ValueError("empty chunk text")
     rel_source = f"{page_url}#{fragment}" if fragment else page_url
     chunk_id = f"web:{rel_source}"
+    # Citations should link to the study-plan bundle as a whole, not the
+    # per-section sidebar route — the KTH SPA renders the same JSON on every
+    # sidebar URL, so a per-section deep link would just confuse a user who
+    # opens it expecting to find that specific section. The non-bundle path
+    # falls back to `page_url` (e.g. /student/kurser/kurs/... course pages).
+    canonical_source = _studyplan_bundle_base_url(page_url)
+    # Rewrite title to include the admission cohort ("kull HT23") for
+    # study-plan chunks so the Sources block disambiguates between years
+    # when the same programme has chunks from multiple admission terms.
+    display_title = _study_plan_title_with_kull(doc_title, page_url)
     return RetrievedChunk(
         chunk_id=chunk_id,
         text=_truncate_studyplan_text(text),
         rel_source=rel_source,
-        doc_title=doc_title,
+        doc_title=display_title,
         doc_type="html",
         language="sv",
         section_path=section_path,
         chunk_index=0,
         chroma_distance=0.0,
         rerank_score=2.5 if is_stale else 3.5,
-        source_url=page_url,
+        source_url=canonical_source,
         fetched_at=fetched_at,
         is_stale=is_stale,
     )
@@ -1393,8 +1594,15 @@ def _studyplan_chunks_from_studyprogramme(
         text = _flatten_text(raw)
         if len(text) < 20:  # skip empty / boilerplate stubs
             continue
-        topic_label = atlas.label_for_field(key, lang) or key
-        section_path = f"{topic_label} (studieplan, fält: {key})"
+        atlas_label = atlas.label_for_field(key, lang)
+        topic_label = atlas_label or key
+        # When the atlas labelled the field, the human-readable label IS the
+        # section. The raw JSON key (`fält: <key>`) is noise that bloats the
+        # citation tag and the section_path-based dedup key, and trips up the
+        # LLM's exact-copy citation matcher. Keep the field name visible only
+        # when the atlas didn't recognise the key, so an unlabelled field
+        # still has *some* identity.
+        section_path = topic_label if atlas_label else f"{topic_label} (fält: {key})"
         title_prefix = programme_name.strip() if programme_name else "Studieplan"
         doc_title = f"{title_prefix} studieplan: {topic_label}"
         try:
@@ -2221,6 +2429,7 @@ def _select_programme_urls(
     sorted_terms_desc: list[str],
     hints: AdmissionHints,
     year_level: int | None = None,
+    question: str | None = None,
 ) -> ProgrammeRootResolution:
     """Pick concrete /program/<code>/<term> URLs or ask for clarification."""
     root = _canonicalize(f"https://{_KTH_HOST}/student/kurser/program/{program_code}")
@@ -2238,6 +2447,13 @@ def _select_programme_urls(
         cands = [t for t in terms if t.startswith(hints.year_prefix)]
     elif hints.exact_term is None:
         if len(terms) == 1:
+            return ProgrammeRootResolution(queue_urls=[f"{root}/{terms[0]}{year_suffix}"])
+        if question and _question_is_year_independent(question):
+            log.info(
+                "dynamic-web: %s year-independent question; using newest term %s without asking",
+                program_code,
+                terms[0],
+            )
             return ProgrammeRootResolution(queue_urls=[f"{root}/{terms[0]}{year_suffix}"])
         return ProgrammeRootResolution(
             queue_urls=[],
@@ -2275,6 +2491,7 @@ def _resolve_program_root_targets(
     programme_root_url: str,
     hints: AdmissionHints,
     year_level: int | None = None,
+    question: str | None = None,
 ) -> ProgrammeRootResolution:
     code = _program_segment_code(programme_root_url)
     if not code:
@@ -2299,7 +2516,7 @@ def _resolve_program_root_targets(
         if re.fullmatch(r"[A-Z]{5}", mc):
             code = mc
 
-    resolved = _select_programme_urls(code, terms, hints, year_level=year_level)
+    resolved = _select_programme_urls(code, terms, hints, year_level=year_level, question=question)
     log.info(
         "dynamic-web: programme %s terms=%s hints=%s -> %s",
         code,
@@ -2434,12 +2651,54 @@ def maybe_fetch_dynamic_web(
     course_intent_no_code = question_has_course_intent(
         question
     ) and not question_has_explicit_course_code(question)
+
+    # Master-eligibility routing (issue #55, topic 3). The KTH study-plan
+    # SPA only renders "behörighetsgivande kurser per masterprogram" on the
+    # civilingenjör programme's `/arskursN` pages — the master programme's
+    # own page does NOT list it. So when the question is master-eligibility
+    # shaped, force the relevant civilingenjör's URL into prog_roots — or
+    # ask which civilingenjör the user studies if we can't tell. Has to run
+    # BEFORE the empty-targets early-return below so a bare query like
+    # "vilka mappade masterprogram finns?" doesn't fall through to Chroma
+    # (which would pick the generic /mappade-masterprogram overview page,
+    # not the user's actual study plan).
+    course_urls = [t for t in targets if "/student/kurser/kurs/" in t]
+    prog_roots = [t for t in targets if _is_program_root_only_url(t)]
+    if _question_is_master_eligibility(question):
+        civ_code: str | None = None
+        if program_prior and _is_civilingenjor_code(program_prior, cfg):
+            civ_code = program_prior.strip().upper()
+        else:
+            for existing in prog_roots:
+                code = _program_segment_code(existing)
+                if code and _is_civilingenjor_code(code, cfg):
+                    civ_code = code
+                    break
+        if civ_code:
+            civ_url = _canonicalize(f"https://{_KTH_HOST}/student/kurser/program/{civ_code}")
+            if civ_url not in prog_roots:
+                prog_roots.insert(0, civ_url)
+                log.info(
+                    "dynamic-web: master-eligibility question; routed to civ %s",
+                    civ_code,
+                )
+        else:
+            log.info("dynamic-web: master-eligibility question with no civ in memory; asking")
+            return WebFetchResult(
+                clarification=(
+                    "För att svara om behörighet till masterprogram behöver jag "
+                    "veta vilket **civilingenjörsprogram** du läser. Skriv t.ex. "
+                    "”CTFYS” eller ”civilingenjör i teknisk fysik”.",
+                    "To answer about master-programme eligibility I need to know "
+                    "which **civilingenjör programme** you study. Reply e.g. "
+                    "“CTFYS” or “civilingenjör in engineering physics”.",
+                ),
+            )
+
     if not targets and not (course_intent_no_code and program_prior):
         return None
     log.info("dynamic-web: targets=%s", targets)
 
-    course_urls = [t for t in targets if "/student/kurser/kurs/" in t]
-    prog_roots = [t for t in targets if _is_program_root_only_url(t)]
     hints = parse_program_admission_hints(question)
     # Fall back to a persisted admission hint when this turn doesn't carry
     # one. A user who clarified "HT2024" three turns ago shouldn't have to
@@ -2468,7 +2727,9 @@ def maybe_fetch_dynamic_web(
     queue: list[str] = list(course_urls)
     resolved_program_code: str | None = None
     for root in prog_roots:
-        res = _resolve_program_root_targets(cfg, root, hints, year_level=year_level)
+        res = _resolve_program_root_targets(
+            cfg, root, hints, year_level=year_level, question=question
+        )
         if res.missing_program_codes:
             return WebFetchResult(
                 missing_kth_program=_bilingual_missing_kth_program_message(

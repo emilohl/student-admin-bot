@@ -31,7 +31,7 @@ reranker:
   model: cross-encoder/mmarco-mMiniLMv2-L12-H384-v1
   device: cpu
   candidates: 20                 # top-N from Chroma to feed reranker
-  keep: 5                        # top-K after rerank
+  keep: 8                        # top-K after rerank
 
 gate:
   # Tuned via `python -m eval.run_eval` against eval/eval_set.yml. The
@@ -42,8 +42,10 @@ gate:
   rerank_meanK_min: -1.0
   meanK: 3
   # The curriculum series (Utbildningsplan CTFYS HT2020…HT2026, sv+en) easily
-  # spans 5 distinct rel_sources for the same topic — relax accordingly.
-  max_distinct_sources_in_topk: 5
+  # spans 5+ distinct rel_sources for the same topic; with reranker.keep=8
+  # the top-K naturally pulls in more distinct chunks before the dedup at
+  # citation time. Relax accordingly.
+  max_distinct_sources_in_topk: 8
 
 llm:
   # Q4_K_XL fits ~5–6 GB on Metal; the default `gemma4:e4b` tag is Q4_K_M (~9.6 GB).

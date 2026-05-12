@@ -81,21 +81,32 @@ def section_alias_score() -> None:
     print("\n[alias_score]")
     qn = "jag går årskurs 2 på teknisk fysik och funderar på masterprogram"
     qt = set(qn.split()) | {"teknisk", "fysik", "masterprogram"}
+    # `q_strong_tokens` mirrors what `_extract_program_candidates` builds:
+    # tokens ≥ 4 chars that aren't in the generic blocklist. For this query
+    # that's {årskurs, teknisk, fysik, funderar}.
+    q_strong = {"årskurs", "teknisk", "fysik", "funderar"}
 
-    # Coverage: 2 of {civilingenjörsutbildning, teknisk, fysik} present → 0.67
-    s, _ = _alias_score("civilingenjörsutbildning i teknisk fysik", qn, qt)
-    _check("CTFYS alias 2/3 strong tokens", abs(s - 2 / 3) < 0.02, f"score={s:.3f}")
+    # Alias's strong tokens (after blocklist) = {teknisk, fysik};
+    # both are in the query, so alias_coverage = 2/2 = 1.0.
+    # Query-side coverage = 2/4 = 0.5. Score = 1.0 * 0.5 = 0.5 (no verbatim).
+    s, _ = _alias_score("civilingenjörsutbildning i teknisk fysik", qn, qt, q_strong)
+    _check("CTFYS alias 2/2 strong * 2/4 query coverage", abs(s - 0.5) < 0.02, f"score={s:.3f}")
 
-    # All strong tokens present + verbatim phrase contained → 1.0 + 0.5
+    # All strong tokens present + verbatim phrase not contained → 1.0
     qn2 = "vad är masterprogrammet i fusionsenergi och teknisk fysik"
     qt2 = set(qn2.split())
-    s, v = _alias_score("masterprogram, fusionsenergi och teknisk fysik", qn2, qt2)
-    # Strong tokens are {fusionsenergi, teknisk, fysik}; all present → 1.0.
-    # Verbatim phrase doesn't appear (comma vs " i "), so no bonus.
+    # Strong tokens here are length≥4 + non-generic = {fusionsenergi, teknisk, fysik}.
+    q_strong2 = {"fusionsenergi", "teknisk", "fysik"}
+    s, v = _alias_score("masterprogram, fusionsenergi och teknisk fysik", qn2, qt2, q_strong2)
+    # alias_strong = {fusionsenergi, teknisk, fysik}; all present → coverage 1.0.
+    # Verbatim phrase doesn't appear (comma vs " i ", "masterprogram" vs "masterprogrammet"),
+    # so no bonus.
     _check("TFEPM alias all 3 strong tokens", s >= 0.99 and not v, f"score={s:.3f} verbatim={v}")
 
-    # Empty / generic-only alias → 0
-    s, _ = _alias_score("masterprogram", qn, qt)
+    # Generic-only alias (all tokens in blocklist) falls through the "no strong
+    # tokens" branch and only scores when the alias appears verbatim as the
+    # whole query — which it doesn't here.
+    s, _ = _alias_score("masterprogram", qn, qt, q_strong)
     _check("generic-only alias scores 0", s == 0.0)
 
 
@@ -138,12 +149,20 @@ def section_extract_candidates() -> None:
     codes = [c.code for c in cands]
     _check("issue #26: candidates = [CTFYS]", codes == ["CTFYS"], f"got={codes}")
 
-    # Ambiguous, no level signal: keep all three so the multi-candidate path
-    # can drop TFEPM by intake-year recency.
+    # Ambiguous, no level signal: keep the nickname-mapped candidates so the
+    # multi-candidate path can disambiguate by intake-year recency.
+    # `data/program_nicknames.json` currently maps "teknisk fysik" to
+    # {CTFYS, TTFYM} — TFEPM was pruned from that nickname because it's
+    # more specifically "fusionsenergi och teknisk fysik" and is only
+    # reached when the user types "fusion*".
     q = "Vad ingår i utbildningsplanen för Teknisk fysik?"
     cands, _ = _extract_program_candidates(q, cfg)
     codes = sorted(c.code for c in cands)
-    _check("ambiguous no-level: 3 candidates", codes == ["CTFYS", "TFEPM", "TTFYM"], f"got={codes}")
+    _check(
+        "ambiguous no-level: nickname-mapped candidates",
+        codes == ["CTFYS", "TTFYM"],
+        f"got={codes}",
+    )
 
     # Verbatim TFEPM suppresses alias-only matches.
     q = "Vad är TFEPM?"
@@ -431,9 +450,19 @@ def section_studyplan_chunks() -> None:
         )
         _check("CINEK /omfattning produces chunks", len(chunks2) > 0, str(len(chunks2)))
         cinek_topics = {c.section_path.split(" (")[0] for c in chunks2}
+        # Issue #55 clarification: `studyProgramme.specialisations` is
+        # inriktningar/spår (paths through the programme), NOT the list of
+        # master programmes a civilingenjör student can apply to. The atlas
+        # now labels that field as "Inriktningar (spår)" — confirm it
+        # surfaces under that name, not the legacy "Valbara masterprogram".
         _check(
-            "CINEK: 'Valbara masterprogram' surfaces (via specialisations)",
-            "Valbara masterprogram" in cinek_topics,
+            "CINEK: 'Inriktningar' surfaces (via specialisations)",
+            "Inriktningar" in cinek_topics,
+            f"topics={sorted(cinek_topics)[:8]}",
+        )
+        _check(
+            "CINEK: legacy 'Valbara masterprogram' no longer mislabels specialisations",
+            "Valbara masterprogram" not in cinek_topics,
             f"topics={sorted(cinek_topics)[:8]}",
         )
         _check(

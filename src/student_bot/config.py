@@ -55,7 +55,7 @@ class RerankerConfig(BaseModel):
     model: str
     device: str = "cpu"
     candidates: int = 20
-    keep: int = 5
+    keep: int = 8
     # Soft preference for chunks whose language matches the query language.
     # Added to the cross-encoder logit AFTER reranking, before sorting and
     # before the gate. Small enough that a clearly better cross-language
