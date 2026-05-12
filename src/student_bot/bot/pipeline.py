@@ -23,6 +23,7 @@ import click
 from rich.console import Console
 
 from student_bot.bot.citations import (
+    _chunk_dedup_key,
     apply_citation_numbering,
     confidence_badge,
     format_sources_block,
@@ -40,6 +41,7 @@ from student_bot.bot.prompts import (
 )
 from student_bot.bot.retrieval import RetrievalResult, RetrievedChunk, get_reranker, retrieve
 from student_bot.bot.web_retrieval import (
+    _question_is_master_eligibility,
     corpus_programme_substrings_for_query,
     history_without_programme_clarification_tail,
     maybe_fetch_dynamic_web,
@@ -174,8 +176,58 @@ def _estimate_context_tokens(messages: list[dict]) -> int:
     return total
 
 
+# How many corpus chunks to merge into the LLM context when a web fetch
+# also fired. Hand-curated markdown (FAQ.md, etc.) often directly answers
+# the same question the web fetch was triggered for; pulling 2 top corpus
+# chunks gives the LLM a grounded baseline alongside the structured live
+# pages. The score floor keeps weak matches from displacing the web result.
+_CORPUS_MERGE_KEEP = 2
+_CORPUS_MERGE_MIN_SCORE = 0.0
+
+
+# Intent-aware boosts applied to web-chunk rerank scores before sorting.
+# Cross-encoders score on text similarity, which for the CTFYS master-mapping
+# question routinely surfaces "Villkor för deltagande" above the actual
+# master-list chunks — both contain the trigger words. A targeted nudge
+# fixes the ordering without retraining anything.
+_MASTER_MAPPING_SECTION_BONUS = 2.0
+_SPECIALISATIONS_SECTION_PENALTY = -2.0
+_MASTER_SECTION_TOKENS = (
+    "behörighetsgivande kurser per masterprogram",
+    "valbara masterprogram",
+    "available master programs",
+    "arskursinformationar4",
+    "arskursinformationar5",
+    "eligibilityrequirementsmasterprograms",
+)
+_SPECIALISATIONS_SECTION_TOKENS = (
+    "inriktningar",
+    "specialisations",
+    "specializations",
+    "spår",
+    "tracks",
+    # `studyProgramme.specialisations` shows up here when atlas-labelled.
+    "fält: specialisations",
+)
+
+
+def _master_intent_score_adjust(chunk: "RetrievedChunk") -> float:
+    """Boost authoritative master-mapping chunks; penalise specialisation
+    chunks. Used only when the question is master-eligibility shaped so
+    these adjustments don't bleed into other intents."""
+    label = " ".join(filter(None, (chunk.section_path, chunk.doc_title))).lower()
+    if any(token in label for token in _SPECIALISATIONS_SECTION_TOKENS):
+        return _SPECIALISATIONS_SECTION_PENALTY
+    if any(token in label for token in _MASTER_SECTION_TOKENS):
+        return _MASTER_MAPPING_SECTION_BONUS
+    return 0.0
+
+
 def _rerank_web_chunks(
-    cfg: Config, query: str, query_language: str, chunks: list[RetrievedChunk]
+    cfg: Config,
+    query: str,
+    query_language: str,
+    chunks: list[RetrievedChunk],
 ) -> list[RetrievedChunk]:
     """Score web-fetched chunks with the cross-encoder and return top-K.
 
@@ -184,10 +236,16 @@ def _rerank_web_chunks(
     stuffed into the prompt, regularly overrunning ``num_ctx``. Reranker
     failure is non-fatal: we fall back to the original order and the
     top-``cfg.reranker.keep`` slice.
+
+    On master-eligibility questions, applies a targeted boost to authoritative
+    master-mapping sections (``eligibilityRequirementsMasterPrograms``,
+    ``arskursinformationAr4/Ar5``) and penalises ``specialisations``-derived
+    chunks — those are inriktningar/tracks, not the master-programme list.
     """
     if not chunks:
         return []
     keep = max(1, cfg.reranker.keep)
+    is_master_intent = _question_is_master_eligibility(query)
     try:
         pairs = [(query, c.text) for c in chunks]
         scores = get_reranker(cfg).predict(pairs).tolist()
@@ -197,17 +255,35 @@ def _rerank_web_chunks(
             for c in chunks:
                 if c.language and c.language == query_language:
                     c.rerank_score += cfg.reranker.language_bonus
+        if is_master_intent:
+            for c in chunks:
+                c.rerank_score += _master_intent_score_adjust(c)
         chunks.sort(key=lambda c: c.rerank_score, reverse=True)
     except Exception as e:
         log.warning("dynamic-web rerank failed, keeping original order: %s", e)
-    reranked = chunks[:keep]
-    if len(chunks) > keep:
+    # Pre-prompt dedup: collapse chunks with identical text+source so the LLM
+    # doesn't see the same paragraph twice (study-plan bundles can emit the
+    # same JSON block under different per-year chunk titles). Iterates in
+    # sorted order so the highest-scored survivor keeps its slot.
+    deduped: list[RetrievedChunk] = []
+    seen: set = set()
+    for c in chunks:
+        key = _chunk_dedup_key(c)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(c)
+        if len(deduped) >= keep:
+            break
+    reranked = deduped
+    if len(chunks) > len(reranked):
         top1 = reranked[0].rerank_score if reranked else 0.0
         log.info(
-            "dynamic-web: reranked %d -> %d chunks (top1=%.3f)",
+            "dynamic-web: reranked %d -> %d chunks (top1=%.3f, master_intent=%s)",
             len(chunks),
             len(reranked),
             top1,
+            is_master_intent,
         )
     return reranked
 
@@ -445,9 +521,42 @@ def answer(
     if web_result and web_result.chunks:
         web_candidates = list(web_result.chunks)
         reranked_web = _rerank_web_chunks(cfg, expanded_q, lang, web_candidates)
-        retrieval = RetrievalResult(
-            query=expanded_q, candidates=web_candidates, reranked=reranked_web
-        )
+        # Merge in the top corpus (Chroma) chunks instead of replacing them.
+        # The FAQ.md and other hand-curated markdown chunks often answer the
+        # very question that triggered the web fetch — silently dropping them
+        # was a bug. Take up to `_CORPUS_MERGE_KEEP` chunks whose rerank score
+        # clears `_CORPUS_MERGE_MIN_SCORE`, dedupe against the web set, and
+        # cap the merged list at `keep + corpus_merge_keep` so we don't
+        # blow the prompt budget.
+        merged = list(reranked_web)
+        try:
+            corpus_terms = corpus_programme_substrings_for_query(expanded_q)
+            corpus_result = retrieve(
+                cfg,
+                expanded_q,
+                corpus_programme_substrings=corpus_terms,
+                query_language=lang,
+            )
+        except Exception as e:
+            log.warning("dynamic-web: corpus-side retrieve failed during merge: %s", e)
+            corpus_result = None
+        if corpus_result and corpus_result.reranked:
+            seen = {_chunk_dedup_key(c) for c in merged}
+            added = 0
+            for c in corpus_result.reranked:
+                if added >= _CORPUS_MERGE_KEEP:
+                    break
+                if c.rerank_score < _CORPUS_MERGE_MIN_SCORE:
+                    continue
+                key = _chunk_dedup_key(c)
+                if key in seen:
+                    continue
+                seen.add(key)
+                merged.append(c)
+                added += 1
+            if added:
+                log.info("dynamic-web: merged %d corpus chunks into web result", added)
+        retrieval = RetrievalResult(query=expanded_q, candidates=web_candidates, reranked=merged)
         # Preserve the synthetic web gate (web-fetched content always passes);
         # the 3.5/2.5 values feed the confidence badge and are intentionally
         # independent of the per-chunk rerank logits.

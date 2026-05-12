@@ -36,22 +36,28 @@ def _normalize_citation(text: str) -> str:
     return out
 
 
+_DEDUP_YEAR_TOKEN_RE = re.compile(r"\bÅrskurs\s+\d+\b|\bYear\s+\d+\b", re.IGNORECASE)
+
+
 def _chunk_dedup_key(c: RetrievedChunk) -> tuple:
-    """Dedup chunks by (source, text-hash, page).
+    """Dedup chunks by (source, year-normalized text-hash, page).
 
     The KTH study-plan SPA returns identical JSON on `/arskurs1..5` sidebar
-    routes, so the structured chunker can emit the same text under
-    different `doc_title` / `section_path` strings (e.g. "Årskurs 1 –
-    behörighetsgivande kurser" vs "Årskurs 2 – …"). Those chunks now all
-    share the bundle's base `source_url` (set in `_build_studyplan_chunk`),
-    and the text hash collapses them to one citation row.
+    routes, so the per-year "behörighetsgivande kurser per masterprogram"
+    block gets emitted five times under different `Årskurs N` headings —
+    same 1134-byte body, only the year integer differs. Normalising the
+    `Årskurs N` / `Year N` tokens in the text before hashing makes those
+    five chunks share a key. If KTH ever differentiates the data per year,
+    the bodies will differ outside the year token and the hash will still
+    diverge — so this is defensive, not aggressive.
 
-    Non-study-plan chunks aren't affected: different PDF pages or
-    markdown sections have different text, so the hashes differ. Different
-    PDF pages also keep their `page_start` distinction.
+    Non-study-plan chunks aren't affected: different PDF pages or markdown
+    sections have different text, so the hashes differ. PDF pages also
+    keep their `page_start` distinction.
     """
     text = c.text or ""
-    text_hash = hashlib.md5(text.encode("utf-8", errors="replace")).hexdigest()[:8]
+    normalized = _DEDUP_YEAR_TOKEN_RE.sub("Årskurs <N>", text)
+    text_hash = hashlib.md5(normalized.encode("utf-8", errors="replace")).hexdigest()[:8]
     return (
         c.source_url or c.rel_source or "",
         text_hash,

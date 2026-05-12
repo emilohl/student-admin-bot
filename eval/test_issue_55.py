@@ -167,6 +167,25 @@ def section_chunk_dedup_key() -> None:
     )
     _check("identical text+source -> same key", _chunk_dedup_key(a) == _chunk_dedup_key(b))
 
+    # The SPA quirk case: same body, only the "Årskurs N" heading varies.
+    bundle = "https://www.kth.se/student/kurser/program/CTFYS/20232"
+    y1 = _Stub(
+        doc_title="CTFYS, Utbildningsplan kull HT23",
+        section_path="Årskurs 1 – behörighetsgivande kurser per masterprogram",
+        text="## Årskurs 1 – behörighetsgivande kurser per masterprogram\n\nIdentical body data.",
+        source_url=bundle,
+    )
+    y2 = _Stub(
+        doc_title=y1.doc_title,
+        section_path="Årskurs 2 – behörighetsgivande kurser per masterprogram",
+        text="## Årskurs 2 – behörighetsgivande kurser per masterprogram\n\nIdentical body data.",
+        source_url=bundle,
+    )
+    _check(
+        "elig chunks collapse across year headings",
+        _chunk_dedup_key(y1) == _chunk_dedup_key(y2),
+    )
+
     # Different text -> different key, even with same source/title.
     c = _Stub(
         doc_title=a.doc_title, section_path=a.section_path, text="DIFFERENT", source_url=bundle

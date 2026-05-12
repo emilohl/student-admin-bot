@@ -1469,6 +1469,52 @@ _PROGRAM_BUNDLE_BASE_RE = re.compile(
 )
 
 
+_KULL_TITLE_PROGRAMME_RE = re.compile(r"^(.+?)(?:\s+studieplan:|\s+årskurs\s+\d+|$)", re.IGNORECASE)
+
+
+def _kull_label_sv(term: str) -> str:
+    """KTH 5-digit programme term -> short cohort label, e.g. '20232' -> 'HT23'.
+
+    Matches the convention students use ("kull HT23"), distinct from the
+    long form `_term_label_sv` returns ("HT2023") which is used elsewhere.
+    """
+    if not (isinstance(term, str) and re.fullmatch(r"\d{5}", term)):
+        return ""
+    yy = term[2:4]
+    season = "HT" if term[4] == "2" else "VT"
+    return f"{season}{yy}"
+
+
+def _study_plan_title_with_kull(doc_title: str, page_url: str) -> str:
+    """For study-plan chunks, rewrite the doc_title so citations show the
+    admission cohort (`kull HTYY`).
+
+    The chunker emits titles like "CTFYS studieplan: Valbara masterprogram"
+    or "CTFYS årskurs 1: behörighetsgivande kurser". This helper extracts the
+    programme name (the prefix before "studieplan:" / "årskurs N") and
+    rewrites the title to "<programme_name>, Utbildningsplan kull HT23".
+    Leaves the title untouched when the URL doesn't fit a programme-term
+    pattern or the prefix can't be parsed.
+    """
+    if not doc_title:
+        return doc_title
+    path = urlsplit(_canonicalize(page_url)).path
+    m = _PROGRAM_BUNDLE_BASE_RE.match(path)
+    if not m:
+        return doc_title
+    term_match = re.search(r"/(\d{5})(?:/|$)", path)
+    if not term_match:
+        return doc_title
+    kull = _kull_label_sv(term_match.group(1))
+    if not kull:
+        return doc_title
+    name_match = _KULL_TITLE_PROGRAMME_RE.match(doc_title)
+    programme_name = (name_match.group(1) if name_match else doc_title).strip()
+    if not programme_name:
+        return doc_title
+    return f"{programme_name}, Utbildningsplan kull {kull}"
+
+
 def _studyplan_bundle_base_url(page_url: str) -> str:
     """Strip any sidebar suffix (`/arskursN`, `/omfattning`, `/inriktningar`,
     …) from a programme-term URL so all chunks within one study-plan bundle
@@ -1509,11 +1555,15 @@ def _build_studyplan_chunk(
     # opens it expecting to find that specific section. The non-bundle path
     # falls back to `page_url` (e.g. /student/kurser/kurs/... course pages).
     canonical_source = _studyplan_bundle_base_url(page_url)
+    # Rewrite title to include the admission cohort ("kull HT23") for
+    # study-plan chunks so the Sources block disambiguates between years
+    # when the same programme has chunks from multiple admission terms.
+    display_title = _study_plan_title_with_kull(doc_title, page_url)
     return RetrievedChunk(
         chunk_id=chunk_id,
         text=_truncate_studyplan_text(text),
         rel_source=rel_source,
-        doc_title=doc_title,
+        doc_title=display_title,
         doc_type="html",
         language="sv",
         section_path=section_path,
@@ -1544,8 +1594,15 @@ def _studyplan_chunks_from_studyprogramme(
         text = _flatten_text(raw)
         if len(text) < 20:  # skip empty / boilerplate stubs
             continue
-        topic_label = atlas.label_for_field(key, lang) or key
-        section_path = f"{topic_label} (studieplan, fält: {key})"
+        atlas_label = atlas.label_for_field(key, lang)
+        topic_label = atlas_label or key
+        # When the atlas labelled the field, the human-readable label IS the
+        # section. The raw JSON key (`fält: <key>`) is noise that bloats the
+        # citation tag and the section_path-based dedup key, and trips up the
+        # LLM's exact-copy citation matcher. Keep the field name visible only
+        # when the atlas didn't recognise the key, so an unlabelled field
+        # still has *some* identity.
+        section_path = topic_label if atlas_label else f"{topic_label} (fält: {key})"
         title_prefix = programme_name.strip() if programme_name else "Studieplan"
         doc_title = f"{title_prefix} studieplan: {topic_label}"
         try:
