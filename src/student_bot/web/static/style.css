@@ -358,8 +358,14 @@ html[lang="en"] .lang-sv { display: none; }
   color: var(--kth-white);
   border-color: var(--accent);
 }
-.stats-logy { font-size: 13px; color: var(--muted); user-select: none; }
-.stats-logy input { vertical-align: middle; margin-right: 4px; }
+.stats-logy,
+.stats-split,
+.stats-logx { font-size: 13px; color: var(--muted); user-select: none; }
+.stats-logy input,
+.stats-split input,
+.stats-logx input { vertical-align: middle; margin-right: 4px; }
+.stats-chart-head .stats-logx { margin-left: auto; }
+.stats-chart-head .stats-export { margin-left: 8px; }
 
 .stats-charts canvas { max-width: 100%; }
 .stats-chart-head {

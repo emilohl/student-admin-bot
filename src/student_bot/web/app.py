@@ -503,6 +503,9 @@ def _stream_answer(
             jargon_hits=[e.key for e in result.jargon_hits] or None,
             prompt_tokens=result.context_tokens_est,
             gen_tokens=result.gen_tokens_est,
+            ttft_ms=result.ttft_ms,
+            gen_tps=result.gen_tps,
+            llm_model=cfg.llm.model,
         )
 
         if qa_id is not None and cfg.topics.enabled:
@@ -990,6 +993,7 @@ def _stats_series_response(db: LogDB, range_key: str, channel: str = "all") -> J
     now = int(time.time())
     since = now - span_seconds
     raw = db.series_buckets(since, bucket_seconds, channel=channel)
+    rows = db.series_rows(since, channel=channel)
     return JSONResponse(
         {
             "range": range_key,
@@ -998,6 +1002,7 @@ def _stats_series_response(db: LogDB, range_key: str, channel: str = "all") -> J
             "since_ts": since,
             "now_ts": now,
             "buckets": _densify_buckets(raw, since, now, bucket_seconds),
+            "rows": rows,
         }
     )
 
@@ -1134,6 +1139,10 @@ def _stats_page(
       <input type="checkbox" id="stats-logy">
       <span data-i18n="stats.chart.logy"></span>
     </label>
+    <label class="stats-split">
+      <input type="checkbox" id="stats-split-model">
+      <span data-i18n="stats.split_by_model"></span>
+    </label>
   </div>
   <div class="stats-chart-head">
     <h3 data-i18n="stats.chart.requests"></h3>
@@ -1147,6 +1156,36 @@ def _stats_page(
             data-i18n="stats.export.png" data-i18n-title="stats.export.png.title"></button>
   </div>
   <canvas id="chart-tokens" height="220"></canvas>
+  <div class="stats-chart-head">
+    <h3 data-i18n="stats.chart.tokens_hist"></h3>
+    <label class="stats-logx">
+      <input type="checkbox" data-logx-for="tokens_hist">
+      <span data-i18n="stats.chart.logx"></span>
+    </label>
+    <button type="button" class="stats-export" data-export-chart="tokens_hist"
+            data-i18n="stats.export.png" data-i18n-title="stats.export.png.title"></button>
+  </div>
+  <canvas id="chart-tokens-hist" height="220"></canvas>
+  <div class="stats-chart-head">
+    <h3 data-i18n="stats.chart.ttft_hist"></h3>
+    <label class="stats-logx">
+      <input type="checkbox" data-logx-for="ttft_hist">
+      <span data-i18n="stats.chart.logx"></span>
+    </label>
+    <button type="button" class="stats-export" data-export-chart="ttft_hist"
+            data-i18n="stats.export.png" data-i18n-title="stats.export.png.title"></button>
+  </div>
+  <canvas id="chart-ttft-hist" height="220"></canvas>
+  <div class="stats-chart-head">
+    <h3 data-i18n="stats.chart.tps_hist"></h3>
+    <label class="stats-logx">
+      <input type="checkbox" data-logx-for="tps_hist">
+      <span data-i18n="stats.chart.logx"></span>
+    </label>
+    <button type="button" class="stats-export" data-export-chart="tps_hist"
+            data-i18n="stats.export.png" data-i18n-title="stats.export.png.title"></button>
+  </div>
+  <canvas id="chart-tps-hist" height="220"></canvas>
   <div class="stats-chart-head">
     <h3 data-i18n="stats.chart.feedback"></h3>
     <button type="button" class="stats-export" data-export-chart="feedback"
@@ -1172,8 +1211,8 @@ def _stats_page(
 
 <p><a href="{home}" data-i18n="stats.back"></a></p>
 </div></main>
-<script src="{static_prefix}/vendor/chart.umd.min.js?v=27"></script>
-<script src="{static_prefix}/stats.js?v=27" defer></script>
+<script src="{static_prefix}/vendor/chart.umd.min.js?v=28"></script>
+<script src="{static_prefix}/stats.js?v=28" defer></script>
 </body></html>
 """
     return HTMLResponse(body)

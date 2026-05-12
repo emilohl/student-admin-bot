@@ -102,6 +102,13 @@ MIGRATIONS: list[tuple[str, str]] = [
     # rows may stay NULL until backfilled by scripts/backfill_tokens.py.
     ("qa_log.prompt_tokens", "ALTER TABLE qa_log ADD COLUMN prompt_tokens INTEGER"),
     ("qa_log.gen_tokens", "ALTER TABLE qa_log ADD COLUMN gen_tokens INTEGER"),
+    # Per-request streaming metrics: time-to-first-token and tokens/sec during
+    # generation. Pipeline already computes these; previously dropped at write.
+    ("qa_log.ttft_ms", "ALTER TABLE qa_log ADD COLUMN ttft_ms INTEGER"),
+    ("qa_log.gen_tps", "ALTER TABLE qa_log ADD COLUMN gen_tps REAL"),
+    # Ollama model that produced this answer. Stored as the configured model
+    # tag so future histograms can split by model.
+    ("qa_log.llm_model", "ALTER TABLE qa_log ADD COLUMN llm_model TEXT"),
 ]
 
 
@@ -124,6 +131,20 @@ class LogDB:
                 table, column = spec.split(".")
                 if not _column_exists(conn, table, column):
                     conn.execute(sql)
+            # One-shot backfill: pre-existing rows have no llm_model. Issue
+            # #58 notes only one LLM has ever been in production, so filling
+            # NULL rows with the currently-configured model is accurate. This
+            # is a no-op once every row has a value, so leaving it
+            # unconditional avoids needing a separate migration tracker.
+            try:
+                current_model = (cfg.llm.model or "").strip()
+            except AttributeError:
+                current_model = ""
+            if current_model:
+                conn.execute(
+                    "UPDATE qa_log SET llm_model = ? WHERE llm_model IS NULL",
+                    (current_model,),
+                )
             conn.commit()
 
     @contextmanager
@@ -218,6 +239,9 @@ class LogDB:
         jargon_hits: list[str] | None = None,
         prompt_tokens: int | None = None,
         gen_tokens: int | None = None,
+        ttft_ms: int | None = None,
+        gen_tps: float | None = None,
+        llm_model: str | None = None,
     ) -> int | None:
         """Record a Q&A row, or skip (returning None) when the user opted out.
 
@@ -237,8 +261,9 @@ class LogDB:
                     rerank_top1, rerank_meanK, distinct_sources,
                     gate_pass, gate_reason, answer, latency_ms,
                     question_expanded, jargon_hits,
-                    prompt_tokens, gen_tokens
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    prompt_tokens, gen_tokens,
+                    ttft_ms, gen_tps, llm_model
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     int(time.time()),
@@ -261,6 +286,9 @@ class LogDB:
                     ",".join(jargon_hits or []) if jargon_hits else None,
                     prompt_tokens,
                     gen_tokens,
+                    ttft_ms,
+                    gen_tps,
+                    llm_model,
                 ),
             )
             conn.commit()
@@ -431,6 +459,45 @@ class LogDB:
                 "gen_tokens": int(r[4] or 0),
                 "thumbs_up": int(r[5] or 0),
                 "thumbs_down": int(r[6] or 0),
+            }
+            for r in rows
+        ]
+
+    def series_rows(
+        self,
+        since_ts: int,
+        channel: str | None = None,
+    ) -> list[dict]:
+        """Per-row metrics for the stats-page histograms.
+
+        Only returns gate_pass=1 rows because refused turns have no
+        prompt/gen token counts and no streaming metrics — including them
+        would just inject a NULL/zero spike at the histogram's left edge.
+        Caller (JS) bins these client-side over 50 fixed-width bins.
+        """
+        ch_sql, ch_params = self._channel_clause(channel)
+        with self._lock, self._connect() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT
+                    q.prompt_tokens,
+                    q.gen_tokens,
+                    q.ttft_ms,
+                    q.gen_tps,
+                    q.llm_model
+                FROM qa_log q
+                WHERE q.ts >= ? AND q.gate_pass = 1{ch_sql}
+                ORDER BY q.ts ASC
+                """,
+                (since_ts, *ch_params),
+            ).fetchall()
+        return [
+            {
+                "prompt_tokens": int(r[0]) if r[0] is not None else None,
+                "gen_tokens": int(r[1]) if r[1] is not None else None,
+                "ttft_ms": int(r[2]) if r[2] is not None else None,
+                "gen_tps": float(r[3]) if r[3] is not None else None,
+                "llm_model": r[4],
             }
             for r in rows
         ]
