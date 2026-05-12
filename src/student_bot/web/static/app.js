@@ -64,11 +64,17 @@ function renderLoggingStatus() {
   if (state.optOut) {
     dot.classList.add("off");
     label.textContent = t("chat.logging.off");
+    label.title = t("chat.logging.off.tip");
     btn.textContent = t("chat.logging.enable");
+    btn.title = t("chat.logging.enable.tip");
+    btn.setAttribute("aria-label", t("chat.logging.enable.tip"));
   } else {
     dot.classList.remove("off");
     label.textContent = t("chat.logging.on");
+    label.title = t("chat.logging.on.tip");
     btn.textContent = t("chat.logging.disable");
+    btn.title = t("chat.logging.disable.tip");
+    btn.setAttribute("aria-label", t("chat.logging.disable.tip"));
   }
 }
 

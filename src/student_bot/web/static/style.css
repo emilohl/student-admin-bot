@@ -109,7 +109,8 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .hidden { display: none !important; }
 .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .composer-row { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; align-items: flex-start; }
-.composer-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.composer-actions-col { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-left: auto; }
+.composer-actions { display: flex; align-items: center; gap: 8px; }
 .perf-panel {
   flex: 0 1 50%;
   width: 50%;
@@ -142,14 +143,17 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .perf-value .host { color: #78001A; }
 .status { color: var(--muted); flex: 1; font-size: 13px; }
 #chat { display: flex; flex-direction: column; gap: 16px; }
-/* Small status strip at the top of the chat card. Shows the current logging
-   state and lets the user toggle it mid-session — fulfills the "encourage,
-   but always allow opt-out" pedagogy without nagging on every reply. */
-.chat-status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--kth-brokenwhite); }
-.chat-status .logging-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex-shrink: 0; }
+/* Compact logging-state line, stacked directly under the composer's
+   submit/reset buttons via .composer-actions-col so it sits flush with the
+   buttons regardless of perf-panel height. Lets the user toggle opt-out
+   mid-session — fulfills the "encourage, but always allow opt-out" pedagogy
+   without nagging on every reply. The parenthetical explanation lives in
+   tooltips on the label and the toggle. */
+.chat-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.chat-status .logging-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--good); flex-shrink: 0; }
 .chat-status .logging-dot.off { background: var(--muted); }
-.chat-status .logging-label { flex: 1; }
-button.link { background: transparent; color: var(--accent); border: 0; padding: 2px 6px; font-size: 13px; cursor: pointer; text-decoration: underline; }
+.chat-status .logging-label { cursor: help; }
+button.link { background: transparent; color: var(--accent); border: 0; padding: 0 2px; font-size: 12px; cursor: pointer; text-decoration: underline; }
 button.link:hover { color: var(--kth-skyblue); }
 #messages { display: flex; flex-direction: column; gap: 12px; max-height: 60dvh; overflow-y: auto; padding-right: 4px; }
 .msg { padding: 12px 14px; border-radius: 8px; max-width: 88%; }
