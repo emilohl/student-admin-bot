@@ -322,14 +322,13 @@ html[lang="en"] .lang-sv { display: none; }
 .stats-table th,
 .stats-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); }
 .stats-table thead th {
-  background: var(--kth-sand);
-  color: var(--fg);
+  background: var(--kth-skyblue);
+  color: var(--kth-white);
   font-weight: 600;
   border-bottom: 1px solid var(--border);
 }
-.stats-table tbody tr:nth-child(even) td {
-  background: color-mix(in srgb, var(--kth-sand) 35%, transparent);
-}
+.stats-table tbody tr:nth-child(odd)  td { background: var(--kth-white); }
+.stats-table tbody tr:nth-child(even) td { background: var(--kth-sand); }
 .stats-table th.num,
 .stats-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .stats-table th.text,
@@ -358,8 +357,20 @@ html[lang="en"] .lang-sv { display: none; }
   color: var(--kth-white);
   border-color: var(--accent);
 }
-.stats-logy { font-size: 13px; color: var(--muted); user-select: none; }
-.stats-logy input { vertical-align: middle; margin-right: 4px; }
+.stats-logy,
+.stats-split,
+.stats-logx { font-size: 13px; color: var(--muted); user-select: none; }
+.stats-logy input,
+.stats-split input,
+.stats-logx input { vertical-align: middle; margin-right: 4px; }
+/* Push the first axis-scale label (log-x preferred, then log-y) to the
+   right of the chart title; remaining labels and the export button sit
+   immediately after it. Selectors avoid `:has()` so older Safari still
+   gets the layout. */
+.stats-chart-head .stats-logx,
+.stats-chart-head > .stats-logy:first-of-type { margin-left: auto; }
+.stats-chart-head .stats-logx + .stats-logy { margin-left: 0; }
+.stats-chart-head .stats-export { margin-left: 8px; }
 
 .stats-charts canvas { max-width: 100%; }
 .stats-chart-head {

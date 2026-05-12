@@ -102,6 +102,13 @@ MIGRATIONS: list[tuple[str, str]] = [
     # rows may stay NULL until backfilled by scripts/backfill_tokens.py.
     ("qa_log.prompt_tokens", "ALTER TABLE qa_log ADD COLUMN prompt_tokens INTEGER"),
     ("qa_log.gen_tokens", "ALTER TABLE qa_log ADD COLUMN gen_tokens INTEGER"),
+    # Per-request streaming metrics: time-to-first-token and tokens/sec during
+    # generation. Pipeline already computes these; previously dropped at write.
+    ("qa_log.ttft_ms", "ALTER TABLE qa_log ADD COLUMN ttft_ms INTEGER"),
+    ("qa_log.gen_tps", "ALTER TABLE qa_log ADD COLUMN gen_tps REAL"),
+    # Ollama model that produced this answer. Stored as the configured model
+    # tag so future histograms can split by model.
+    ("qa_log.llm_model", "ALTER TABLE qa_log ADD COLUMN llm_model TEXT"),
 ]
 
 
@@ -124,6 +131,20 @@ class LogDB:
                 table, column = spec.split(".")
                 if not _column_exists(conn, table, column):
                     conn.execute(sql)
+            # One-shot backfill: pre-existing rows have no llm_model. Issue
+            # #58 notes only one LLM has ever been in production, so filling
+            # NULL rows with the currently-configured model is accurate. This
+            # is a no-op once every row has a value, so leaving it
+            # unconditional avoids needing a separate migration tracker.
+            try:
+                current_model = (cfg.llm.model or "").strip()
+            except AttributeError:
+                current_model = ""
+            if current_model:
+                conn.execute(
+                    "UPDATE qa_log SET llm_model = ? WHERE llm_model IS NULL",
+                    (current_model,),
+                )
             conn.commit()
 
     @contextmanager
@@ -218,6 +239,9 @@ class LogDB:
         jargon_hits: list[str] | None = None,
         prompt_tokens: int | None = None,
         gen_tokens: int | None = None,
+        ttft_ms: int | None = None,
+        gen_tps: float | None = None,
+        llm_model: str | None = None,
     ) -> int | None:
         """Record a Q&A row, or skip (returning None) when the user opted out.
 
@@ -237,8 +261,9 @@ class LogDB:
                     rerank_top1, rerank_meanK, distinct_sources,
                     gate_pass, gate_reason, answer, latency_ms,
                     question_expanded, jargon_hits,
-                    prompt_tokens, gen_tokens
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    prompt_tokens, gen_tokens,
+                    ttft_ms, gen_tps, llm_model
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     int(time.time()),
@@ -261,6 +286,9 @@ class LogDB:
                     ",".join(jargon_hits or []) if jargon_hits else None,
                     prompt_tokens,
                     gen_tokens,
+                    ttft_ms,
+                    gen_tps,
+                    llm_model,
                 ),
             )
             conn.commit()
@@ -410,10 +438,36 @@ class LogDB:
                     (q.ts / ?) * ?                                AS bucket_ts,
                     COUNT(*)                                      AS n,
                     SUM(CASE WHEN q.gate_pass = 1 THEN 1 ELSE 0 END) AS n_answered,
+                    -- Non-answered turns are split into three semantically
+                    -- distinct categories so the requests chart can tell
+                    -- "bot didn't have the info" apart from "user hit a
+                    -- limit" and "bot asked back for clarification".
+                    SUM(CASE WHEN q.gate_pass = 0
+                              AND q.gate_reason = 'programme_clarification'
+                             THEN 1 ELSE 0 END) AS n_clarification,
+                    SUM(CASE WHEN q.gate_pass = 0
+                              AND q.gate_reason IN ('input_too_long', 'rate_limited')
+                             THEN 1 ELSE 0 END) AS n_guardrail,
+                    SUM(CASE WHEN q.gate_pass = 0
+                              AND q.gate_reason NOT IN (
+                                  'programme_clarification',
+                                  'input_too_long',
+                                  'rate_limited'
+                              )
+                             THEN 1 ELSE 0 END) AS n_off_topic,
                     SUM(COALESCE(q.prompt_tokens, 0))             AS prompt_tokens,
                     SUM(COALESCE(q.gen_tokens, 0))                AS gen_tokens,
                     SUM(CASE WHEN f.sentiment = 'positive' THEN 1 ELSE 0 END) AS thumbs_up,
-                    SUM(CASE WHEN f.sentiment = 'negative' THEN 1 ELSE 0 END) AS thumbs_down
+                    SUM(CASE WHEN f.sentiment = 'negative' THEN 1 ELSE 0 END) AS thumbs_down,
+                    -- One Mattermost post can receive reactions from multiple
+                    -- users, so a single answered qa can have many feedback
+                    -- rows. The pos/total and neg/total views need a [0,1]
+                    -- numerator, so we also report DISTINCT qa rows reacted
+                    -- to with the given sentiment. (`thumbs_up` / `thumbs_down`
+                    -- stay raw so the pos/(pos+neg) ratio still reflects
+                    -- reaction weight, not just answer count.)
+                    COUNT(DISTINCT CASE WHEN f.sentiment = 'positive' THEN q.id END) AS qa_with_positive,
+                    COUNT(DISTINCT CASE WHEN f.sentiment = 'negative' THEN q.id END) AS qa_with_negative
                 FROM qa_log q
                 LEFT JOIN feedback f ON f.qa_id = q.id
                 WHERE q.ts >= ?{ch_sql}
@@ -427,10 +481,54 @@ class LogDB:
                 "bucket_ts": int(r[0]),
                 "n": int(r[1] or 0),
                 "n_answered": int(r[2] or 0),
-                "prompt_tokens": int(r[3] or 0),
-                "gen_tokens": int(r[4] or 0),
-                "thumbs_up": int(r[5] or 0),
-                "thumbs_down": int(r[6] or 0),
+                "n_clarification": int(r[3] or 0),
+                "n_guardrail": int(r[4] or 0),
+                "n_off_topic": int(r[5] or 0),
+                "prompt_tokens": int(r[6] or 0),
+                "gen_tokens": int(r[7] or 0),
+                "thumbs_up": int(r[8] or 0),
+                "thumbs_down": int(r[9] or 0),
+                "qa_with_positive": int(r[10] or 0),
+                "qa_with_negative": int(r[11] or 0),
+            }
+            for r in rows
+        ]
+
+    def series_rows(
+        self,
+        since_ts: int,
+        channel: str | None = None,
+    ) -> list[dict]:
+        """Per-row metrics for the stats-page histograms.
+
+        Only returns gate_pass=1 rows because refused turns have no
+        prompt/gen token counts and no streaming metrics — including them
+        would just inject a NULL/zero spike at the histogram's left edge.
+        Caller (JS) bins these client-side over 50 fixed-width bins.
+        """
+        ch_sql, ch_params = self._channel_clause(channel)
+        with self._lock, self._connect() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT
+                    q.prompt_tokens,
+                    q.gen_tokens,
+                    q.ttft_ms,
+                    q.gen_tps,
+                    q.llm_model
+                FROM qa_log q
+                WHERE q.ts >= ? AND q.gate_pass = 1{ch_sql}
+                ORDER BY q.ts ASC
+                """,
+                (since_ts, *ch_params),
+            ).fetchall()
+        return [
+            {
+                "prompt_tokens": int(r[0]) if r[0] is not None else None,
+                "gen_tokens": int(r[1]) if r[1] is not None else None,
+                "ttft_ms": int(r[2]) if r[2] is not None else None,
+                "gen_tps": float(r[3]) if r[3] is not None else None,
+                "llm_model": r[4],
             }
             for r in rows
         ]

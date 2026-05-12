@@ -414,6 +414,9 @@ class StudentBot:
             jargon_hits=[e.key for e in result.jargon_hits] or None,
             prompt_tokens=result.context_tokens_est,
             gen_tokens=result.gen_tokens_est,
+            ttft_ms=result.ttft_ms,
+            gen_tps=result.gen_tps,
+            llm_model=self.cfg.llm.model,
         )
 
         # Topic classification runs AFTER the user has their answer so it
