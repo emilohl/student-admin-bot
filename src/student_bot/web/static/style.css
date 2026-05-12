@@ -142,6 +142,15 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .perf-value .host { color: #78001A; }
 .status { color: var(--muted); flex: 1; font-size: 13px; }
 #chat { display: flex; flex-direction: column; gap: 16px; }
+/* Small status strip at the top of the chat card. Shows the current logging
+   state and lets the user toggle it mid-session — fulfills the "encourage,
+   but always allow opt-out" pedagogy without nagging on every reply. */
+.chat-status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--kth-brokenwhite); }
+.chat-status .logging-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex-shrink: 0; }
+.chat-status .logging-dot.off { background: var(--muted); }
+.chat-status .logging-label { flex: 1; }
+button.link { background: transparent; color: var(--accent); border: 0; padding: 2px 6px; font-size: 13px; cursor: pointer; text-decoration: underline; }
+button.link:hover { color: var(--kth-skyblue); }
 #messages { display: flex; flex-direction: column; gap: 12px; max-height: 60dvh; overflow-y: auto; padding-right: 4px; }
 .msg { padding: 12px 14px; border-radius: 8px; max-width: 88%; }
 .msg.user { background: var(--user); align-self: flex-end; }

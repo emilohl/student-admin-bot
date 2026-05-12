@@ -190,25 +190,45 @@ def format_sources_block(
 
 # Five rotating LLM-literacy reminders, one shown per answer. Sourced from
 # the README's "five concepts" list — keep these short so they don't bury
-# the answer.
-LITERACY_FOOTERS_SV = [
-    "_Tips: klicka på källorna och dubbelkolla svaren mot dokumenten – boten kan ha fel även när den låter säker._",
-    "_Tips: en stor språkmodell (LLM) kan låta övertygande utan att ha rätt. Lita på källorna, inte på tonen._",
-    "_Tips: boten känner bara till dokumenten den indexerats på. För personliga ärenden – kontakta studievägledaren._",
-    "_Tips: dina frågor loggas anonymt för att förbättra boten. Skicka `!privacy off` om du vill stänga av loggning._",
-    "_Tips: boten är ett komplement, inte en ersättning för studievägledaren – särskilt vid beslut som påverkar dina studier._",
-]
-LITERACY_FOOTERS_EN = [
-    "_Tip: click the sources and double-check against the documents — the bot can be wrong even when it sounds confident._",
-    "_Tip: an LLM can sound convincing while being wrong. Trust the sources, not the tone._",
-    "_Tip: the bot only knows the documents it was indexed on. For personal cases, contact the study counselor._",
-    "_Tip: your questions are logged anonymously to improve the bot. Send `!privacy off` to disable logging._",
-    "_Tip: this bot complements but doesn't replace the study counselor — especially for decisions affecting your studies._",
-]
+# the answer. The privacy tip varies by channel: Mattermost users get the
+# slash command, web users get pointed at the in-chat toggle.
+_PRIVACY_TIP_SV = {
+    "mattermost": "_Tips: dina frågor loggas anonymt för att förbättra boten. Skicka `!logging off` om du vill stänga av loggning._",
+    "web": "_Tips: dina frågor loggas anonymt för att förbättra boten. Klicka på loggnings-reglaget ovanför chattfältet om du vill stänga av loggning._",
+    "cli": "_Tips: dina frågor loggas anonymt för att förbättra boten. Sätt `WEB_AUTH_ENABLED=false` och välj loggning vid onboardingen, eller använd `!logging off` i Mattermost._",
+}
+_PRIVACY_TIP_EN = {
+    "mattermost": "_Tip: your questions are logged anonymously to improve the bot. Send `!logging off` to disable logging._",
+    "web": "_Tip: your questions are logged anonymously to improve the bot. Click the logging toggle above the chat to disable it._",
+    "cli": "_Tip: your questions are logged anonymously to improve the bot. Toggle logging on the web UI, or send `!logging off` in Mattermost._",
+}
 
 
-def literacy_footer(lang: str, *, seed: int | None = None) -> str:
-    pool = LITERACY_FOOTERS_EN if lang == "en" else LITERACY_FOOTERS_SV
+def _literacy_footers(lang: str, channel: str) -> list[str]:
+    if channel not in _PRIVACY_TIP_SV:
+        channel = "mattermost"
+    if lang == "en":
+        return [
+            "_Tip: click the sources and double-check against the documents — the bot can be wrong even when it sounds confident._",
+            "_Tip: an LLM can sound convincing while being wrong. Trust the sources, not the tone._",
+            "_Tip: the bot only knows the documents it was indexed on. For personal cases, contact the study counselor._",
+            _PRIVACY_TIP_EN[channel],
+            "_Tip: this bot complements but doesn't replace the study counselor — especially for decisions affecting your studies._",
+        ]
+    return [
+        "_Tips: klicka på källorna och dubbelkolla svaren mot dokumenten – boten kan ha fel även när den låter säker._",
+        "_Tips: en stor språkmodell (LLM) kan låta övertygande utan att ha rätt. Lita på källorna, inte på tonen._",
+        "_Tips: boten känner bara till dokumenten den indexerats på. För personliga ärenden – kontakta studievägledaren._",
+        _PRIVACY_TIP_SV[channel],
+        "_Tips: boten är ett komplement, inte en ersättning för studievägledaren – särskilt vid beslut som påverkar dina studier._",
+    ]
+
+
+def literacy_footer(lang: str, *, seed: int | None = None, channel: str = "mattermost") -> str:
+    """Pick one rotating tip. `channel` selects the privacy-tip variant so
+    the advertised command/affordance actually works in the surface the
+    user is on (Mattermost slash command vs. web toggle)."""
+    pool = _literacy_footers(lang, channel)
     rng = random.Random(seed) if seed is not None else random
     return rng.choice(pool)
 

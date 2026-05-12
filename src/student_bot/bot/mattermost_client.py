@@ -77,24 +77,24 @@ def _perf_panel_enabled(cfg: Config) -> bool:
 GDPR_NOTICE_SV = (
     "Hej! Jag är en automatisk assistent för administrativa frågor om CTFYS. "
     "Frågor och feedback (👍 / 👎) loggas anonymt för att förbättra boten. "
-    "Skriv `!privacy off` om du vill stänga av loggning av dina frågor "
-    "(`!privacy on` slår på igen, `!privacy status` visar nuläget). "
+    "Skriv `!logging off` om du vill stänga av loggning av dina frågor "
+    "(`!logging on` slår på igen, `!logging status` visar nuläget). "
     "Reagera gärna med 👍 eller 👎 på mina svar."
 )
 GDPR_NOTICE_EN = (
     "Hi! I'm an automated assistant for administrative questions about CTFYS. "
     "Questions and feedback (👍 / 👎) are logged anonymously to help improve the bot. "
-    "Send `!privacy off` to stop logging your questions "
-    "(`!privacy on` re-enables it, `!privacy status` shows current state). "
+    "Send `!logging off` to stop logging your questions "
+    "(`!logging on` re-enables it, `!logging status` shows current state). "
     "Please react with 👍 or 👎 on my replies."
 )
 
-PRIVACY_OFF_SV = "Loggning är nu avstängd. Innehållet i dina frågor lagras inte längre."
-PRIVACY_OFF_EN = "Logging disabled. Your question content is no longer stored."
-PRIVACY_ON_SV = "Loggning är på. Frågor och svar lagras anonymt."
-PRIVACY_ON_EN = "Logging enabled. Questions and answers are stored anonymously."
-PRIVACY_STATUS_SV = "Loggning för dig är just nu: {state}."
-PRIVACY_STATUS_EN = "Logging for you is currently: {state}."
+LOGGING_OFF_SV = "Loggning är nu avstängd. Innehållet i dina frågor lagras inte längre."
+LOGGING_OFF_EN = "Logging disabled. Your question content is no longer stored."
+LOGGING_ON_SV = "Loggning är på. Frågor och svar lagras anonymt."
+LOGGING_ON_EN = "Logging enabled. Questions and answers are stored anonymously."
+LOGGING_STATUS_SV = "Loggning för dig är just nu: {state}."
+LOGGING_STATUS_EN = "Logging for you is currently: {state}."
 
 POSITIVE_EMOJI = {"+1", "thumbsup", "white_check_mark"}
 NEGATIVE_EMOJI = {"-1", "thumbsdown", "x", "no_entry_sign"}
@@ -303,33 +303,40 @@ class StudentBot:
         }
         _write_json(path, data)
 
-    def _handle_privacy_command(self, job: _Job, body: str) -> bool:
-        """Returns True if the message was handled as a !privacy command."""
+    def _handle_logging_command(self, job: _Job, body: str) -> bool:
+        """Returns True if the message was handled as a !logging command.
+
+        `!privacy` is kept as an alias for backward compat — the original
+        verb was confusing (off/on referred to *logging*, not to *privacy*),
+        but it's been advertised long enough that breaking it would surprise
+        users who learned it. Both prefixes accept the same `off / on /
+        status` subcommands.
+        """
         from student_bot.lang import detect
 
         parts = body.lower().split()
-        if not parts or parts[0] != "!privacy":
+        if not parts or parts[0] not in ("!logging", "!privacy"):
             return False
         lang = detect(body) if body else "sv"
         sub = parts[1] if len(parts) > 1 else "status"
         if sub == "off":
             self.db.set_opt_out(job.user_id, True)
             self._post(
-                job.channel_id, PRIVACY_OFF_EN if lang == "en" else PRIVACY_OFF_SV, job.root_id
+                job.channel_id, LOGGING_OFF_EN if lang == "en" else LOGGING_OFF_SV, job.root_id
             )
         elif sub == "on":
             self.db.set_opt_out(job.user_id, False)
             self._post(
-                job.channel_id, PRIVACY_ON_EN if lang == "en" else PRIVACY_ON_SV, job.root_id
+                job.channel_id, LOGGING_ON_EN if lang == "en" else LOGGING_ON_SV, job.root_id
             )
         else:
             opted = self.db.is_opted_out(job.user_id)
             if lang == "en":
                 state = "off (not stored)" if opted else "on (stored anonymously)"
-                msg = PRIVACY_STATUS_EN.format(state=state)
+                msg = LOGGING_STATUS_EN.format(state=state)
             else:
                 state = "av (lagras inte)" if opted else "på (lagras anonymt)"
-                msg = PRIVACY_STATUS_SV.format(state=state)
+                msg = LOGGING_STATUS_SV.format(state=state)
             self._post(job.channel_id, msg, job.root_id)
         return True
 
@@ -343,8 +350,9 @@ class StudentBot:
             self._post(job.channel_id, notice, job.root_id)
             self.db.mark_disclosed(job.user_id)
 
-        # !privacy and !jargon commands short-circuit the RAG pipeline.
-        if self._handle_privacy_command(job, job.question.strip()):
+        # !logging (and legacy !privacy) plus !jargon commands short-circuit
+        # the RAG pipeline.
+        if self._handle_logging_command(job, job.question.strip()):
             return
         if self._handle_jargon_command(job, job.question.strip()):
             return

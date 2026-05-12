@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>student-bot</title>
-<link rel="stylesheet" href="static/style.css?v=27">
+<link rel="stylesheet" href="static/style.css?v=28">
 </head>
 <body>
 <header>
@@ -46,6 +46,11 @@
   </section>
 
   <section id="chat" class="card hidden">
+    <div class="chat-status" role="status" aria-live="polite">
+      <span class="logging-dot" id="logging-dot"></span>
+      <span class="logging-label" id="logging-label"></span>
+      <button type="button" id="logging-toggle" class="link"></button>
+    </div>
     <div id="messages" aria-live="polite"></div>
     <form id="composer">
       <textarea id="question" rows="3" data-i18n-placeholder="chat.placeholder" required></textarea>
@@ -83,8 +88,8 @@
   <span id="conn"></span>
 </footer>
 
-<script src="static/i18n.js?v=27"></script>
-<script src="static/notice.js?v=27" defer></script>
-<script src="static/app.js?v=27"></script>
+<script src="static/i18n.js?v=28"></script>
+<script src="static/notice.js?v=28" defer></script>
+<script src="static/app.js?v=28"></script>
 </body>
 </html>

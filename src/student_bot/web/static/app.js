@@ -47,9 +47,52 @@ el("#start").addEventListener("click", () => {
   }).catch(() => {});
   onboarding.classList.add("hidden");
   chat.classList.remove("hidden");
+  renderLoggingStatus();
   el("#question").focus();
   if (perfEnabled) refreshSystemLoad();
 });
+
+// Logging toggle: lets a returning user change their opt-out preference any
+// time, not just at onboarding (#33). State is mirrored both in localStorage
+// and on the server (set_opt_out keyed by web_user_id).
+function renderLoggingStatus() {
+  const dot = el("#logging-dot");
+  const label = el("#logging-label");
+  const btn = el("#logging-toggle");
+  if (!dot || !label || !btn) return;
+  const t = window.t || ((k) => k);
+  if (state.optOut) {
+    dot.classList.add("off");
+    label.textContent = t("chat.logging.off");
+    btn.textContent = t("chat.logging.enable");
+  } else {
+    dot.classList.remove("off");
+    label.textContent = t("chat.logging.on");
+    btn.textContent = t("chat.logging.disable");
+  }
+}
+
+if (el("#logging-toggle")) {
+  el("#logging-toggle").addEventListener("click", () => {
+    state.optOut = !state.optOut;
+    localStorage.setItem("opt_out", state.optOut ? "1" : "0");
+    renderLoggingStatus();
+    fetch("api/session", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: state.name,
+        session_id: state.sessionId,
+        opt_out: state.optOut,
+      }),
+    }).catch(() => {});
+    const t = window.t || ((k) => k);
+    statusEl.textContent = state.optOut ? t("chat.logging.toast.off") : t("chat.logging.toast.on");
+  });
+}
+
+document.addEventListener("i18n:langchange", renderLoggingStatus);
 
 el("#reset").addEventListener("click", async () => {
   // Confirm before discarding a non-empty conversation. Skip the prompt

@@ -433,6 +433,7 @@ def _stream_answer(
                 program_prior=program_prior,
                 admission_term_prior=adm_term_prior,
                 admission_year_prefix_prior=adm_year_prior,
+                channel="web",
             )
             result.session_expired = session_expired
         except Exception as e:
