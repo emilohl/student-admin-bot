@@ -405,6 +405,8 @@ def _stream_answer(
     `meta` event with confidence, qa_id, and gate info."""
     history = memory.get(web_user_id, "default")
     program_prior = memory.get_program_code(web_user_id, "default")
+    adm_term_prior, adm_year_prior = memory.get_admission_hints(web_user_id, "default")
+    session_expired = memory.take_expired_flag(web_user_id, "default")
 
     queue: asyncio.Queue = asyncio.Queue()
     sentinel = object()
@@ -429,7 +431,10 @@ def _stream_answer(
                 on_thinking=on_thinking,
                 rate_limit_key=web_user_id,
                 program_prior=program_prior,
+                admission_term_prior=adm_term_prior,
+                admission_year_prefix_prior=adm_year_prior,
             )
+            result.session_expired = session_expired
         except Exception as e:
             queue.put_nowait(("token", f"\n[error: {e}]"))
             queue.put_nowait((sentinel, None))
@@ -465,6 +470,16 @@ def _stream_answer(
             memory.append(web_user_id, "default", "assistant", result.answer)
         if result.program_code:
             memory.set_program_code(web_user_id, "default", result.program_code)
+        if result.admission_term or result.admission_year_prefix:
+            memory.set_admission_hints(
+                web_user_id,
+                "default",
+                exact_term=result.admission_term,
+                year_prefix=result.admission_year_prefix,
+            )
+        # Sticky once the buffer evicts a turn — re-read after the append
+        # above so a turn that itself triggers eviction surfaces the signal.
+        history_truncated = memory.history_truncated(web_user_id, "default")
 
         chunk_ids = [c.chunk_id for c in result.retrieval.reranked]
         qa_id = db.record_qa(
@@ -558,6 +573,11 @@ def _stream_answer(
             "source_candidates": source_candidates,
             "stale_cache_days": result.stale_cache_days,
             "performance_panel_enabled": _perf_panel_enabled(cfg),
+            # UX-honesty signals for the client: notify the user when the
+            # LLM no longer sees the start of the conversation (ring-buffer
+            # eviction) or when their previous session expired via TTL.
+            "history_truncated": history_truncated,
+            "session_expired": result.session_expired,
         }
         if _perf_panel_enabled(cfg):
             meta.update(

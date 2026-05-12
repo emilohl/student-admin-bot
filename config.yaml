@@ -58,7 +58,13 @@ llm:
   thinking: true                 # Gemma 4 reasoning mode (<|think|> tag)
 
 memory:
-  max_turns: 4                   # last N user/assistant pairs per (user, thread)
+  # Raised from 4 to 8 (#47) — the 16384-token context budget has plenty of
+  # headroom and the previous cap was hitting compound conversations
+  # (master-eligibility threads, multi-turn programme clarifications)
+  # quickly enough that the silent truncation was visible to users. The
+  # `chat.history_truncated` notice still fires when this cap is reached,
+  # so users learn that the LLM has stopped seeing turn 1.
+  max_turns: 8                   # last N user/assistant pairs per (user, thread)
   ttl_minutes: 30
 
 mattermost:

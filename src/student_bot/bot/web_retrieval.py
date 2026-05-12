@@ -350,6 +350,12 @@ class WebFetchResult:
     # Five-letter KTH code resolved by this fetch, when exactly one program was
     # narrowed to. Surfaced so the pipeline can persist it in conversation memory.
     resolved_program_code: str | None = None
+    # Admission round actually used (after falling back to a persisted prior
+    # when the current turn carries no hint). Surfaced for the pipeline to
+    # persist so a follow-up that doesn't restate the term still routes to
+    # the same cohort's study plan.
+    applied_admission_term: str | None = None
+    applied_admission_year_prefix: str | None = None
 
 
 def _compiled_patterns(cfg: Config) -> list[re.Pattern[str]]:
@@ -2372,6 +2378,8 @@ def maybe_fetch_dynamic_web(
     _lang: str = "sv",
     *,
     program_prior: str | None = None,
+    admission_term_prior: str | None = None,
+    admission_year_prefix_prior: str | None = None,
 ) -> WebFetchResult | None:
     if not cfg.dynamic_web.enabled:
         return None
@@ -2402,6 +2410,15 @@ def maybe_fetch_dynamic_web(
     course_urls = [t for t in targets if "/student/kurser/kurs/" in t]
     prog_roots = [t for t in targets if _is_program_root_only_url(t)]
     hints = parse_program_admission_hints(question)
+    # Fall back to a persisted admission hint when this turn doesn't carry
+    # one. A user who clarified "HT2024" three turns ago shouldn't have to
+    # repeat it on every follow-up. The prior is only used when this turn's
+    # own parse came back empty — a fresh hint always wins.
+    if not (hints.exact_term or hints.year_prefix):
+        if admission_term_prior:
+            hints = AdmissionHints(exact_term=admission_term_prior)
+        elif admission_year_prefix_prior:
+            hints = AdmissionHints(year_prefix=admission_year_prefix_prior)
     year_level = _parse_programme_year_level(question)
 
     # When the question's wording matches more than one program code, decide
@@ -2631,4 +2648,6 @@ def maybe_fetch_dynamic_web(
         used_stale_cache=used_stale,
         stale_age_days=stale_days,
         resolved_program_code=resolved_program_code,
+        applied_admission_term=hints.exact_term,
+        applied_admission_year_prefix=hints.year_prefix,
     )

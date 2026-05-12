@@ -157,7 +157,14 @@ composer.addEventListener("submit", async (e) => {
           const prefixEl = botMsg.body.querySelector(".msg-prefix");
           if (prefixEl) {
             const stick = nearBottom();
-            prefixEl.appendChild(document.createTextNode(data));
+            // Accumulate the raw jargon text on the thread entry and
+            // re-render via renderMarkdown so italic / bold show up
+            // immediately during the thinking phase (not only after
+            // decorateBot runs at end-of-stream). Keeping the raw form
+            // on entry.jargon also means the conversation export's
+            // `> _Tolkar..._` blockquote keeps its italic semantics.
+            botMsg.entry.jargon = (botMsg.entry.jargon || "") + data;
+            prefixEl.innerHTML = renderMarkdown(botMsg.entry.jargon);
             if (stick) messages.scrollTop = messages.scrollHeight;
           }
         } else if (event === "thinking") {
@@ -203,10 +210,38 @@ composer.addEventListener("submit", async (e) => {
     }
     const stick = nearBottom();
     decorateBot(botMsg, finalMeta);
+    renderContextNotices(botMsg, finalMeta);
     if (stick) messages.scrollTop = messages.scrollHeight;
     if (perfEnabled) updatePerfPanel(finalMeta);
   }
 });
+
+// Append UX-honesty notices to a bot bubble when the server reports that
+// the LLM context has been truncated or the session was just resurrected
+// from a TTL-pruned slot. Both render as small muted lines at the top of
+// the bubble so they sit above the answer without competing with it.
+function renderContextNotices(botMsg, meta) {
+  if (!botMsg || !botMsg.body || !meta) return;
+  const lines = [];
+  if (meta.session_expired) {
+    lines.push((window.t && window.t("chat.session_expired")) || "");
+  }
+  if (meta.history_truncated) {
+    lines.push((window.t && window.t("chat.history_truncated")) || "");
+  }
+  if (!lines.length) return;
+  const wrap = document.createElement("div");
+  wrap.className = "ctx-notices";
+  for (const text of lines) {
+    if (!text) continue;
+    const line = document.createElement("div");
+    line.className = "ctx-notice";
+    line.textContent = text;
+    wrap.appendChild(line);
+  }
+  // Insert at the top of the body so the answer reads naturally below it.
+  botMsg.body.insertBefore(wrap, botMsg.body.firstChild);
+}
 
 function setPerfEnabled(enabled) {
   perfEnabled = !!enabled;
@@ -398,14 +433,20 @@ function decorateBot(botMsg, meta) {
   // actually cited inline appear in the references list, renumbered
   // in order of first appearance.
   const prefixEl = botMsg.body.querySelector(".msg-prefix");
-  const jargonText = (prefixEl?.textContent || "").trim();
+  // Prefer the RAW markdown source for the jargon (accumulated on
+  // entry.jargon during the stream so the live-render path can italicise
+  // `_Tolkar X._`). Fall back to the prefix's textContent only if no
+  // entry.jargon was captured — the rendered text would lose the
+  // underscores and the merged-body re-render below couldn't restore
+  // the italic.
+  const jargonRaw = (botMsg.entry?.jargon || prefixEl?.textContent || "").trim();
   // Mirror the pre-live-render behaviour: merge the jargon prefix into the
   // raw text fed to splitMessage so it gets markdown-rendered alongside the
   // body (e.g. `_Tolkar X._` becomes italic). No separator between prefix
   // and body matches the old `body.textContent` concatenation. The prefix
   // div is emptied below so the jargon isn't shown twice.
   const streamedRaw = botMsg.entry?.raw || "";
-  const raw = (prefixEl?.textContent || "") + (streamedRaw || botMsg.body.textContent);
+  const raw = jargonRaw + (streamedRaw || botMsg.body.textContent);
   const { body, sources: allSources, tip } = splitMessage(raw);
   const serverSources = Array.isArray(meta.sources) ? meta.sources : [];
   const sourceCandidates = Array.isArray(meta.source_candidates) ? meta.source_candidates : [];
@@ -451,7 +492,12 @@ function decorateBot(botMsg, meta) {
   if (botMsg.entry) {
     botMsg.entry.raw = raw;
     botMsg.entry.body = body;
-    botMsg.entry.jargon = jargonText;
+    // entry.jargon was populated incrementally during streaming with the
+    // RAW markdown; keep that form so the conversation export's
+    // `> _Tolkar..._` blockquote still renders as italic. Falls back to
+    // the prefix textContent for code paths that bypassed the streaming
+    // accumulator.
+    if (!botMsg.entry.jargon) botMsg.entry.jargon = jargonRaw;
     botMsg.entry.confidence = meta.confidence_level || "";
     botMsg.entry.confidenceText = meta.confidence || "";
     botMsg.entry.sources = (citedSourcesWithUrls && citedSourcesWithUrls.length)
