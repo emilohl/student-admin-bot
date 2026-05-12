@@ -33,26 +33,31 @@
   });
 
   const STORE_RANGE = "stats.range";
-  const STORE_LOGY = "stats.logy";
   const STORE_SPLIT_MODEL = "stats.split_model";
   const STORE_LOGX_PREFIX = "stats.logx.";
+  const STORE_LOGY_PREFIX = "stats.logy.";
   const HIST_BINS = 50;
   // Histogram keys map 1:1 to canvas ids `chart-<key>` (with underscores
   // turned into dashes for the DOM). Used by the export buttons and the
   // per-chart log-x checkboxes.
   const HIST_KEYS = ["tokens_hist", "ttft_hist", "tps_hist"];
+  // Charts that expose a log-y toggle. Feedback is omitted on purpose —
+  // it's a fraction in [0,1] so a log axis is meaningless there.
+  const LOGY_KEYS = ["requests", "tokens", "tokens_hist", "ttft_hist", "tps_hist"];
 
   const CHART_COLORS = {
-    total: "#004791",      // kth-blue
-    answered: "#0D4A21",   // kth-darkgreen
-    refused: "#78001A",    // kth-darkbrick
-    prompt: "#6298D2",     // kth-skyblue
-    gen: "#A65900",        // kth-darkyellow
-    pos_total: "#0D4A21",  // kth-darkgreen
-    neg_total: "#78001A",  // kth-darkbrick
-    ratio: "#000061",      // kth-navy
-    ttft: "#004791",       // kth-blue
-    tps: "#0D4A21",        // kth-darkgreen
+    total: "#004791",         // kth-blue
+    answered: "#0D4A21",      // kth-darkgreen
+    off_topic: "#78001A",     // kth-darkbrick — "true" refusals (bot didn't have it)
+    guardrail: "#A65900",     // kth-darkyellow — user-side blocks (too long / rate-limited)
+    clarification: "#6298D2", // kth-skyblue   — bot asked the user to clarify
+    prompt: "#6298D2",        // kth-skyblue
+    gen: "#A65900",           // kth-darkyellow
+    pos_total: "#0D4A21",     // kth-darkgreen
+    neg_total: "#78001A",     // kth-darkbrick
+    ratio: "#000061",         // kth-navy
+    ttft: "#004791",          // kth-blue
+    tps: "#0D4A21",           // kth-darkgreen
   };
 
   // Cycled when "split by model" is on — issue #58 caps at 5 models, so 5
@@ -90,11 +95,27 @@
     const v = localStorage.getItem(STORE_RANGE);
     return RANGES.includes(v) ? v : "72h";
   }
-  function logYEnabled() {
-    return localStorage.getItem(STORE_LOGY) === "1";
-  }
+  // Tokens-per-request is heavy-tailed (prompts are ~10x gen on average),
+  // so log-x is the more useful default; the user can still untick it.
+  // The TTFT and TPS histograms default to linear since their typical
+  // distributions are tighter. Time-axis charts don't expose log-x at
+  // all — uniform-bucketed time has nothing to log-transform.
+  const LOGX_DEFAULTS = { tokens_hist: true };
   function logXEnabled(key) {
-    return localStorage.getItem(STORE_LOGX_PREFIX + key) === "1";
+    const stored = localStorage.getItem(STORE_LOGX_PREFIX + key);
+    if (stored === "1") return true;
+    if (stored === "0") return false;
+    return !!LOGX_DEFAULTS[key];
+  }
+  // Per-chart log-y. No defaults yet — every chart starts linear. Adjust
+  // here if a future regression makes a particular chart wedge into a corner
+  // (the requests chart, for instance, dwarfs Off-topic when split).
+  const LOGY_DEFAULTS = {};
+  function logYEnabled(key) {
+    const stored = localStorage.getItem(STORE_LOGY_PREFIX + key);
+    if (stored === "1") return true;
+    if (stored === "0") return false;
+    return !!LOGY_DEFAULTS[key];
   }
   function splitByModelEnabled() {
     return localStorage.getItem(STORE_SPLIT_MODEL) === "1";
@@ -210,6 +231,39 @@
     };
   }
 
+  // Tooltip title formatter: shows the bucket interval (start–end) plus the
+  // locale's short timezone name (e.g. "CEST"), instead of Chart.js's default
+  // verbose "Wed Nov 12 2025 06:00:00 GMT+2:00" string. The tz part comes
+  // from a one-shot formatToParts so we can append it once at the end rather
+  // than tagging both start and end with the same zone label.
+  function bucketIntervalFormatter(range, bucketSeconds) {
+    const baseOpts =
+      range === "24h"
+        ? { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }
+        : range === "72h"
+        ? { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }
+        : range === "14d"
+        ? { day: "2-digit", month: "short", hour: "2-digit", hourCycle: "h23" }
+        : { day: "2-digit", month: "short", year: "numeric" };
+    const fmt = new Intl.DateTimeFormat(undefined, baseOpts);
+    const tzFmt = new Intl.DateTimeFormat(undefined, { timeZoneName: "short" });
+    function tzAbbr(d) {
+      const part = tzFmt.formatToParts(d).find((p) => p.type === "timeZoneName");
+      return part ? part.value : "";
+    }
+    return (items) => {
+      if (!items || !items.length) return "";
+      const chart = items[0].chart;
+      const idx = items[0].dataIndex;
+      const startLabel = chart.data.labels[idx];
+      const start = startLabel instanceof Date ? startLabel : new Date(startLabel);
+      const end = new Date(start.getTime() + bucketSeconds * 1000);
+      const tz = tzAbbr(start);
+      const head = `${fmt.format(start)} – ${fmt.format(end)}`;
+      return tz ? `${head} ${tz}` : head;
+    };
+  }
+
   const T = (k) => (window.t ? window.t(k) : k);
 
   let charts = {
@@ -223,7 +277,7 @@
   let lastData = null;
   let currentRange = activeRange();
 
-  function commonOpts(range, logY) {
+  function commonOpts(range, logY, bucketSeconds, yLabel) {
     return {
       responsive: true,
       maintainAspectRatio: true,
@@ -242,6 +296,9 @@
           grid: { display: false },
         },
         y: {
+          title: yLabel
+            ? { display: true, text: yLabel, color: "#6b6b6b" }
+            : { display: false },
           beginAtZero: !logY,
           type: logY ? "logarithmic" : "linear",
           ticks: { precision: 0 },
@@ -249,7 +306,11 @@
       },
       plugins: {
         legend: { position: "bottom" },
-        tooltip: { mode: "index", intersect: false },
+        tooltip: {
+          mode: "index",
+          intersect: false,
+          callbacks: { title: bucketIntervalFormatter(range, bucketSeconds || 0) },
+        },
       },
     };
   }
@@ -269,11 +330,17 @@
     return opts;
   }
 
-  function tokensOpts(range, logY) {
-    const base = commonOpts(range, logY);
+  function tokensOpts(range, logY, bucketSeconds) {
+    // Per-axis y titles: the chart has prompt on the left axis and gen on
+    // the right (different scales), so the title goes on each. Color them
+    // to match each axis's series so the user can tell them apart at a
+    // glance and in PNG exports.
+    const base = commonOpts(range, logY, bucketSeconds, T("stats.chart.tokens.prompt"));
     base.scales.y.position = "left";
+    base.scales.y.title.color = CHART_COLORS.prompt;
     base.scales.y1 = {
       position: "right",
+      title: { display: true, text: T("stats.chart.tokens.gen"), color: CHART_COLORS.gen },
       beginAtZero: !logY,
       type: logY ? "logarithmic" : "linear",
       grid: { drawOnChartArea: false },
@@ -282,8 +349,13 @@
     return lineLegendOpts(base);
   }
 
-  function feedbackOpts(range) {
-    const base = commonOpts(range, false);
+  function feedbackOpts(range, bucketSeconds) {
+    const base = commonOpts(
+      range,
+      false,
+      bucketSeconds,
+      T("stats.chart.feedback.ylabel"),
+    );
     base.scales.y.beginAtZero = true;
     base.scales.y.suggestedMax = 1;
     base.scales.y.ticks = {
@@ -292,11 +364,15 @@
     return lineLegendOpts(base);
   }
 
-  // Histograms use a category x-axis (bin-center labels formatted via
+  // Histograms use a category x-axis (bin-edge labels formatted via
   // compactNumber). The y-axis honors the shared log-y toggle. Log-x is
   // expressed by re-binning in log space, not by a logarithmic x-scale,
   // since Chart.js logarithmic scales don't compose well with category data.
-  function histOpts(logY, xLabel) {
+  // The tooltip title formatter reads `_binEdges` off the dataset (stashed
+  // by histDataset) so each tooltip shows the actual bin interval rather
+  // than the bin-center label that the x-axis ticks display.
+  function histOpts(logY, xLabel, unit) {
+    const unitSuffix = unit ? ` ${unit}` : "";
     return lineLegendOpts({
       responsive: true,
       maintainAspectRatio: true,
@@ -309,6 +385,7 @@
           grid: { display: false },
         },
         y: {
+          title: { display: true, text: T("stats.chart.hist.ylabel"), color: "#6b6b6b" },
           beginAtZero: !logY,
           type: logY ? "logarithmic" : "linear",
           ticks: { precision: 0 },
@@ -316,7 +393,24 @@
       },
       plugins: {
         legend: { position: "bottom" },
-        tooltip: { mode: "index", intersect: false },
+        tooltip: {
+          mode: "index",
+          intersect: false,
+          callbacks: {
+            title: (items) => {
+              if (!items || !items.length) return "";
+              const ds = items[0].chart.data.datasets[items[0].datasetIndex];
+              const edges = ds && ds._binEdges;
+              const idx = items[0].dataIndex;
+              // Tail anchor (count=0 pad at idx == edges.length - 1) has no
+              // bin behind it; suppress the title there.
+              if (!edges || idx < 0 || idx >= edges.length - 1) return "";
+              const lo = edges[idx];
+              const hi = edges[idx + 1];
+              return `${compactNumber(lo)} – ${compactNumber(hi)}${unitSuffix}`;
+            },
+          },
+        },
       },
     });
   }
@@ -327,74 +421,105 @@
 
   function makeRequestsData(buckets) {
     const labels = buildLabels(buckets);
-    const FILL_ALPHA = 0.35;
+    // Stacked staircase: each series is rendered as a stepped histogram
+    // and stacked on the next. Stacked areas never overlap visually, so
+    // we drop the alpha fill the old line-area version needed — opaque
+    // colors read cleaner. `stepped:'middle'` places the step at the
+    // midpoint between bucket centers, so each bucket's value occupies a
+    // rectangle centered on its timestamp. Stack order goes from base up:
+    // Answered → Off-topic → Guardrail → Clarification. Older
+    // `n_off_topic` fields default to n−n_answered so any stale-cache
+    // bucket from before the split still draws.
+    const offTopic = buckets.map((b) =>
+      Number.isFinite(b.n_off_topic) ? b.n_off_topic : Math.max(0, b.n - b.n_answered),
+    );
+    const guardrail = buckets.map((b) => b.n_guardrail || 0);
+    const clarification = buckets.map((b) => b.n_clarification || 0);
+    const ds = (key, color, data) => ({
+      label: T(key),
+      data,
+      borderColor: color,
+      backgroundColor: color,
+      stepped: "middle",
+      stack: "req",
+      fill: true,
+      pointRadius: 0,
+      borderWidth: 1,
+    });
     return {
       labels,
       datasets: [
-        {
-          label: T("stats.chart.requests.answered"),
-          data: buckets.map((b) => b.n_answered),
-          borderColor: CHART_COLORS.answered,
-          backgroundColor: withAlpha(CHART_COLORS.answered, FILL_ALPHA),
-          tension: 0.25,
-          stack: "req",
-          fill: true,
-        },
-        {
-          label: T("stats.chart.requests.refused"),
-          data: buckets.map((b) => Math.max(0, b.n - b.n_answered)),
-          borderColor: CHART_COLORS.refused,
-          backgroundColor: withAlpha(CHART_COLORS.refused, FILL_ALPHA),
-          tension: 0.25,
-          stack: "req",
-          fill: true,
-        },
+        ds("stats.chart.requests.answered", CHART_COLORS.answered, buckets.map((b) => b.n_answered)),
+        ds("stats.chart.requests.off_topic", CHART_COLORS.off_topic, offTopic),
+        ds("stats.chart.requests.guardrail", CHART_COLORS.guardrail, guardrail),
+        ds("stats.chart.requests.clarification", CHART_COLORS.clarification, clarification),
       ],
     };
   }
 
   function makeTokensData(buckets) {
     const labels = buildLabels(buckets);
+    // Rendered the same way as the requests chart: each bucket is a
+    // rectangle whose width is the bucket_seconds interval. Prompt and gen
+    // each have their own y-axis since they live on very different scales
+    // (prompt easily ~10x gen). `stepped:'middle'` puts the step boundary at
+    // the midpoint between bucket centers; setting it as a histogram rather
+    // than a smoothed line was requested for visual parity with the count
+    // chart above.
+    //
+    // Unlike the stacked requests chart, prompt and gen are overlaid (not
+    // stacked) — they live on separate axes. So we keep an opaque outline
+    // but make the fill semi-transparent so whichever series is in front
+    // doesn't hide the one behind it.
+    const FILL_ALPHA = 0.35;
+    const ds = (key, color, data, axis) => ({
+      label: T(key),
+      data,
+      borderColor: color,
+      backgroundColor: withAlpha(color, FILL_ALPHA),
+      stepped: "middle",
+      fill: true,
+      pointRadius: 0,
+      borderWidth: 1.5,
+      yAxisID: axis,
+    });
     return {
       labels,
       datasets: [
-        {
-          label: T("stats.chart.tokens.prompt"),
-          data: buckets.map((b) => b.prompt_tokens),
-          borderColor: CHART_COLORS.prompt,
-          backgroundColor: CHART_COLORS.prompt,
-          tension: 0.25,
-          yAxisID: "y",
-        },
-        {
-          label: T("stats.chart.tokens.gen"),
-          data: buckets.map((b) => b.gen_tokens),
-          borderColor: CHART_COLORS.gen,
-          backgroundColor: CHART_COLORS.gen,
-          tension: 0.25,
-          yAxisID: "y1",
-        },
+        ds("stats.chart.tokens.prompt", CHART_COLORS.prompt, buckets.map((b) => b.prompt_tokens), "y"),
+        ds("stats.chart.tokens.gen", CHART_COLORS.gen, buckets.map((b) => b.gen_tokens), "y1"),
       ],
     };
   }
 
-  // Shared histogram body: bin a value array into 50 bins and turn it into a
-  // line+fill dataset compatible with Chart.js. Caller supplies the bins so
-  // multiple series (prompt/gen, or per-model) share a single x-axis.
+  // Shared histogram body: bin into 50 bins and turn into a stepped-line
+  // dataset whose outline traces the upper contour of the bars. The line
+  // is anchored at bin EDGES (N+1 of them), with a trailing 0 to close
+  // the staircase on the right; combined with stepped:"after" this draws
+  // flat-top segments [edge_i, edge_{i+1}] at height count_i with no
+  // diagonals between bins. Caller supplies bins so multiple series share
+  // one x-axis. `bins.edges` is stashed on the dataset so tooltip
+  // callbacks can render the bin interval [edge_i, edge_{i+1}].
   function histDataset(label, values, bins, color, fillAlpha) {
+    const counts = binCounts(values, bins);
+    counts.push(0); // pad to match the N+1 edge labels
     return {
       label,
-      data: binCounts(values, bins),
+      data: counts,
       borderColor: color,
       backgroundColor: withAlpha(color, fillAlpha != null ? fillAlpha : 0.35),
-      tension: 0.25,
+      stepped: "after",
       fill: true,
       pointRadius: 0,
+      borderWidth: 1.5,
+      // Custom properties — Chart.js ignores unknown keys but keeps them
+      // accessible via chart.data.datasets[i] from tooltip callbacks.
+      _binEdges: bins.edges,
     };
   }
 
   function histLabels(bins) {
-    return bins.centers.map((v) => compactNumber(v));
+    return bins.edges.map((v) => compactNumber(v));
   }
 
   // Tokens histogram. Default mode (split off): prompt + gen overlaid on
@@ -497,13 +622,24 @@
   function makeFeedbackData(buckets) {
     const labels = buildLabels(buckets);
     // Three views of feedback per bucket:
-    //   pos/total — share of answered questions that got a 👍
-    //   neg/total — share of answered questions that got a 👎
+    //   pos/total — share of answered questions that got at least one 👍
+    //   neg/total — share of answered questions that got at least one 👎
     //   pos/(pos+neg) — quality signal among reacted answers only
+    //
     // "total" = n_answered (bot actually produced an answer); refusals are
-    // not really reactable, so the denominator excludes them.
-    const posTotal = buckets.map((b) => (b.n_answered > 0 ? b.thumbs_up / b.n_answered : null));
-    const negTotal = buckets.map((b) => (b.n_answered > 0 ? b.thumbs_down / b.n_answered : null));
+    // not really reactable, so the denominator excludes them. The numerator
+    // is DISTINCT qa rows reacted to with that sentiment (`qa_with_*`), not
+    // raw reaction counts — a single Mattermost post can collect reactions
+    // from multiple users, and we want the share of *answers* that got a
+    // thumbs-up, not the total number of thumbs-ups (which could exceed
+    // n_answered). The ratio keeps raw reaction counts so a popular answer
+    // contributes proportionally to its weight in the global sentiment mix.
+    const posDistinct = (b) =>
+      Number.isFinite(b.qa_with_positive) ? b.qa_with_positive : 0;
+    const negDistinct = (b) =>
+      Number.isFinite(b.qa_with_negative) ? b.qa_with_negative : 0;
+    const posTotal = buckets.map((b) => (b.n_answered > 0 ? posDistinct(b) / b.n_answered : null));
+    const negTotal = buckets.map((b) => (b.n_answered > 0 ? negDistinct(b) / b.n_answered : null));
     const ratio = buckets.map((b) => {
       const tot = b.thumbs_up + b.thumbs_down;
       return tot > 0 ? b.thumbs_up / tot : null;
@@ -539,9 +675,8 @@
     };
   }
 
-  function render(buckets, range, rows) {
+  function render(buckets, range, rows, bucketSeconds) {
     destroyCharts();
-    const logY = logYEnabled();
     const splitModel = splitByModelEnabled();
     const reqEl = document.getElementById("chart-requests");
     const tokEl = document.getElementById("chart-tokens");
@@ -549,24 +684,24 @@
     const ttftHistEl = document.getElementById("chart-ttft-hist");
     const tpsHistEl = document.getElementById("chart-tps-hist");
     const fbEl = document.getElementById("chart-feedback");
-    if (reqEl) charts.requests = new Chart(reqEl, { type: "line", data: makeRequestsData(buckets), options: commonOpts(range, logY) });
-    if (tokEl) charts.tokens   = new Chart(tokEl, { type: "line", data: makeTokensData(buckets),   options: tokensOpts(range, logY) });
+    if (reqEl) charts.requests = new Chart(reqEl, { type: "line", data: makeRequestsData(buckets), options: commonOpts(range, logYEnabled("requests"), bucketSeconds, T("stats.chart.requests.ylabel")) });
+    if (tokEl) charts.tokens   = new Chart(tokEl, { type: "line", data: makeTokensData(buckets),   options: tokensOpts(range, logYEnabled("tokens"), bucketSeconds) });
     if (tokHistEl) charts.tokens_hist = new Chart(tokHistEl, {
       type: "line",
       data: makeTokensHistData(rows, splitModel, logXEnabled("tokens_hist")),
-      options: histOpts(logY, T("stats.chart.tokens_hist.xlabel")),
+      options: histOpts(logYEnabled("tokens_hist"), T("stats.chart.tokens_hist.xlabel"), T("stats.unit.tokens")),
     });
     if (ttftHistEl) charts.ttft_hist = new Chart(ttftHistEl, {
       type: "line",
       data: makeTtftHistData(rows, splitModel, logXEnabled("ttft_hist")),
-      options: histOpts(logY, T("stats.chart.ttft_hist.xlabel")),
+      options: histOpts(logYEnabled("ttft_hist"), T("stats.chart.ttft_hist.xlabel"), T("stats.unit.ms")),
     });
     if (tpsHistEl) charts.tps_hist = new Chart(tpsHistEl, {
       type: "line",
       data: makeTpsHistData(rows, splitModel, logXEnabled("tps_hist")),
-      options: histOpts(logY, T("stats.chart.tps_hist.xlabel")),
+      options: histOpts(logYEnabled("tps_hist"), T("stats.chart.tps_hist.xlabel"), T("stats.unit.tps")),
     });
-    if (fbEl)  charts.feedback = new Chart(fbEl,  { type: "line", data: makeFeedbackData(buckets), options: feedbackOpts(range) });
+    if (fbEl)  charts.feedback = new Chart(fbEl,  { type: "line", data: makeFeedbackData(buckets), options: feedbackOpts(range, bucketSeconds) });
   }
 
   async function fetchAndRender(range) {
@@ -576,7 +711,7 @@
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       lastData = data;
-      render(data.buckets || [], range, data.rows || []);
+      render(data.buckets || [], range, data.rows || [], data.bucket_seconds || 0);
     } catch (err) {
       console.error("stats series fetch failed:", err);
     }
@@ -584,7 +719,12 @@
 
   function rerender() {
     if (!lastData) return;
-    render(lastData.buckets || [], currentRange, lastData.rows || []);
+    render(
+      lastData.buckets || [],
+      currentRange,
+      lastData.rows || [],
+      lastData.bucket_seconds || 0,
+    );
   }
 
   function wireRangeButtons() {
@@ -652,13 +792,15 @@
     });
   }
 
-  function wireLogyToggle() {
-    const cb = document.getElementById("stats-logy");
-    if (!cb) return;
-    cb.checked = logYEnabled();
-    cb.addEventListener("change", () => {
-      localStorage.setItem(STORE_LOGY, cb.checked ? "1" : "0");
-      rerender();
+  function wireLogyToggles() {
+    document.querySelectorAll("input[data-logy-for]").forEach((cb) => {
+      const key = cb.dataset.logyFor;
+      if (!LOGY_KEYS.includes(key)) return;
+      cb.checked = logYEnabled(key);
+      cb.addEventListener("change", () => {
+        localStorage.setItem(STORE_LOGY_PREFIX + key, cb.checked ? "1" : "0");
+        rerender();
+      });
     });
   }
 
@@ -686,7 +828,7 @@
 
   function init() {
     wireRangeButtons();
-    wireLogyToggle();
+    wireLogyToggles();
     wireSplitModelToggle();
     wireLogxToggles();
     wireExportButtons();

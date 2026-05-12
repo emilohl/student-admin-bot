@@ -975,10 +975,15 @@ def _densify_buckets(
                     "bucket_ts": t,
                     "n": 0,
                     "n_answered": 0,
+                    "n_clarification": 0,
+                    "n_guardrail": 0,
+                    "n_off_topic": 0,
                     "prompt_tokens": 0,
                     "gen_tokens": 0,
                     "thumbs_up": 0,
                     "thumbs_down": 0,
+                    "qa_with_positive": 0,
+                    "qa_with_negative": 0,
                 }
             )
         t += bucket_seconds
@@ -1135,10 +1140,6 @@ def _stats_page(
       <button type="button" data-range="14d" data-i18n="stats.range.14d"></button>
       <button type="button" data-range="90d" data-i18n="stats.range.90d"></button>
     </div>
-    <label class="stats-logy">
-      <input type="checkbox" id="stats-logy">
-      <span data-i18n="stats.chart.logy"></span>
-    </label>
     <label class="stats-split">
       <input type="checkbox" id="stats-split-model">
       <span data-i18n="stats.split_by_model"></span>
@@ -1146,12 +1147,20 @@ def _stats_page(
   </div>
   <div class="stats-chart-head">
     <h3 data-i18n="stats.chart.requests"></h3>
+    <label class="stats-logy">
+      <input type="checkbox" data-logy-for="requests">
+      <span data-i18n="stats.chart.logy"></span>
+    </label>
     <button type="button" class="stats-export" data-export-chart="requests"
             data-i18n="stats.export.png" data-i18n-title="stats.export.png.title"></button>
   </div>
   <canvas id="chart-requests" height="220"></canvas>
   <div class="stats-chart-head">
     <h3 data-i18n="stats.chart.tokens"></h3>
+    <label class="stats-logy">
+      <input type="checkbox" data-logy-for="tokens">
+      <span data-i18n="stats.chart.logy"></span>
+    </label>
     <button type="button" class="stats-export" data-export-chart="tokens"
             data-i18n="stats.export.png" data-i18n-title="stats.export.png.title"></button>
   </div>
@@ -1161,6 +1170,10 @@ def _stats_page(
     <label class="stats-logx">
       <input type="checkbox" data-logx-for="tokens_hist">
       <span data-i18n="stats.chart.logx"></span>
+    </label>
+    <label class="stats-logy">
+      <input type="checkbox" data-logy-for="tokens_hist">
+      <span data-i18n="stats.chart.logy"></span>
     </label>
     <button type="button" class="stats-export" data-export-chart="tokens_hist"
             data-i18n="stats.export.png" data-i18n-title="stats.export.png.title"></button>
@@ -1172,6 +1185,10 @@ def _stats_page(
       <input type="checkbox" data-logx-for="ttft_hist">
       <span data-i18n="stats.chart.logx"></span>
     </label>
+    <label class="stats-logy">
+      <input type="checkbox" data-logy-for="ttft_hist">
+      <span data-i18n="stats.chart.logy"></span>
+    </label>
     <button type="button" class="stats-export" data-export-chart="ttft_hist"
             data-i18n="stats.export.png" data-i18n-title="stats.export.png.title"></button>
   </div>
@@ -1181,6 +1198,10 @@ def _stats_page(
     <label class="stats-logx">
       <input type="checkbox" data-logx-for="tps_hist">
       <span data-i18n="stats.chart.logx"></span>
+    </label>
+    <label class="stats-logy">
+      <input type="checkbox" data-logy-for="tps_hist">
+      <span data-i18n="stats.chart.logy"></span>
     </label>
     <button type="button" class="stats-export" data-export-chart="tps_hist"
             data-i18n="stats.export.png" data-i18n-title="stats.export.png.title"></button>
@@ -1211,8 +1232,8 @@ def _stats_page(
 
 <p><a href="{home}" data-i18n="stats.back"></a></p>
 </div></main>
-<script src="{static_prefix}/vendor/chart.umd.min.js?v=28"></script>
-<script src="{static_prefix}/stats.js?v=28" defer></script>
+<script src="{static_prefix}/vendor/chart.umd.min.js?v=36"></script>
+<script src="{static_prefix}/stats.js?v=36" defer></script>
 </body></html>
 """
     return HTMLResponse(body)

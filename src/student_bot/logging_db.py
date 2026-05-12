@@ -438,10 +438,36 @@ class LogDB:
                     (q.ts / ?) * ?                                AS bucket_ts,
                     COUNT(*)                                      AS n,
                     SUM(CASE WHEN q.gate_pass = 1 THEN 1 ELSE 0 END) AS n_answered,
+                    -- Non-answered turns are split into three semantically
+                    -- distinct categories so the requests chart can tell
+                    -- "bot didn't have the info" apart from "user hit a
+                    -- limit" and "bot asked back for clarification".
+                    SUM(CASE WHEN q.gate_pass = 0
+                              AND q.gate_reason = 'programme_clarification'
+                             THEN 1 ELSE 0 END) AS n_clarification,
+                    SUM(CASE WHEN q.gate_pass = 0
+                              AND q.gate_reason IN ('input_too_long', 'rate_limited')
+                             THEN 1 ELSE 0 END) AS n_guardrail,
+                    SUM(CASE WHEN q.gate_pass = 0
+                              AND q.gate_reason NOT IN (
+                                  'programme_clarification',
+                                  'input_too_long',
+                                  'rate_limited'
+                              )
+                             THEN 1 ELSE 0 END) AS n_off_topic,
                     SUM(COALESCE(q.prompt_tokens, 0))             AS prompt_tokens,
                     SUM(COALESCE(q.gen_tokens, 0))                AS gen_tokens,
                     SUM(CASE WHEN f.sentiment = 'positive' THEN 1 ELSE 0 END) AS thumbs_up,
-                    SUM(CASE WHEN f.sentiment = 'negative' THEN 1 ELSE 0 END) AS thumbs_down
+                    SUM(CASE WHEN f.sentiment = 'negative' THEN 1 ELSE 0 END) AS thumbs_down,
+                    -- One Mattermost post can receive reactions from multiple
+                    -- users, so a single answered qa can have many feedback
+                    -- rows. The pos/total and neg/total views need a [0,1]
+                    -- numerator, so we also report DISTINCT qa rows reacted
+                    -- to with the given sentiment. (`thumbs_up` / `thumbs_down`
+                    -- stay raw so the pos/(pos+neg) ratio still reflects
+                    -- reaction weight, not just answer count.)
+                    COUNT(DISTINCT CASE WHEN f.sentiment = 'positive' THEN q.id END) AS qa_with_positive,
+                    COUNT(DISTINCT CASE WHEN f.sentiment = 'negative' THEN q.id END) AS qa_with_negative
                 FROM qa_log q
                 LEFT JOIN feedback f ON f.qa_id = q.id
                 WHERE q.ts >= ?{ch_sql}
@@ -455,10 +481,15 @@ class LogDB:
                 "bucket_ts": int(r[0]),
                 "n": int(r[1] or 0),
                 "n_answered": int(r[2] or 0),
-                "prompt_tokens": int(r[3] or 0),
-                "gen_tokens": int(r[4] or 0),
-                "thumbs_up": int(r[5] or 0),
-                "thumbs_down": int(r[6] or 0),
+                "n_clarification": int(r[3] or 0),
+                "n_guardrail": int(r[4] or 0),
+                "n_off_topic": int(r[5] or 0),
+                "prompt_tokens": int(r[6] or 0),
+                "gen_tokens": int(r[7] or 0),
+                "thumbs_up": int(r[8] or 0),
+                "thumbs_down": int(r[9] or 0),
+                "qa_with_positive": int(r[10] or 0),
+                "qa_with_negative": int(r[11] or 0),
             }
             for r in rows
         ]
