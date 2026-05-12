@@ -38,7 +38,7 @@ from student_bot.bot.prompts import (
     llm_unavailable_message,
     refusal_message,
 )
-from student_bot.bot.retrieval import RetrievalResult, RetrievedChunk, retrieve
+from student_bot.bot.retrieval import RetrievalResult, RetrievedChunk, get_reranker, retrieve
 from student_bot.bot.web_retrieval import (
     corpus_programme_substrings_for_query,
     history_without_programme_clarification_tail,
@@ -172,6 +172,44 @@ def _estimate_context_tokens(messages: list[dict]) -> int:
         total += _estimate_tokens(m.get("content", ""))
         total += 3  # rough message framing overhead
     return total
+
+
+def _rerank_web_chunks(
+    cfg: Config, query: str, query_language: str, chunks: list[RetrievedChunk]
+) -> list[RetrievedChunk]:
+    """Score web-fetched chunks with the cross-encoder and return top-K.
+
+    Web fetches (esp. studyplan bundles) can produce 30+ chunks per page with
+    a flat synthetic rerank_score; without this step every chunk would be
+    stuffed into the prompt, regularly overrunning ``num_ctx``. Reranker
+    failure is non-fatal: we fall back to the original order and the
+    top-``cfg.reranker.keep`` slice.
+    """
+    if not chunks:
+        return []
+    keep = max(1, cfg.reranker.keep)
+    try:
+        pairs = [(query, c.text) for c in chunks]
+        scores = get_reranker(cfg).predict(pairs).tolist()
+        for c, s in zip(chunks, scores):
+            c.rerank_score = float(s)
+        if query_language and cfg.reranker.language_bonus:
+            for c in chunks:
+                if c.language and c.language == query_language:
+                    c.rerank_score += cfg.reranker.language_bonus
+        chunks.sort(key=lambda c: c.rerank_score, reverse=True)
+    except Exception as e:
+        log.warning("dynamic-web rerank failed, keeping original order: %s", e)
+    reranked = chunks[:keep]
+    if len(chunks) > keep:
+        top1 = reranked[0].rerank_score if reranked else 0.0
+        log.info(
+            "dynamic-web: reranked %d -> %d chunks (top1=%.3f)",
+            len(chunks),
+            len(reranked),
+            top1,
+        )
+    return reranked
 
 
 # --- Per-key rate limiter (simple sliding window over the last 60 s) ---
@@ -403,15 +441,20 @@ def answer(
             jargon_hits=jargon_hits,
         )
     if web_result and web_result.chunks:
+        web_candidates = list(web_result.chunks)
+        reranked_web = _rerank_web_chunks(cfg, expanded_q, lang, web_candidates)
         retrieval = RetrievalResult(
-            query=expanded_q, candidates=web_result.chunks, reranked=web_result.chunks
+            query=expanded_q, candidates=web_candidates, reranked=reranked_web
         )
+        # Preserve the synthetic web gate (web-fetched content always passes);
+        # the 3.5/2.5 values feed the confidence badge and are intentionally
+        # independent of the per-chunk rerank logits.
         gate = GateDecision(
             True,
             "web_cache" if web_result.used_stale_cache else "web_live",
             3.5 if not web_result.used_stale_cache else 2.5,
             3.5 if not web_result.used_stale_cache else 2.5,
-            len({c.rel_source for c in web_result.chunks}),
+            len({c.rel_source for c in reranked_web}),
         )
         source_urls = list(web_result.source_urls)
         if web_result.used_stale_cache:

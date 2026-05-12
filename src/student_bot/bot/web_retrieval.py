@@ -64,6 +64,15 @@ _PROGRAM_SIDEBAR_SLUGS = (
     "inriktningar",
 )
 
+# Sidebar slugs that contribute *zero unique chunks* once `/omfattning` is in
+# the queue. KTH study-plan pages are a SPA: every sidebar URL ships the same
+# `__compressedApplicationStore__.studyProgramme` JSON. `/genomforande` is
+# byte-identical to `/omfattning`. `/mal`, `/behorighet`, `/kurslista` are not
+# routed through the structured chunker, so they only contribute the empty
+# legacy-blob fallback (~640 chars of page chrome). Excluded from the default
+# bundle *and* from link-discovery to keep prompt tokens bounded.
+_PROGRAM_SIDEBAR_SLUGS_REDUNDANT = frozenset({"mal", "behorighet", "genomforande", "kurslista"})
+
 # Human-readable sidebar labels for programme study-plan URLs (path segment after
 # /program/<CODE>/<TERM>/...).
 _PROGRAM_URL_SECTION_LABELS_SV: dict[str, str] = {
@@ -2319,9 +2328,12 @@ def _programme_term_bundle_urls(url: str) -> list[str]:
     ``max_pages_per_query``. ``/omfattning`` carries the full
     ``studyProgramme.*`` payload that the per-section chunker expands into
     ~25 small chunks, so it comes right after the base term page. Year
-    pages follow with their concrete Valvillkor data. ``/genomforande``
-    embeds the same ``studyProgramme`` object as ``/omfattning`` and is
-    placed late as a defensive fallback only.
+    pages follow with their concrete Valvillkor data. ``/inriktningar``
+    uses a separate chunker path for specialisations.
+
+    Redundant slugs (``/genomforande``, ``/mal``, ``/behorighet``,
+    ``/kurslista``) are intentionally omitted — see
+    ``_PROGRAM_SIDEBAR_SLUGS_REDUNDANT``.
     """
     path = urlsplit(_canonicalize(url)).path
     m = _PROGRAM_TERM_RE.fullmatch(path)
@@ -2329,13 +2341,32 @@ def _programme_term_bundle_urls(url: str) -> list[str]:
         return [_canonicalize(url)]
     code, term, _year = m.group(1).upper(), m.group(2), m.group(3)
     base = _canonicalize(f"https://{_KTH_HOST}/student/kurser/program/{code}/{term}")
+    kept_sidebar = tuple(
+        slug for slug in _PROGRAM_SIDEBAR_SLUGS if slug not in _PROGRAM_SIDEBAR_SLUGS_REDUNDANT
+    )
     primary_sidebar = ("omfattning",)
-    other_sidebar = tuple(slug for slug in _PROGRAM_SIDEBAR_SLUGS if slug not in primary_sidebar)
+    other_sidebar = tuple(slug for slug in kept_sidebar if slug not in primary_sidebar)
     out: list[str] = [base]
     out.extend([f"{base}/{slug}" for slug in primary_sidebar])
     out.extend([f"{base}/arskurs{n}" for n in range(1, 6)])
     out.extend([f"{base}/{slug}" for slug in other_sidebar])
     return _dedupe_urls(out)
+
+
+def _is_redundant_sidebar_url(url: str) -> bool:
+    """True if `url` is a /program/<CODE>/<TERM>/<slug> page whose chunks
+    duplicate (or are subsumed by) /omfattning. Used to keep link discovery
+    from re-injecting the slugs we pruned from the default bundle."""
+    path = urlsplit(_canonicalize(url)).path
+    parts = [p for p in path.split("/") if p]
+    if len(parts) < 5:
+        return False
+    # parts: ["student", "kurser", "program", CODE, TERM, slug?]
+    if parts[:3] != ["student", "kurser", "program"]:
+        return False
+    if len(parts) < 6:
+        return False
+    return parts[5] in _PROGRAM_SIDEBAR_SLUGS_REDUNDANT
 
 
 def corpus_programme_substrings_for_query(q: str) -> frozenset[str] | None:
@@ -2590,6 +2621,8 @@ def maybe_fetch_dynamic_web(
                 for u in _program_links(html, final_url):
                     if len(queue) + len(visited) >= max_pages:
                         break
+                    if _is_redundant_sidebar_url(u):
+                        continue
                     if u not in visited and _is_allowed_url(u, cfg, patterns):
                         log.info("dynamic-web: discovered linked program page %s", u)
                         queue.append(u)
