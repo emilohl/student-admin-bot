@@ -147,6 +147,18 @@ class AnswerResult:
     # was narrowed to. Callers should persist this in conversation memory so
     # follow-up turns can reuse it as a prior (see ConversationMemory.set_program_code).
     program_code: str | None = None
+    # Admission round actually used this turn (after falling back to a
+    # persisted prior when the current turn carries no hint). Callers
+    # persist via `ConversationMemory.set_admission_hints` so a follow-up
+    # that doesn't restate the term still routes to the same cohort.
+    admission_term: str | None = None
+    admission_year_prefix: str | None = None
+    # UX-honesty signals plumbed up from `ConversationMemory`. The web UI
+    # shows a small notice for each. `history_truncated` is sticky for the
+    # session (ring-buffer evicted at least one turn); `session_expired`
+    # fires once per pruned slot (TTL boundary crossed since last turn).
+    history_truncated: bool = False
+    session_expired: bool = False
 
 
 def _estimate_tokens(text: str) -> int:
@@ -264,6 +276,8 @@ def answer(
     on_jargon_prefix=None,
     rate_limit_key: str | None = None,
     program_prior: str | None = None,
+    admission_term_prior: str | None = None,
+    admission_year_prefix_prior: str | None = None,
 ) -> AnswerResult:
     cfg = cfg or get_config()
     history = history or []
@@ -324,8 +338,17 @@ def answer(
             )
             jargon_note = jargon.transparency_note(jargon_hits, lang)
 
-    web_result = maybe_fetch_dynamic_web(cfg, expanded_q, lang, program_prior=program_prior)
+    web_result = maybe_fetch_dynamic_web(
+        cfg,
+        expanded_q,
+        lang,
+        program_prior=program_prior,
+        admission_term_prior=admission_term_prior,
+        admission_year_prefix_prior=admission_year_prefix_prior,
+    )
     resolved_program_code = web_result.resolved_program_code if web_result else None
+    applied_admission_term = web_result.applied_admission_term if web_result else None
+    applied_admission_year_prefix = web_result.applied_admission_year_prefix if web_result else None
     source_urls: list[str] = []
     stale_cache_days: int | None = None
     if web_result and web_result.clarification:
@@ -610,6 +633,8 @@ def answer(
         ttft_ms=ttft_ms,
         gen_tps=gen_tps,
         program_code=resolved_program_code,
+        admission_term=applied_admission_term,
+        admission_year_prefix=applied_admission_year_prefix,
     )
 
 
@@ -713,7 +738,18 @@ def _repl(cfg: Config, console: Console, *, show_context: bool):
             printed_any = True
 
         program_prior = memory.get_program_code(user_id, thread_id)
-        result = answer(q, history=history, cfg=cfg, on_token=on_tok, program_prior=program_prior)
+        adm_term_prior, adm_year_prior = memory.get_admission_hints(user_id, thread_id)
+        session_expired = memory.take_expired_flag(user_id, thread_id)
+        result = answer(
+            q,
+            history=history,
+            cfg=cfg,
+            on_token=on_tok,
+            program_prior=program_prior,
+            admission_term_prior=adm_term_prior,
+            admission_year_prefix_prior=adm_year_prior,
+        )
+        result.session_expired = session_expired
         if printed_any:
             sys.stdout.write("\n")
 
@@ -722,6 +758,16 @@ def _repl(cfg: Config, console: Console, *, show_context: bool):
             memory.append(user_id, thread_id, "assistant", result.answer)
         if result.program_code:
             memory.set_program_code(user_id, thread_id, result.program_code)
+        if result.admission_term or result.admission_year_prefix:
+            memory.set_admission_hints(
+                user_id,
+                thread_id,
+                exact_term=result.admission_term,
+                year_prefix=result.admission_year_prefix,
+            )
+        # Surface eviction state after the append above so the REPL flag
+        # reflects post-turn memory (sticky once the buffer evicts).
+        result.history_truncated = memory.history_truncated(user_id, thread_id)
 
         console.print(
             f"[dim]lang={result.lang}  gate={result.gate.reason}  "

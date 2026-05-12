@@ -188,6 +188,23 @@ button:disabled { opacity: 0.5; cursor: progress; }
   margin-bottom: 8px;
   white-space: pre-wrap;
 }
+/* UX-honesty notices appended above the rendered answer when the LLM
+   context has been truncated by max_turns or the session was just
+   resurrected after a TTL prune. Muted to avoid competing with the
+   answer; bordered to be visually distinct from regular paragraph text. */
+.msg .body .ctx-notices {
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.msg .body .ctx-notice {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+  border-left: 2px solid var(--border);
+  padding: 2px 0 2px 8px;
+}
 /* Wrapper so the dots and the optional "<bot> funderar…" phase label
    sit on one line in the bot bubble while waiting for the first answer token. */
 .thinking-wrap { display: inline-flex; align-items: center; gap: 8px; }

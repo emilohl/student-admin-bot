@@ -203,10 +203,38 @@ composer.addEventListener("submit", async (e) => {
     }
     const stick = nearBottom();
     decorateBot(botMsg, finalMeta);
+    renderContextNotices(botMsg, finalMeta);
     if (stick) messages.scrollTop = messages.scrollHeight;
     if (perfEnabled) updatePerfPanel(finalMeta);
   }
 });
+
+// Append UX-honesty notices to a bot bubble when the server reports that
+// the LLM context has been truncated or the session was just resurrected
+// from a TTL-pruned slot. Both render as small muted lines at the top of
+// the bubble so they sit above the answer without competing with it.
+function renderContextNotices(botMsg, meta) {
+  if (!botMsg || !botMsg.body || !meta) return;
+  const lines = [];
+  if (meta.session_expired) {
+    lines.push((window.t && window.t("chat.session_expired")) || "");
+  }
+  if (meta.history_truncated) {
+    lines.push((window.t && window.t("chat.history_truncated")) || "");
+  }
+  if (!lines.length) return;
+  const wrap = document.createElement("div");
+  wrap.className = "ctx-notices";
+  for (const text of lines) {
+    if (!text) continue;
+    const line = document.createElement("div");
+    line.className = "ctx-notice";
+    line.textContent = text;
+    wrap.appendChild(line);
+  }
+  // Insert at the top of the body so the answer reads naturally below it.
+  botMsg.body.insertBefore(wrap, botMsg.body.firstChild);
+}
 
 function setPerfEnabled(enabled) {
   perfEnabled = !!enabled;
