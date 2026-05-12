@@ -26,6 +26,7 @@ for u in urls:
     print(f"  {u}")
 print()
 
+
 # Approximate 4 chars per token (matches pipeline._estimate_tokens).
 def est_tokens(s: str) -> int:
     return max(0, len(s or "") // 4)
@@ -51,31 +52,35 @@ for url in urls:
     legacy_chars = len(legacy_content)
     legacy_tokens = est_tokens(legacy_content)
 
-    structured = _studyplan_chunks_from_html(
-        html, final_url=final_url, fetched_at=0, lang="sv"
-    )
+    structured = _studyplan_chunks_from_html(html, final_url=final_url, fetched_at=0, lang="sv")
 
     page_struct_chars = sum(len(c.text) for c in structured)
     page_struct_tokens = est_tokens("".join(c.text for c in structured))
     totals_structured += page_struct_tokens
     totals_legacy += legacy_tokens
     per_page_summary.append(
-        (final_url, len(structured), page_struct_chars, page_struct_tokens, legacy_chars, legacy_tokens)
+        (
+            final_url,
+            len(structured),
+            page_struct_chars,
+            page_struct_tokens,
+            legacy_chars,
+            legacy_tokens,
+        )
     )
 
     print(f"\n=== {final_url} ===")
     print(f"  title: {title!r}")
-    print(f"  structured chunks: {len(structured)}  total {page_struct_chars} chars (~{page_struct_tokens} tok)")
+    print(
+        f"  structured chunks: {len(structured)}  total {page_struct_chars} chars (~{page_struct_tokens} tok)"
+    )
     print(f"  legacy single-blob: {legacy_chars} chars (~{legacy_tokens} tok)")
     for i, c in enumerate(structured, 1):
         section = (c.section_path or "").strip() or "-"
         preview = c.text.replace("\n", " / ").strip()
         if len(preview) > 220:
             preview = preview[:220] + "…"
-        print(
-            f"   [{i:2}] {len(c.text):5d} ch  rerank={c.rerank_score:.2f}  "
-            f"section={section!r}"
-        )
+        print(f"   [{i:2}] {len(c.text):5d} ch  rerank={c.rerank_score:.2f}  section={section!r}")
         print(f"        {preview}")
 
 print("\n=================================================")

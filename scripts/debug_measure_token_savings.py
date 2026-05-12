@@ -43,10 +43,14 @@ def measure(query: str) -> None:
     pt_before = sum(_estimate_tokens(m.get("content", "")) for m in msgs_before)
     pt_after = sum(_estimate_tokens(m.get("content", "")) for m in msgs_after)
 
-    print(f"  chunks: {len(raw_chunks)} -> {len(reranked)}  "
-          f"(chars {raw_chars} -> {rr_chars}; chunk tokens {raw_tokens} -> {rr_tokens})")
-    print(f"  full prompt tokens: {pt_before} -> {pt_after}  "
-          f"(save {pt_before - pt_after}, ctx limit {cfg.llm.num_ctx})")
+    print(
+        f"  chunks: {len(raw_chunks)} -> {len(reranked)}  "
+        f"(chars {raw_chars} -> {rr_chars}; chunk tokens {raw_tokens} -> {rr_tokens})"
+    )
+    print(
+        f"  full prompt tokens: {pt_before} -> {pt_after}  "
+        f"(save {pt_before - pt_after}, ctx limit {cfg.llm.num_ctx})"
+    )
     print(f"  top-{cfg.reranker.keep} sections (rerank logit, chars):")
     for c in reranked:
         sec = (c.section_path or "-").strip()
