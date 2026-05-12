@@ -9,7 +9,9 @@ Citations are the bot's primary defence against blind trust:
 
 from __future__ import annotations
 
+import hashlib
 import json
+import logging
 import random
 import re
 from functools import lru_cache
@@ -18,6 +20,43 @@ from urllib.parse import quote, urlparse
 
 from student_bot.bot.retrieval import RetrievedChunk
 from student_bot.config import Config
+
+log = logging.getLogger("student_bot.citations")
+
+
+def _normalize_citation(text: str) -> str:
+    """Lowercase, collapse whitespace, unify dash variants. Used to match
+    LLM-emitted citation markers against registered chunk titles/sections
+    when an exact lookup misses (whitespace drift, casing, dash style)."""
+    if not text:
+        return ""
+    out = text.casefold()
+    out = re.sub(r"[–—·\-]", "-", out)
+    out = re.sub(r"\s+", " ", out).strip()
+    return out
+
+
+def _chunk_dedup_key(c: RetrievedChunk) -> tuple:
+    """Dedup chunks by (source, text-hash, page).
+
+    The KTH study-plan SPA returns identical JSON on `/arskurs1..5` sidebar
+    routes, so the structured chunker can emit the same text under
+    different `doc_title` / `section_path` strings (e.g. "Årskurs 1 –
+    behörighetsgivande kurser" vs "Årskurs 2 – …"). Those chunks now all
+    share the bundle's base `source_url` (set in `_build_studyplan_chunk`),
+    and the text hash collapses them to one citation row.
+
+    Non-study-plan chunks aren't affected: different PDF pages or
+    markdown sections have different text, so the hashes differ. Different
+    PDF pages also keep their `page_start` distinction.
+    """
+    text = c.text or ""
+    text_hash = hashlib.md5(text.encode("utf-8", errors="replace")).hexdigest()[:8]
+    return (
+        c.source_url or c.rel_source or "",
+        text_hash,
+        c.page_start,
+    )
 
 
 _INLINE_CITATION_RE = re.compile(r"\[([^\[\]]+?)\]")
@@ -168,15 +207,14 @@ def format_sources_block(
     if not chunks:
         return ""
     base = cfg.web.doc_base_url
-    rows: list[tuple[str, str | None, int | None]] = []
-    for c in chunks:
-        rows.append((c.doc_title, c.section_path or None, c.page_start))
-    rows = _dedupe_keep_order(rows)
-    # Map back to a representative chunk per row (first match) to build URL.
+    rows: list[tuple] = []
     chunk_by_row: dict[tuple, RetrievedChunk] = {}
     for c in chunks:
-        key = (c.doc_title, c.section_path or None, c.page_start)
-        chunk_by_row.setdefault(key, c)
+        key = _chunk_dedup_key(c)
+        if key in chunk_by_row:
+            continue
+        chunk_by_row[key] = c
+        rows.append(key)
 
     label = "Källor" if lang == "sv" else "Sources"
     lines = [f"\n\n**{label}:**"]
@@ -252,17 +290,21 @@ def apply_citation_numbering(
         return body, []
 
     # Dedupe by the same key format_sources_block uses, so each Sources
-    # row maps to exactly one citation number.
+    # row maps to exactly one citation number. The key collapses chunks
+    # with identical text from the same source — see `_chunk_dedup_key`.
     rows: list[RetrievedChunk] = []
     seen: dict[tuple, int] = {}
     for c in chunks:
-        key = (c.doc_title, c.section_path or None, c.page_start)
+        key = _chunk_dedup_key(c)
         if key not in seen:
             seen[key] = len(rows)
             rows.append(c)
 
     by_full: dict[str, int] = {}
+    by_full_norm: dict[str, int] = {}
     by_title: dict[str, list[int]] = {}
+    by_title_norm: dict[str, list[int]] = {}
+    by_section_norm: dict[str, list[int]] = {}
     for i, c in enumerate(rows):
         title = c.doc_title
         section = (c.section_path or "").strip()
@@ -270,7 +312,10 @@ def apply_citation_numbering(
             by_full[f"{title} – {section}"] = i
             by_full[f"{title} — {section}"] = i
             by_full[f"{title} · {section}"] = i
+            by_full_norm.setdefault(_normalize_citation(f"{title} · {section}"), i)
+            by_section_norm.setdefault(_normalize_citation(section), []).append(i)
         by_title.setdefault(title, []).append(i)
+        by_title_norm.setdefault(_normalize_citation(title), []).append(i)
 
     cited_indices: list[int] = []
     number_for: dict[int, int] = {}
@@ -293,6 +338,12 @@ def apply_citation_numbering(
             idx = by_full.get(content.replace(src, dst))
             if idx is not None:
                 return idx
+        # Whitespace- and case-insensitive lookup. The LLM occasionally adds
+        # stray spaces or lowercases proper-noun titles; normalize and retry.
+        norm = _normalize_citation(content)
+        idx = by_full_norm.get(norm)
+        if idx is not None:
+            return idx
         # Longest-prefix match: handles `[Title · Section · Extra]` when the
         # LLM appends invented segments to a registered Title+Section.
         parts = re.split(r"\s+[·—–]\s+", content)
@@ -302,6 +353,7 @@ def apply_citation_numbering(
                 by_full.get(prefix)
                 or by_full.get(prefix.replace(" · ", " — "))
                 or by_full.get(prefix.replace(" · ", " – "))
+                or by_full_norm.get(_normalize_citation(prefix))
             )
             if idx is not None:
                 return idx
@@ -309,9 +361,34 @@ def apply_citation_numbering(
             return None
         sep = content.find(" · ")
         title = (content[:sep] if sep > -1 else content).strip()
-        candidates = by_title.get(title, [])
+        candidates = by_title.get(title) or by_title_norm.get(_normalize_citation(title), [])
         if len(candidates) == 1:
             return candidates[0]
+        # Section-only unique: if the LLM dropped the title but the tail
+        # uniquely identifies a registered section, accept the match.
+        if sep > -1:
+            tail = content[sep + len(" · ") :].strip()
+            tail_candidates = by_section_norm.get(_normalize_citation(tail), [])
+            if len(tail_candidates) == 1:
+                return tail_candidates[0]
+        # Fuzzy-contains: normalized inline title is a substring of exactly
+        # one registered title (or vice versa). Catches tokenization quirks
+        # like trailing colons / parens the LLM might paste verbatim.
+        n_title = _normalize_citation(title)
+        if n_title:
+            container_hits: list[int] = []
+            contained_hits: list[int] = []
+            for reg_norm, idxs in by_title_norm.items():
+                if not reg_norm:
+                    continue
+                if n_title in reg_norm:
+                    container_hits.extend(idxs)
+                elif reg_norm in n_title:
+                    contained_hits.extend(idxs)
+            unique = list(dict.fromkeys(container_hits or contained_hits))
+            if len(unique) == 1:
+                return unique[0]
+        log.info("citation fallthrough: %r", content)
         return None
 
     def _replace(m: re.Match) -> str:
