@@ -190,7 +190,7 @@ _CORPUS_MERGE_MIN_SCORE = 0.0
 # question routinely surfaces "Villkor för deltagande" above the actual
 # master-list chunks — both contain the trigger words. A targeted nudge
 # fixes the ordering without retraining anything.
-_MASTER_MAPPING_SECTION_BONUS = 2.0
+_MASTER_MAPPING_SECTION_BONUS = 3.0
 _SPECIALISATIONS_SECTION_PENALTY = -2.0
 _MASTER_SECTION_TOKENS = (
     "behörighetsgivande kurser per masterprogram",
@@ -542,11 +542,19 @@ def answer(
             corpus_result = None
         if corpus_result and corpus_result.reranked:
             seen = {_chunk_dedup_key(c) for c in merged}
+            # When the question is master-eligibility shaped, only merge
+            # corpus chunks that are also on-topic. Otherwise the merge can
+            # inject off-topic candidates (e.g. an unrelated FAQ section
+            # that scored high for the question's surface tokens) and
+            # crowd the prompt with noise the LLM may then ground in.
+            require_master_topic = _question_is_master_eligibility(expanded_q)
             added = 0
             for c in corpus_result.reranked:
                 if added >= _CORPUS_MERGE_KEEP:
                     break
                 if c.rerank_score < _CORPUS_MERGE_MIN_SCORE:
+                    continue
+                if require_master_topic and _master_intent_score_adjust(c) <= 0:
                     continue
                 key = _chunk_dedup_key(c)
                 if key in seen:

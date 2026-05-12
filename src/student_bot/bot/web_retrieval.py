@@ -2651,19 +2651,19 @@ def maybe_fetch_dynamic_web(
     course_intent_no_code = question_has_course_intent(
         question
     ) and not question_has_explicit_course_code(question)
-    if not targets and not (course_intent_no_code and program_prior):
-        return None
-    log.info("dynamic-web: targets=%s", targets)
-
-    course_urls = [t for t in targets if "/student/kurser/kurs/" in t]
-    prog_roots = [t for t in targets if _is_program_root_only_url(t)]
 
     # Master-eligibility routing (issue #55, topic 3). The KTH study-plan
     # SPA only renders "behörighetsgivande kurser per masterprogram" on the
     # civilingenjör programme's `/arskursN` pages — the master programme's
     # own page does NOT list it. So when the question is master-eligibility
-    # shaped, force the relevant civilingenjör's URL into prog_roots before
-    # the existing per-root iteration runs.
+    # shaped, force the relevant civilingenjör's URL into prog_roots — or
+    # ask which civilingenjör the user studies if we can't tell. Has to run
+    # BEFORE the empty-targets early-return below so a bare query like
+    # "vilka mappade masterprogram finns?" doesn't fall through to Chroma
+    # (which would pick the generic /mappade-masterprogram overview page,
+    # not the user's actual study plan).
+    course_urls = [t for t in targets if "/student/kurser/kurs/" in t]
+    prog_roots = [t for t in targets if _is_program_root_only_url(t)]
     if _question_is_master_eligibility(question):
         civ_code: str | None = None
         if program_prior and _is_civilingenjor_code(program_prior, cfg):
@@ -2682,7 +2682,7 @@ def maybe_fetch_dynamic_web(
                     "dynamic-web: master-eligibility question; routed to civ %s",
                     civ_code,
                 )
-        elif not prog_roots:
+        else:
             log.info("dynamic-web: master-eligibility question with no civ in memory; asking")
             return WebFetchResult(
                 clarification=(
@@ -2694,6 +2694,10 @@ def maybe_fetch_dynamic_web(
                     "“CTFYS” or “civilingenjör in engineering physics”.",
                 ),
             )
+
+    if not targets and not (course_intent_no_code and program_prior):
+        return None
+    log.info("dynamic-web: targets=%s", targets)
 
     hints = parse_program_admission_hints(question)
     # Fall back to a persisted admission hint when this turn doesn't carry
