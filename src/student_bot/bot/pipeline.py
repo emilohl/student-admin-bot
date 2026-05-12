@@ -276,6 +276,7 @@ def _render(
     *,
     include_sources: bool,
     jargon_note: str = "",
+    channel: str = "mattermost",
 ) -> str:
     # Order: [jargon] + body + [conf badge] + [sources] + tip. Keeping
     # everything *after* the body makes the streaming tail (= rendered
@@ -293,7 +294,7 @@ def _render(
         sources = format_sources_block(cfg, chunks, lang)
         if sources:
             parts.append(sources)
-    parts.append("\n\n" + literacy_footer(lang))
+    parts.append("\n\n" + literacy_footer(lang, channel=channel))
     return "".join(parts).strip()
 
 
@@ -316,6 +317,7 @@ def answer(
     program_prior: str | None = None,
     admission_term_prior: str | None = None,
     admission_year_prefix_prior: str | None = None,
+    channel: str = "mattermost",
 ) -> AnswerResult:
     cfg = cfg or get_config()
     history = history or []
@@ -533,7 +535,14 @@ def answer(
             if on_token:
                 on_token(body)
         rendered = _render(
-            cfg, lang, body, [], gate, include_sources=False, jargon_note=jargon_note
+            cfg,
+            lang,
+            body,
+            [],
+            gate,
+            include_sources=False,
+            jargon_note=jargon_note,
+            channel=channel,
         )
         if on_token:
             already = (
@@ -640,7 +649,7 @@ def answer(
     sources_md = format_sources_block(cfg, sources_chunks, lang)
     if sources_md:
         tail_parts.append(sources_md)
-    tail_parts.append("\n\n" + literacy_footer(lang))
+    tail_parts.append("\n\n" + literacy_footer(lang, channel=channel))
     tail = "".join(tail_parts)
 
     if on_token and tail:
@@ -722,7 +731,7 @@ def _run_once(cfg: Config, console: Console, q: str, *, show_context: bool, no_s
         _print_context(console, r.reranked)
 
     if no_stream:
-        result = answer(q, cfg=cfg)
+        result = answer(q, cfg=cfg, channel="cli")
         console.print(result.rendered)
     else:
         printed_any = False
@@ -733,7 +742,7 @@ def _run_once(cfg: Config, console: Console, q: str, *, show_context: bool, no_s
             sys.stdout.flush()
             printed_any = True
 
-        result = answer(q, cfg=cfg, on_token=on_tok)
+        result = answer(q, cfg=cfg, on_token=on_tok, channel="cli")
         if printed_any:
             sys.stdout.write("\n")
 
@@ -791,6 +800,7 @@ def _repl(cfg: Config, console: Console, *, show_context: bool):
             program_prior=program_prior,
             admission_term_prior=adm_term_prior,
             admission_year_prefix_prior=adm_year_prior,
+            channel="cli",
         )
         result.session_expired = session_expired
         if printed_any:
