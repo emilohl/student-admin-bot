@@ -88,6 +88,38 @@ GDPR_NOTICE_EN = (
     "(`!logging on` re-enables it, `!logging status` shows current state). "
     "Please react with 👍 or 👎 on my replies."
 )
+# Appended to the GDPR notice when an OpenAI-compatible cloud provider is
+# active (#20). The bot's prompt + retrieved context go to the cloud
+# provider, so the user needs to know not to share sensitive personal data.
+_CLOUD_NOTICE_SV = (
+    " ⚠️ **Obs:** dina meddelanden skickas just nu till en extern molnmodell "
+    "({provider}) för att generera svaret. Skriv inte personnummer, lösenord "
+    "eller annan känslig personlig information."
+)
+_CLOUD_NOTICE_EN = (
+    " ⚠️ **Note:** your messages are currently sent to an external cloud model "
+    "({provider}) to generate the answer. Don't share personal numbers, "
+    "passwords, or other sensitive personal information."
+)
+
+
+def gdpr_notice_sv(cfg) -> str:
+    base = GDPR_NOTICE_SV
+    resolved = cfg.active_model()
+    if resolved.provider_kind != "ollama":
+        provider = resolved.display_name or resolved.provider_key or "extern leverantör"
+        base += _CLOUD_NOTICE_SV.format(provider=provider)
+    return base
+
+
+def gdpr_notice_en(cfg) -> str:
+    base = GDPR_NOTICE_EN
+    resolved = cfg.active_model()
+    if resolved.provider_kind != "ollama":
+        provider = resolved.display_name or resolved.provider_key or "external provider"
+        base += _CLOUD_NOTICE_EN.format(provider=provider)
+    return base
+
 
 LOGGING_OFF_SV = "Loggning är nu avstängd. Innehållet i dina frågor lagras inte längre."
 LOGGING_OFF_EN = "Logging disabled. Your question content is no longer stored."
@@ -346,7 +378,7 @@ class StudentBot:
             from student_bot.lang import detect
 
             lang = detect(job.question)
-            notice = GDPR_NOTICE_EN if lang == "en" else GDPR_NOTICE_SV
+            notice = gdpr_notice_en(self.cfg) if lang == "en" else gdpr_notice_sv(self.cfg)
             self._post(job.channel_id, notice, job.root_id)
             self.db.mark_disclosed(job.user_id)
 
@@ -416,7 +448,7 @@ class StudentBot:
             gen_tokens=result.gen_tokens_est,
             ttft_ms=result.ttft_ms,
             gen_tps=result.gen_tps,
-            llm_model=self.cfg.llm.model,
+            llm_model=self.cfg.active_model().identifier,
         )
 
         # Topic classification runs AFTER the user has their answer so it

@@ -25,6 +25,10 @@ dependencies = [
 
     # LLM
     "ollama>=0.4",
+    # HTTP client for the OpenAI-compatible cloud LLM provider (#20). httpx
+    # is already a transitive dep (chromadb, fastapi); declared explicitly
+    # so the cloud path is robust to upstream churn.
+    "httpx>=0.27",
 
     # Mattermost
     "mattermostdriver>=7.3",
