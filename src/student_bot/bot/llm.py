@@ -269,8 +269,12 @@ def _stream_chat_ollama(
     # the right Modelfile parameters.
     if gemma_style and not state["saw_thinking"]:
         sample = "".join(state["raw_capture"])[:200]
+        # Leading newline so post-stream warnings land on their own line
+        # in the CLI, where the streamed answer leaves stdout's cursor
+        # mid-line. Cheap visual fix; web/MM paths log to a file or stderr
+        # where a leading newline is a non-issue.
         log.warning(
-            "thinking enabled but model emitted no reasoning tags. Raw stream start: %r",
+            "\nthinking enabled but model emitted no reasoning tags. Raw stream start: %r",
             sample,
         )
 
@@ -387,6 +391,21 @@ def _stream_chat_openai(
                             payload_str[:120],
                         )
                         continue
+                    # Some providers (Berget, OpenRouter) emit upstream
+                    # errors as in-stream JSON events on a 200 response —
+                    # unknown model, mid-stream rate-limit, internal
+                    # provider error — instead of an HTTP 4xx we'd catch
+                    # above. Surface those so they don't tail off as a
+                    # silent empty stream.
+                    err = chunk.get("error")
+                    if err:
+                        msg = err.get("message") if isinstance(err, dict) else str(err)
+                        if api_key and isinstance(msg, str) and api_key in msg:
+                            msg = msg.replace(api_key, "<redacted>")
+                        raise RuntimeError(
+                            f"cloud LLM upstream error from {url} "
+                            f"(model={resolved.model_id!r}): {msg}"
+                        )
                     choices = chunk.get("choices") or []
                     if not choices:
                         continue
@@ -407,7 +426,12 @@ def _stream_chat_openai(
                         if in_reasoning_field:
                             in_reasoning_field = False
                             track_on_thinking(False)
-                        if gemma_style:
+                        # Bounded raw capture for the empty-stream
+                        # diagnostic. Kept unconditional (not just for
+                        # gemma_style) so the warning has evidence even
+                        # when a non-Gemma provider returns content that
+                        # somehow gets filtered out downstream.
+                        if len(state["raw_capture"]) < 20:
                             state["raw_capture"].append(content)
                         yield content
         except httpx.HTTPError as e:
@@ -430,16 +454,41 @@ def _stream_chat_openai(
         state["saw_any_content"] = True
         yield piece
 
+    # Leading newline on these post-stream warnings: in CLI streaming
+    # mode stdout's cursor sits mid-line at end-of-stream, so a bare
+    # `log.warning(...)` to stderr grafts onto the last token. The `\n`
+    # ensures the diagnostic always starts on its own line; on
+    # file/stderr-only paths (web, MM) the leading newline is harmless.
     if not state["saw_any_content"]:
-        log.warning("cloud LLM returned an empty stream (model=%s)", resolved.model_id)
+        sample = "".join(state["raw_capture"])[:300]
+        if sample:
+            log.warning(
+                "\ncloud LLM returned an empty stream after filtering "
+                "(model=%s, gemma_style=%s); raw stream start: %r",
+                resolved.model_id,
+                gemma_style,
+                sample,
+            )
+        else:
+            log.warning(
+                "\ncloud LLM returned an empty stream — no content chunks received "
+                "(model=%s, url=%s)",
+                resolved.model_id,
+                url,
+            )
     elif gemma_style and resolved.thinking and not state["saw_thinking"]:
-        # Diagnostic mirrors the ollama path: Gemma chat template may not
-        # honor the <|think|> system-prompt sentinel server-side (some cloud
-        # hosts strip system-prompt-tokens or wrap the model with their own
-        # chat template). Helps explain "why does cloud Gemma feel dumber".
+        # Cloud hosts of Gemma (e.g. Berget) appear to consistently emit no
+        # reasoning tags even on synthesis-heavy questions — the served
+        # chat template likely strips or neutralizes the `<|think|>`
+        # sentinel, or the larger IT-tuned variants just don't verbalize
+        # thinking. Kept as INFO (vs WARNING on the local-Ollama path)
+        # because it fires per-query without being actionable: answer
+        # quality is unaffected.
         sample = "".join(state["raw_capture"])[:200]
-        log.warning(
-            "thinking enabled but cloud Gemma emitted no reasoning tags. Raw stream start: %r",
+        log.info(
+            "cloud Gemma emitted no reasoning tags despite thinking=true "
+            "(model=%s); raw stream start: %r",
+            resolved.model_id,
             sample,
         )
 

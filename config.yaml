@@ -101,14 +101,12 @@ llm:
       max_tokens: 4096
       thinking: false
       thinking_style: none
-    # Berget's largest dense Gemma — confirm the exact model id against
-    # https://berget.ai/models (their console lists the API string). Same
-    # `thinking_style: gemma` as the local Ollama variant: `<|think|>` is
-    # prepended to the system prompt and `<|channel>thought\n...<channel|>`
-    # blocks are stripped from the streamed content by the shared filter
-    # in `bot/llm.py`. Works identically over Berget's OpenAI-compatible
-    # endpoint as it does via local Ollama.
-    "berget/google/gemma-3-27b-it":
+    # Berget's hosted Gemma 4 31B. Same Gemma 4 family as the local
+    # ollama/gemma-4-E4B-it-GGUF entry, so `thinking_style: gemma` engages
+    # the shared `<|channel>thought\n...<channel|>` filter in bot/llm.py
+    # and `<|think|>` gets prepended to the system prompt. Berget supports
+    # a larger window (~256k) but 64k is plenty for this pipeline.
+    "berget/google/gemma-4-31B-it":
       num_ctx: 65536
       temperature: 0.2
       max_tokens: 4096
