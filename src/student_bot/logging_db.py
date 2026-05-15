@@ -132,13 +132,13 @@ class LogDB:
                 if not _column_exists(conn, table, column):
                     conn.execute(sql)
             # One-shot backfill: pre-existing rows have no llm_model. Issue
-            # #58 notes only one LLM has ever been in production, so filling
-            # NULL rows with the currently-configured model is accurate. This
-            # is a no-op once every row has a value, so leaving it
-            # unconditional avoids needing a separate migration tracker.
+            # #58 notes only one LLM had ever been in production at the time
+            # of backfill, so filling NULL rows with the currently-active
+            # model is the best estimate available. This is a no-op once
+            # every row has a value.
             try:
-                current_model = (cfg.llm.model or "").strip()
-            except AttributeError:
+                current_model = cfg.active_model().identifier
+            except Exception:
                 current_model = ""
             if current_model:
                 conn.execute(

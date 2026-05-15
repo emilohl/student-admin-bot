@@ -368,16 +368,46 @@ setInterval(() => {
   refreshSystemLoad();
 }, 1000);
 
+// Cloud-provider notice (#20). Populated from /api/health.cloud_provider_name;
+// empty string = local model, hide the notice everywhere. Idempotent so
+// language switches re-render the text.
+function applyCloudProviderNotice(providerName) {
+  const onboardingEl = el("#cloud-notice-onboarding");
+  const chatEl = el("#cloud-notice-chat");
+  const t = window.t || ((k) => k);
+  if (!providerName) {
+    if (onboardingEl) onboardingEl.classList.add("hidden");
+    if (chatEl) chatEl.classList.add("hidden");
+    return;
+  }
+  const interpolate = (key) =>
+    (t(key) || "").replace(/\{provider\}/g, providerName);
+  if (onboardingEl) {
+    onboardingEl.innerHTML = interpolate("cloud.notice.onboarding");
+    onboardingEl.classList.remove("hidden");
+  }
+  if (chatEl) {
+    chatEl.innerHTML = interpolate("cloud.notice.chat");
+    chatEl.classList.remove("hidden");
+  }
+}
+
+let cloudProviderName = "";
+
 async function initPerf() {
   try {
     const resp = await fetch("api/health", { credentials: "include" });
     if (!resp.ok) return;
     const data = await resp.json();
     setPerfEnabled(!!data.performance_panel_enabled);
+    cloudProviderName = data.cloud_provider_name || "";
+    applyCloudProviderNotice(cloudProviderName);
   } catch (_) {
     setPerfEnabled(false);
   }
 }
+
+document.addEventListener("i18n:langchange", () => applyCloudProviderNotice(cloudProviderName));
 
 initPerf();
 

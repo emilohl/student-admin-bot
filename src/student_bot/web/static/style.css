@@ -92,6 +92,13 @@ footer a { color: var(--muted); margin-right: 8px; }
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 16px; }
 .card h2 { margin-top: 0; }
 .caveat { background: #fff7e7; border-left: 3px solid var(--warn); padding: 8px 12px; border-radius: 4px; margin: 12px 0; }
+/* Cloud-provider notice (#20). Appears only when /api/health reports a
+   non-local LLM is in use — onboarding shows a small inline paragraph; the
+   chat view shows a persistent banner above messages. Same color cue as
+   .caveat (KTH-darkyellow) so it reads as a warning, not a brand callout. */
+.cloud-notice { background: #fff7e7; border-left: 3px solid var(--warn); padding: 8px 12px; border-radius: 4px; margin: 12px 0; font-size: 13px; line-height: 1.45; }
+.cloud-notice-banner { margin: 0 0 12px; }
+.cloud-notice strong { color: var(--kth-darkyellow); }
 .notice { position: relative; background: var(--kth-sand); border-left: 3px solid var(--kth-blue); padding: 8px 36px 8px 14px; border-radius: 4px; margin-bottom: 24px; font-size: 13px; line-height: 1.45; }
 .notice .notice-body p { margin: 0; }
 .notice .notice-body p + p { margin-top: 4px; color: var(--muted); font-size: 12px; }

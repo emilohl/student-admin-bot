@@ -1,7 +1,10 @@
 """Lightweight zero-shot topic classifier.
 
 Runs AFTER the answer is produced so it never adds user-visible latency.
-Uses the same Gemma model that's already loaded in Ollama.
+Uses the currently-active LLM (whichever model `cfg.llm.active` selects)
+with a lower temperature and tight token budget; the call goes through
+the shared `stream_chat` dispatch so it works for both local Ollama and
+cloud providers.
 """
 
 from __future__ import annotations
@@ -12,7 +15,7 @@ from pathlib import Path
 
 import yaml
 
-from student_bot.bot.llm import get_client
+from student_bot.bot.llm import chat
 from student_bot.config import Config
 
 
@@ -71,21 +74,19 @@ def classify(cfg: Config, question: str, lang: str) -> tuple[str, float]:
         return ("other", 0.0)
 
     prompt = _classification_prompt(topics, question, lang)
-    client = get_client(cfg)
     try:
-        resp = client.chat(
-            model=cfg.llm.model,
-            messages=[{"role": "user", "content": prompt}],
-            options={
-                "num_ctx": cfg.llm.num_ctx,
-                "temperature": cfg.topics.classifier_temperature,
-                "num_predict": 16,
-            },
+        raw = (
+            chat(
+                cfg,
+                [{"role": "user", "content": prompt}],
+                temperature_override=cfg.topics.classifier_temperature,
+                max_tokens_override=16,
+            )
+            .strip()
+            .lower()
         )
     except Exception:
         return ("other", 0.0)
-
-    raw = (resp.get("message", {}).get("content") or "").strip().lower()
     # The model often emits prose around the id; take the first token-ish word.
     first = raw.splitlines()[0].split()[0].strip(".,:'\"`*") if raw else ""
 

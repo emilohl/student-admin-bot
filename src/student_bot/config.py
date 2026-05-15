@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import yaml
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 
 def _discover_project_root() -> Path:
@@ -72,16 +73,95 @@ class GateConfig(BaseModel):
     max_distinct_sources_in_topk: int = 3
 
 
-class LLMConfig(BaseModel):
-    model: str
-    ollama_url: str
+class ProviderConfig(BaseModel):
+    """One entry per backend that can host an LLM. Multiple models can share
+    a provider (e.g. several Berget-hosted models share one base_url and
+    one API key env var).
+    """
+
+    # "ollama" → use the local ollama-python client against `base_url`.
+    # "openai_compatible" → POST to `{base_url}/chat/completions` with Bearer.
+    kind: str
+    base_url: str = ""
+    # Surfaces in the cloud privacy notice ("Svar genereras av <name>…").
+    # Unused for `kind: ollama` since local processing doesn't need disclosure.
+    display_name: str = ""
+    # Name of the env var holding the bearer token for this provider, e.g.
+    # `BERGET_API_KEY`. Empty for ollama. The loader reads each provider's
+    # configured env var into `Config.llm_api_keys`; the raw value is then
+    # held as SecretStr so it stays redacted in repr/dump.
+    api_key_env: str = ""
+    # HTTP timeout for cloud chat completions. Cloud LLMs can take 30+s on
+    # cold start with long contexts; SSE keeps the connection alive but the
+    # initial connect / first-byte still uses this.
+    timeout_seconds: float = 120.0
+
+
+class ModelConfig(BaseModel):
+    """Per-model technical knobs. Content (system prompt, user-prompt
+    template, citation rules, refusal text, jargon) stays shared across
+    models in `prompts.py` — letting it diverge would defeat A/B comparisons.
+    """
+
     num_ctx: int = 16384
     temperature: float = 0.1
     max_tokens: int = 1024
-    # Gemma 4 reasoning mode: prepends <|think|> to the system prompt and
-    # filters <think>...</think> blocks from the streamed output. Default
-    # on for better multi-step answers; set false to A/B against thinking-off.
-    thinking: bool = True
+    # When True AND `thinking_style == "gemma"`, prepends `<|think|>` to the
+    # system prompt to trigger Gemma 4's reasoning mode. Has no effect for
+    # other styles (it's a Gemma-specific sentinel).
+    thinking: bool = False
+    # How this model exposes its reasoning channel:
+    #   "gemma" — Gemma 4's `<|channel>thought\\n...<channel|>` block plus
+    #             the ollama API's separate `thinking` field. Filtered out
+    #             of the streamed text; routed to on_thinking().
+    #   "openai_reasoning_field" — DeepSeek-R1, Qwen reasoning, etc. expose
+    #             reasoning via `delta.reasoning_content` / `delta.reasoning`
+    #             alongside `delta.content`. Filtered out, routed to
+    #             on_thinking().
+    #   "none"  — model has no reasoning channel; pass everything through.
+    thinking_style: str = "none"
+
+
+class LLMConfig(BaseModel):
+    """Registry of providers and models plus a single `active` selector.
+
+    The `active` field is the full model identifier `<provider_key>/<model_id>`,
+    split on the FIRST slash. Ollama tags use `:` (e.g.
+    `ollama/gemma-4-E4B-it-GGUF:UD-Q4_K_XL`) and Berget/HF model IDs include
+    additional `/` (e.g. `berget/meta-llama/Llama-3.3-70B-Instruct`), so
+    first-slash splitting handles both cleanly.
+
+    Switch models in production by changing this one field (or via the
+    `LLM_ACTIVE` env override).
+    """
+
+    active: str
+    providers: dict[str, ProviderConfig] = Field(default_factory=dict)
+    models: dict[str, ModelConfig] = Field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class ResolvedLLM:
+    """A flattened, ready-to-use view of the active model + its provider.
+
+    Built once per turn by `Config.active_model()`. Pulls the API key from
+    `Config.llm_api_keys[provider_key]` (loaded once at startup from the
+    env var named by `ProviderConfig.api_key_env`).
+    """
+
+    identifier: str  # "ollama/gemma-..." — the full key from cfg.llm.active
+    provider_key: str  # "ollama", "berget", ...
+    provider_kind: str  # "ollama" | "openai_compatible"
+    model_id: str  # raw id passed to the provider, e.g. "meta-llama/Llama-..."
+    base_url: str
+    display_name: str
+    timeout_seconds: float
+    num_ctx: int
+    temperature: float
+    max_tokens: int
+    thinking: bool
+    thinking_style: str
+    api_key: SecretStr | None
 
 
 class MemoryConfig(BaseModel):
@@ -253,10 +333,61 @@ class Config(BaseModel):
     # Secrets injected from env (only required when actually used).
     user_id_hash_salt: str | None = None
     mattermost_secrets: MattermostSecrets | None = None
+    # Bearer tokens for OpenAI-compatible cloud providers, keyed by the
+    # provider name (e.g. `"berget"` → SecretStr). The loader populates
+    # this dict from each provider's `api_key_env`. SecretStr keeps the
+    # raw values redacted in `repr(cfg)`, `cfg.model_dump()`, and
+    # `cfg.model_dump_json()` — accidental config logging won't leak keys.
+    # Callers extract via `.get_secret_value()` at the request site.
+    llm_api_keys: dict[str, SecretStr] = Field(default_factory=dict)
 
     def absolute(self, p: Path) -> Path:
         """Resolve a relative path against PROJECT_ROOT."""
         return p if p.is_absolute() else (PROJECT_ROOT / p)
+
+    def active_model(self) -> ResolvedLLM:
+        """Resolve `llm.active` → provider + model views into a flat view.
+
+        Raises RuntimeError with a precise pointer when `active` doesn't
+        parse, the provider key isn't registered, or the model isn't
+        registered — these are config bugs, not runtime fallbacks.
+        """
+        active = (self.llm.active or "").strip()
+        if "/" not in active:
+            raise RuntimeError(
+                f"llm.active={active!r} must be '<provider>/<model_id>', e.g. "
+                "'ollama/gemma-4-E4B-it-GGUF:UD-Q4_K_XL' or "
+                "'berget/meta-llama/Llama-3.3-70B-Instruct'"
+            )
+        provider_key, model_id = active.split("/", 1)
+        provider = self.llm.providers.get(provider_key)
+        if provider is None:
+            known = sorted(self.llm.providers) or ["<none>"]
+            raise RuntimeError(
+                f"llm.active references unknown provider {provider_key!r}; known providers: {known}"
+            )
+        model = self.llm.models.get(active)
+        if model is None:
+            known = sorted(self.llm.models) or ["<none>"]
+            raise RuntimeError(
+                f"llm.active references unknown model {active!r}; known models: {known}"
+            )
+        api_key = self.llm_api_keys.get(provider_key)
+        return ResolvedLLM(
+            identifier=active,
+            provider_key=provider_key,
+            provider_kind=provider.kind,
+            model_id=model_id,
+            base_url=provider.base_url,
+            display_name=provider.display_name,
+            timeout_seconds=provider.timeout_seconds,
+            num_ctx=model.num_ctx,
+            temperature=model.temperature,
+            max_tokens=model.max_tokens,
+            thinking=model.thinking,
+            thinking_style=model.thinking_style,
+            api_key=api_key,
+        )
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -302,8 +433,27 @@ def get_config() -> Config:
             team=os.environ.get("MATTERMOST_TEAM") or None,
         )
 
+    # Override the local Ollama URL without editing yaml (Docker / launchd).
     if ollama_url := os.environ.get("OLLAMA_URL"):
-        cfg.llm.ollama_url = ollama_url
+        ollama_provider = cfg.llm.providers.get("ollama")
+        if ollama_provider is not None:
+            ollama_provider.base_url = ollama_url
+
+    # `LLM_ACTIVE` is the master switch — selects which registered model is
+    # in use this process. Format `<provider>/<model_id>`, same as the keys
+    # of `cfg.llm.models`. Validated lazily by `cfg.active_model()`.
+    if active_override := os.environ.get("LLM_ACTIVE"):
+        cfg.llm.active = active_override.strip()
+
+    # Load per-provider API keys from each provider's configured env var.
+    # `api_key_env` is empty for local providers (ollama); skip those.
+    # Stored as SecretStr so accidental config logging redacts the value.
+    for provider_key, provider_cfg in cfg.llm.providers.items():
+        env_name = provider_cfg.api_key_env.strip()
+        if not env_name:
+            continue
+        if raw_key := os.environ.get(env_name):
+            cfg.llm_api_keys[provider_key] = SecretStr(raw_key)
 
     # Web bind/auth overrides via env so docker-compose / launchd can flip
     # them without editing config.yaml.

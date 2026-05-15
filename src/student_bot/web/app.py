@@ -281,10 +281,25 @@ def create_app(cfg: Config | None = None) -> FastAPI:
 
     @app.get(_join_base(base_path, "/api/health"))
     def health():
+        # `cloud_provider_name` is empty for the default local Ollama path;
+        # frontend uses it to show/hide the "don't share sensitive info"
+        # notice during onboarding and as a persistent banner above chat.
+        try:
+            resolved = cfg.active_model()
+            cloud_name = (
+                resolved.display_name or resolved.provider_key
+                if resolved.provider_kind != "ollama"
+                else ""
+            )
+        except RuntimeError:
+            # Misconfigured registry shouldn't crash /api/health — frontend
+            # falls back to no-cloud-notice when the field is empty.
+            cloud_name = ""
         return {
             "status": "ok",
             "auth_enabled": cfg.web.auth_enabled,
             "performance_panel_enabled": _perf_panel_enabled(cfg),
+            "cloud_provider_name": cloud_name,
         }
 
     @app.get(_join_base(base_path, "/api/system-load"))
@@ -505,7 +520,7 @@ def _stream_answer(
             gen_tokens=result.gen_tokens_est,
             ttft_ms=result.ttft_ms,
             gen_tps=result.gen_tps,
-            llm_model=cfg.llm.model,
+            llm_model=cfg.active_model().identifier,
         )
 
         if qa_id is not None and cfg.topics.enabled:

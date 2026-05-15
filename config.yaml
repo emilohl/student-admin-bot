@@ -48,16 +48,70 @@ gate:
   max_distinct_sources_in_topk: 8
 
 llm:
-  # Q4_K_XL fits ~5–6 GB on Metal; the default `gemma4:e4b` tag is Q4_K_M (~9.6 GB).
-  # Override with OLLAMA_URL or by editing this line.
-  model: gemma-4-E4B-it-GGUF:UD-Q4_K_XL
-  ollama_url: http://127.0.0.1:11434
-  num_ctx: 16384
-  temperature: 0.2
-  # With thinking on, reasoning eats into this budget — give the answer
-  # itself enough headroom for multi-bullet replies.
-  max_tokens: 4096
-  thinking: true                 # Gemma 4 reasoning mode (<|think|> tag)
+  # Master selector. Identifier is `<provider_key>/<model_id>`, split on the
+  # FIRST slash — Ollama tags use `:` and Berget/HF model IDs use additional
+  # `/`, so first-slash splitting handles both. Switch models by changing
+  # this one field, or override via `LLM_ACTIVE` in `.env`.
+  active: ollama/gemma-4-E4B-it-GGUF:UD-Q4_K_XL
+
+  # Backends. Each entry declares how to reach a hosting service. Multiple
+  # models can share one provider — Berget hosts dozens of models behind
+  # one base_url and one API key. `api_key_env` is the env var the loader
+  # reads to populate `cfg.llm_api_keys[provider_key]` (SecretStr, kept out
+  # of repr/dump). Set OLLAMA_URL to override the local Ollama base_url.
+  providers:
+    ollama:
+      kind: ollama
+      base_url: http://127.0.0.1:11434
+    berget:
+      kind: openai_compatible
+      base_url: https://api.berget.ai/v1
+      display_name: Berget AI
+      api_key_env: BERGET_API_KEY
+      timeout_seconds: 120
+    openrouter:
+      kind: openai_compatible
+      base_url: https://openrouter.ai/api/v1
+      display_name: OpenRouter
+      api_key_env: OPENROUTER_API_KEY
+      timeout_seconds: 120
+
+  # Per-model knobs. Content (system prompt, citation rules, refusal text,
+  # jargon expansion) stays shared across models in `prompts.py` so A/B
+  # comparisons measure the model, not the prompt. Only technical
+  # parameters and reasoning-channel handling vary here.
+  #
+  # `thinking_style` options:
+  #   - "gemma"                  — Gemma 4 `<|channel>thought\n...<channel|>` block
+  #                                + ollama API `thinking` field. Requires
+  #                                `thinking: true` to actually fire.
+  #   - "openai_reasoning_field" — DeepSeek-R1 / Qwen-style `delta.reasoning_content`.
+  #   - "none"                   — model has no reasoning channel.
+  models:
+    "ollama/gemma-4-E4B-it-GGUF:UD-Q4_K_XL":
+      # Q4_K_XL fits ~5–6 GB on Metal; the default gemma4:e4b tag is Q4_K_M (~9.6 GB).
+      num_ctx: 16384
+      temperature: 0.2
+      max_tokens: 4096               # with thinking on, reasoning eats into this — leave headroom
+      thinking: true
+      thinking_style: gemma
+    "berget/meta-llama/Llama-3.3-70B-Instruct":
+      num_ctx: 128000
+      temperature: 0.1
+      max_tokens: 4096
+      thinking: false
+      thinking_style: none
+    # Berget's hosted Gemma 4 31B. Same Gemma 4 family as the local
+    # ollama/gemma-4-E4B-it-GGUF entry, so `thinking_style: gemma` engages
+    # the shared `<|channel>thought\n...<channel|>` filter in bot/llm.py
+    # and `<|think|>` gets prepended to the system prompt. Berget supports
+    # a larger window (~256k) but 64k is plenty for this pipeline.
+    "berget/google/gemma-4-31B-it":
+      num_ctx: 65536
+      temperature: 0.2
+      max_tokens: 4096
+      thinking: true
+      thinking_style: gemma
 
 memory:
   # Raised from 4 to 8 (#47) — the 16384-token context budget has plenty of

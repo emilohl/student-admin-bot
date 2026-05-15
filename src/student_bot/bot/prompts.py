@@ -263,9 +263,14 @@ def meta_fallback_system_prompt(cfg: Config, lang: str) -> str:
 
 # Per Unsloth's Gemma 4 model card, prepending the literal `<|think|>` tag
 # at the start of the system prompt enables the model's reasoning mode.
-# Removing it (or setting cfg.llm.thinking=False) disables it.
+# The sentinel is Gemma-specific, so it only fires for the active model
+# when its `thinking_style == "gemma"` AND `thinking == True`. Other
+# reasoning models (DeepSeek-R1, Qwen reasoning) expose reasoning via
+# OpenAI's `delta.reasoning_content` field instead and don't need this
+# system-prompt patch.
 def _maybe_thinking(cfg: Config, sp: str) -> str:
-    if cfg.llm.thinking:
+    resolved = cfg.active_model()
+    if resolved.thinking_style == "gemma" and resolved.thinking:
         return "<|think|>\n" + sp
     return sp
 
