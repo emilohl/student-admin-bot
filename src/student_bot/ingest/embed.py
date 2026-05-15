@@ -153,15 +153,29 @@ def upsert_chunks(cfg: Config, chunks: Iterable[Chunk], batch_size: int = 64) ->
     return written
 
 
-def delete_missing_sources(cfg: Config, present_rel_sources: set[str]) -> int:
-    """Drop chunks whose rel_source is no longer in the corpus."""
+def delete_missing_sources(
+    cfg: Config,
+    present_rel_sources: set[str],
+    present_chunk_ids: set[str] | None = None,
+) -> int:
+    """Drop chunks whose rel_source is no longer in the corpus, and (when
+    `present_chunk_ids` is supplied) drop chunks whose id is no longer
+    produced — e.g. when a file's chunk count shrinks because the chunker
+    started packing siblings together. Without the second check, stale
+    chunk indices from a previous reindex pile up alongside the new ones.
+    """
     collection = get_chroma_collection(cfg)
     res = collection.get(include=["metadatas"])
-    to_delete = [
-        cid
-        for cid, meta in zip(res.get("ids", []), res.get("metadatas", []))
-        if meta and meta.get("rel_source") not in present_rel_sources
-    ]
+    to_delete: list[str] = []
+    for cid, meta in zip(res.get("ids", []), res.get("metadatas", [])):
+        if not meta:
+            continue
+        rs = meta.get("rel_source")
+        if rs not in present_rel_sources:
+            to_delete.append(cid)
+            continue
+        if present_chunk_ids is not None and cid not in present_chunk_ids:
+            to_delete.append(cid)
     if to_delete:
         collection.delete(ids=to_delete)
     return len(to_delete)

@@ -110,15 +110,27 @@ def chunk_document(
             paragraph_buf.clear()
         paragraph_start_line = -1
 
+    # Only H1–H3 drive section_path (and therefore chunk boundaries). H4+
+    # stay as inline content lines so sibling sub-sections — e.g. SCI's
+    # per-programme contact cards under "Programansvariga för
+    # civilingenjörsprogrammen" — pack together under the H3 parent rather
+    # than fragmenting into one tiny chunk per sub-heading. The embedder and
+    # cross-encoder still see each sub-heading because it's part of the body.
+    _SECTION_BREAK_MAX_LEVEL = 3
     for line_idx, line in enumerate(doc.text.splitlines()):
         m = HEADER_RE.match(line)
         if m:
-            flush_paragraph()
             level = len(m.group(1))
             text = m.group(2).strip()
-            while header_stack and header_stack[-1][0] >= level:
-                header_stack.pop()
-            header_stack.append((level, text))
+            if level <= _SECTION_BREAK_MAX_LEVEL:
+                flush_paragraph()
+                while header_stack and header_stack[-1][0] >= level:
+                    header_stack.pop()
+                header_stack.append((level, text))
+            else:
+                if not paragraph_buf:
+                    paragraph_start_line = line_idx
+                paragraph_buf.append(line)
         elif not line.strip():
             flush_paragraph()
         else:
@@ -137,9 +149,19 @@ def chunk_document(
 
     def emit(section: list[str], pieces: list[tuple[str, int]]):
         nonlocal idx
-        text = "\n\n".join(p[0] for p in pieces).strip()
-        if not text:
+        body = "\n\n".join(p[0] for p in pieces).strip()
+        if not body:
             return
+        # Prepend the section path as a header line so it's part of the text
+        # the embedder and cross-encoder see. Without this, tiny chunks (e.g.
+        # one contact card under a deep heading) lose at retrieval time — the
+        # chunk body says "Christian Ohm · chohm@kth.se" while the section
+        # path "… > Programansvariga … > Teknisk fysik" holds the only signal
+        # that ties the person to the question. The LLM already receives
+        # section info via the citation tag in `format_context`, so this is
+        # purely a retrieval-quality fix.
+        header = " > ".join(p for p in section if p).strip()
+        text = f"{header}\n\n{body}" if header else body
         h = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
         page_start = page_for_line(pieces[0][1])
         chunks.append(
