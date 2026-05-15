@@ -172,8 +172,16 @@ def _render_contact_card(card: Tag, base_url: str, cfg: Config) -> str:
         if "/profile/" in href:
             profile_url = _canonicalize_url(urljoin(base_url, href))
             break
-    title_el = card.select_one(".contact-info__job-title, .contact-info__title, .contact-info__role")
+    title_el = card.select_one(
+        ".contact-info__job-title, .contact-info__title, .contact-info__role"
+    )
     title = title_el.get_text(" ", strip=True) if title_el else ""
+    # KTH's two-column card variant (e.g. CBH programansvariga) puts the
+    # programme / subject assignment in a right-column `address` block —
+    # without this it's the *only* thing tying a person to a programme, so
+    # the rest of the card becomes useless context.
+    rc_el = card.select_one(".contact-info__right-col")
+    rc_text = rc_el.get_text(" ", strip=True) if rc_el else ""
     emails: list[str] = []
     phones: list[str] = []
     for a in card.find_all("a", href=True):
@@ -200,6 +208,8 @@ def _render_contact_card(card: Tag, base_url: str, cfg: Config) -> str:
     tail_parts: list[str] = []
     if title:
         tail_parts.append(title)
+    if rc_text:
+        tail_parts.append(rc_text)
     tail_parts.extend(emails)
     tail_parts.extend(phones)
     tail = " · ".join(tail_parts)
@@ -228,7 +238,10 @@ def _extract_html_markdown(
     # `div.contact-info` is KTH's custom staff-card widget — without it the
     # contact pages (#60, #63) render as just headings since names/emails
     # live in non-semantic divs.
-    selectors = "h2,h3,p,li,dt,dd,div.contact-info"
+    # Include h4–h6 (KTH's SCI directors page uses h4 for subject areas like
+    # "Fysik" / "Mekanik" above each Studierektor card — dropping these strips
+    # the only link between the subject and the person).
+    selectors = "h2,h3,h4,h5,h6,p,li,dt,dd,div.contact-info"
     seen_in_card: set[int] = set()
     for card in soup.select("div.contact-info"):
         for inner in card.find_all(["p", "li", "dt", "dd"]):
@@ -245,13 +258,18 @@ def _extract_html_markdown(
         txt = _node_text_with_markdown_links(node, base_url, cfg)
         if not txt:
             continue
-        if node.name in ("h2", "h3"):
+        if node.name in ("h2", "h3", "h4", "h5", "h6"):
             lines.append(f"{'#' * int(node.name[1])} {txt}")
         else:
             lines.append(txt)
     # Flatten simple table rows to improve downstream chunk semantics.
+    # Use the link-preserving renderer for cell text so e.g. a SCI staff
+    # directory's `<a href="/profile/x">Name</a>` cells keep their profile
+    # links and `mailto:` / `tel:` anchors stay clickable.
     for tr in soup.find_all("tr"):
-        cells = [c.get_text(" ", strip=True) for c in tr.find_all(["th", "td"])]
+        cells = [
+            _node_text_with_markdown_links(c, base_url, cfg) for c in tr.find_all(["th", "td"])
+        ]
         cells = [c for c in cells if c]
         if cells:
             lines.append(" | ".join(cells))
