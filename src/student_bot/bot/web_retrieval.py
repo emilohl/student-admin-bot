@@ -2620,6 +2620,36 @@ def _explicit_unknown_programme_codes(question: str, cfg: Config) -> list[str]:
     return list(dict.fromkeys(out))
 
 
+_CONTACT_INTENT_RE = re.compile(
+    r"\b("
+    # Swedish role keywords — these people don't live on study-plan pages,
+    # so the dynamic_web programme-alias path can't answer "vem är PA för X".
+    r"programansvarig(?:a|e|en)?"
+    r"|studievägledar(?:e|en|na)"
+    r"|studievägledning(?:en)?"
+    r"|studierektor(?:n|er|erna)?"
+    r"|utbildningskansli(?:et)?"
+    # English equivalents
+    r"|programme\s+director(?:s)?"
+    r"|program\s+director(?:s)?"
+    r"|study\s+coun[sc]ell?or(?:s)?"
+    r"|study\s+coun[sc]elling"
+    r"|director\s+of\s+studies"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _is_contact_intent_question(question: str) -> bool:
+    """Return True when the question is asking about a person/office whose
+    contact info lives in the indexed corpus, not in a study plan. Such
+    questions should bypass the dynamic_web programme-alias flow — which
+    would otherwise hijack "Vem är programansvarig för teknisk fysik?"
+    into "CTFYS or TTFYM?" → "HT-year?" and never reach retrieval.
+    """
+    return bool(_CONTACT_INTENT_RE.search(question or ""))
+
+
 def maybe_fetch_dynamic_web(
     cfg: Config,
     question: str,
@@ -2630,6 +2660,9 @@ def maybe_fetch_dynamic_web(
     admission_year_prefix_prior: str | None = None,
 ) -> WebFetchResult | None:
     if not cfg.dynamic_web.enabled:
+        return None
+
+    if _is_contact_intent_question(question):
         return None
 
     unknown_codes = _explicit_unknown_programme_codes(question, cfg)

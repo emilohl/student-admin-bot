@@ -154,6 +154,71 @@ def _node_text_with_markdown_links(node: Tag, base_url: str, cfg: Config) -> str
     return re.sub(r"\s+", " ", "".join(parts)).strip()
 
 
+def _render_contact_card(card: Tag, base_url: str, cfg: Config) -> str:
+    """Flatten a KTH `div.contact-info` staff card to a single markdown line.
+
+    KTH renders person cards as a custom widget — the data isn't in
+    `p`/`li`/`dd` so the generic selector pass misses it entirely. This
+    helper produces e.g.:
+        **[Gunnar Tibert](https://www.kth.se/profile/tibert)** — vice skolchef · gruansv@sci.kth.se · 0737652222
+    """
+    name = ""
+    name_el = card.select_one(".contact-info__name")
+    if name_el:
+        name = name_el.get_text(" ", strip=True)
+    profile_url = ""
+    for a in card.find_all("a", href=True):
+        href = str(a.get("href") or "").strip()
+        if "/profile/" in href:
+            profile_url = _canonicalize_url(urljoin(base_url, href))
+            break
+    title_el = card.select_one(
+        ".contact-info__job-title, .contact-info__title, .contact-info__role"
+    )
+    title = title_el.get_text(" ", strip=True) if title_el else ""
+    # KTH's two-column card variant (e.g. CBH programansvariga) puts the
+    # programme / subject assignment in a right-column `address` block —
+    # without this it's the *only* thing tying a person to a programme, so
+    # the rest of the card becomes useless context.
+    rc_el = card.select_one(".contact-info__right-col")
+    rc_text = rc_el.get_text(" ", strip=True) if rc_el else ""
+    emails: list[str] = []
+    phones: list[str] = []
+    for a in card.find_all("a", href=True):
+        href = str(a.get("href") or "").strip()
+        if href.startswith("mailto:"):
+            addr = href[len("mailto:") :].strip()
+            if addr and addr not in emails:
+                emails.append(addr)
+        elif href.startswith("tel:"):
+            num = href[len("tel:") :].strip()
+            if num and num not in phones:
+                phones.append(num)
+
+    if not name and not emails and not phones:
+        return ""
+
+    if name and profile_url:
+        head = f"**[{name}]({profile_url})**"
+    elif name:
+        head = f"**{name}**"
+    else:
+        head = ""
+
+    tail_parts: list[str] = []
+    if title:
+        tail_parts.append(title)
+    if rc_text:
+        tail_parts.append(rc_text)
+    tail_parts.extend(emails)
+    tail_parts.extend(phones)
+    tail = " · ".join(tail_parts)
+
+    if head and tail:
+        return f"{head} — {tail}"
+    return head or tail
+
+
 def _extract_html_markdown(
     payload: bytes, base_url: str, cfg: Config
 ) -> tuple[str, str, list[str]]:
@@ -170,17 +235,41 @@ def _extract_html_markdown(
     lines: list[str] = []
     # H1 is captured into `title` above and re-emitted once by `_render_md`,
     # so skip it here to avoid the page heading appearing twice in output.
-    for node in soup.select("h2,h3,p,li,dt,dd"):
+    # `div.contact-info` is KTH's custom staff-card widget — without it the
+    # contact pages (#60, #63) render as just headings since names/emails
+    # live in non-semantic divs.
+    # Include h4–h6 (KTH's SCI directors page uses h4 for subject areas like
+    # "Fysik" / "Mekanik" above each Studierektor card — dropping these strips
+    # the only link between the subject and the person).
+    selectors = "h2,h3,h4,h5,h6,p,li,dt,dd,div.contact-info"
+    seen_in_card: set[int] = set()
+    for card in soup.select("div.contact-info"):
+        for inner in card.find_all(["p", "li", "dt", "dd"]):
+            seen_in_card.add(id(inner))
+    for node in soup.select(selectors):
+        if "contact-info" in (node.get("class") or []):
+            txt = _render_contact_card(node, base_url, cfg)
+            if txt:
+                lines.append(txt)
+            continue
+        if id(node) in seen_in_card:
+            # Already emitted as part of a contact card above.
+            continue
         txt = _node_text_with_markdown_links(node, base_url, cfg)
         if not txt:
             continue
-        if node.name in ("h2", "h3"):
+        if node.name in ("h2", "h3", "h4", "h5", "h6"):
             lines.append(f"{'#' * int(node.name[1])} {txt}")
         else:
             lines.append(txt)
     # Flatten simple table rows to improve downstream chunk semantics.
+    # Use the link-preserving renderer for cell text so e.g. a SCI staff
+    # directory's `<a href="/profile/x">Name</a>` cells keep their profile
+    # links and `mailto:` / `tel:` anchors stay clickable.
     for tr in soup.find_all("tr"):
-        cells = [c.get_text(" ", strip=True) for c in tr.find_all(["th", "td"])]
+        cells = [
+            _node_text_with_markdown_links(c, base_url, cfg) for c in tr.find_all(["th", "td"])
+        ]
         cells = [c for c in cells if c]
         if cells:
             lines.append(" | ".join(cells))

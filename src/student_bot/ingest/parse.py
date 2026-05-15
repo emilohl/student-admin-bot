@@ -16,6 +16,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import pymupdf
 import pymupdf4llm
 from bs4 import BeautifulSoup
 
@@ -88,8 +89,14 @@ def _parse_pdf(path: Path, use_docling: bool) -> tuple[str, list[int | None]]:
     for i, p in enumerate(pages):
         page_num = (p.get("metadata") or {}).get("page", i + 1)
         ptext = (p.get("text") or "").strip()
-        if not ptext:
-            continue
+        if not ptext or _is_empty_md(ptext):
+            # pymupdf4llm sometimes collapses a text PDF to just an image
+            # placeholder (e.g. when a header logo trips its layout heuristic).
+            # Fall back to raw pymupdf text for that page so the content is
+            # not silently dropped.
+            ptext = _raw_pymupdf_page_text(path, page_num).strip()
+            if not ptext:
+                continue
         if text_parts:
             # Blank separator between pages so the chunker treats them as
             # paragraph boundaries.
@@ -99,6 +106,27 @@ def _parse_pdf(path: Path, use_docling: bool) -> tuple[str, list[int | None]]:
             text_parts.append(line)
             line_pages.append(page_num)
     return "\n".join(text_parts), line_pages
+
+
+_EMPTY_MD_RE = re.compile(r"^\s*(?:\*?\*?==>\s*picture\b[^<]*<==\*?\*?|#+\s*)\s*$")
+
+
+def _is_empty_md(md_text: str) -> bool:
+    """True if pymupdf4llm output is just an image placeholder / bare header.
+
+    Detects the failure mode where pymupdf4llm renders a text-bearing page as
+    e.g. `**==> picture [77 x 77] intentionally omitted <==**\\n\\n## \\n\\n`,
+    discarding the actual body text.
+    """
+    lines = [line for line in md_text.splitlines() if line.strip()]
+    return bool(lines) and all(_EMPTY_MD_RE.match(line) for line in lines)
+
+
+def _raw_pymupdf_page_text(path: Path, page_num: int) -> str:
+    """Plain-text extraction for a single 1-indexed page. Used as fallback."""
+    with pymupdf.open(str(path)) as doc:
+        idx = max(0, min(page_num - 1, doc.page_count - 1))
+        return doc[idx].get_text()
 
 
 def _parse_html(path: Path) -> tuple[str, list[int | None]]:

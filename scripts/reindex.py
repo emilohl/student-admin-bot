@@ -90,7 +90,8 @@ def main(dry_run: bool, limit: int | None):
 
     written = upsert_chunks(cfg, all_chunks)
     present = {d.rel_source for d in docs}
-    deleted = delete_missing_sources(cfg, present)
+    present_ids = {c.chunk_id for c in all_chunks}
+    deleted = delete_missing_sources(cfg, present, present_ids)
     coll = get_chroma_collection(cfg)
     console.print(
         f"[green]upserted={written}[/green] [yellow]deleted={deleted}[/yellow] "
