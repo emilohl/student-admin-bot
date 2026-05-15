@@ -139,7 +139,7 @@ fallback:
   counselor_label_sv: "studievägledaren"
   counselor_label_en: "the study counselor"
   # Optional: a URL or Mattermost handle. Leave blank to omit.
-  counselor_link: ""
+  counselor_link: "https://www.kth.se/student/kontakt/kontaktuppgifter"
 
 # Guardrails against prompt injection, spam, and fluency-as-confidence misreads.
 guardrails:
@@ -207,6 +207,7 @@ url_ingest:
   domains_ingest_allowlist:
     - www.kth.se
     - kth.se
+    - intra.kth.se
   timeout_seconds: 8.0
   max_bytes: 2000000
   max_pages_per_seed: 12

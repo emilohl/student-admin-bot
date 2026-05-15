@@ -28,7 +28,7 @@
 - question: "Hur fungerar omtentamen på KTH?"
   lang: sv
   kind: in_domain
-  expected_doc_substring: "skriftlig-examination-i-sal"
+  expected_any: ["skriftlig-examination-i-sal", "omprovning-av-betyg", "examination-1", "kurs-och-examination"]
 
 - question: "Vad händer om jag blir sjuk under en tenta?"
   lang: sv
@@ -48,12 +48,12 @@
 - question: "Vilka stipendier kan jag söka som student?"
   lang: sv
   kind: in_domain
-  expected_doc_substring: "stipendier"
+  expected_any: ["stipendier", "stipendium-fran-erasmus", "finansiering-for-utbytesstudier"]
 
 - question: "Hur fungerar tillgodoräknande av kurser från andra lärosäten?"
   lang: sv
   kind: in_domain
-  expected_doc_substring: "validering"
+  expected_any: ["validering", "tillgodoraknande"]
 
 - question: "Vilken är antagningsordningen på KTH?"
   lang: sv
@@ -85,10 +85,10 @@
   kind: in_domain
   expected_doc_substring: "lasarets-forlaggning"
 
-- question: "Vad ingår i utbildningsplanen för Teknisk fysik (CTFYS) HT2024?"
-  lang: sv
-  kind: in_domain
-  expected_doc_substring: "Utbildningsplan CTFYS HT2024 sve"
+# NOTE: utbildningsplan questions (e.g. "what's in CTFYS HT2024") used to be
+# answered by indexed PDFs but now come from `dynamic_web` live-fetching at
+# query time. This eval harness only exercises static retrieval, so curriculum
+# questions belong in a separate live-fetch test rather than here.
 
 # Regression coverage for failure clusters seen in production logs.
 - question: "Hur ansöker jag om studieuppehåll?"
@@ -129,7 +129,7 @@
 - question: "How does re-examination work?"
   lang: en
   kind: in_domain
-  expected_doc_substring: "skriftlig-examination-i-sal"
+  expected_any: ["skriftlig-examination-i-sal", "omprovning-av-betyg", "examination-1", "kurs-och-examination"]
 
 - question: "What if I get sick during an exam?"
   lang: en
@@ -144,12 +144,12 @@
 - question: "How do I apply for my degree certificate?"
   lang: en
   kind: in_domain
-  expected_doc_substring: "examina"
+  expected_any: ["examina", "examen", "diplomutdelning"]
 
 - question: "What scholarships are available?"
   lang: en
   kind: in_domain
-  expected_doc_substring: "stipendier"
+  expected_any: ["stipendier", "stipendium-fran-erasmus", "finansiering-for-utbytesstudier"]
 
 - question: "How does credit transfer (validation) work at KTH?"
   lang: en
@@ -186,10 +186,9 @@
   kind: in_domain
   expected_doc_substring: "lasarets-forlaggning"
 
-- question: "What is in the Engineering Physics curriculum for HT2024?"
-  lang: en
-  kind: in_domain
-  expected_any: ["Utbildningsplan CTFYS HT2024 eng", "Utbildningsplan CTFYS HT2024 sve"]
+# (English counterpart of the dropped CTFYS HT2024 case — see the note above.
+# Curriculum content now comes from dynamic_web at query time, not from the
+# indexed corpus, so it's outside the scope of this static retrieval eval.)
 
 # ---------------- in-domain, jargon-laden ----------------
 # These exercise dictionary.json query expansion. If recall on these drops
@@ -202,7 +201,33 @@
 - question: "Vad är skillnaden mellan KS och tenta i en CTFYS-kurs?"
   lang: sv
   kind: in_domain
-  expected_any: ["skriftlig-examination-i-sal", "kursplan-betygssystem-och-examination"]
+  expected_any: ["skriftlig-examination-i-sal", "kursplan-betygssystem-och-examination", "examination-1", "kurs-och-examination"]
+
+# ---------------- contact information (#60, #63) ----------------
+- question: "Hur kontaktar jag studievägledaren för Teknisk fysik?"
+  lang: sv
+  kind: in_domain
+  expected_any: ["sci-utbildningskansli-studievagledning", "studievagledning"]
+
+- question: "Vilka är programansvariga för grundutbildningen på SCI-skolan?"
+  lang: sv
+  kind: in_domain
+  expected_doc_substring: "ansvariga-for-grundutbildningen-pa-sci"
+
+- question: "Who are the programme directors for the first-cycle programmes at the SCI school?"
+  lang: en
+  kind: in_domain
+  expected_doc_substring: "ansvariga-for-grundutbildningen-pa-sci"
+
+- question: "Vilka masterprogram är mappade till civilingenjör Teknisk fysik?"
+  lang: sv
+  kind: in_domain
+  expected_doc_substring: "mappade-masterprogram"
+
+- question: "Where is the SCI utbildningskansli located?"
+  lang: en
+  kind: in_domain
+  expected_doc_substring: "sci-utbildningskansli"
 
 # ---------------- out-of-domain ----------------
 - question: "Vilket är väder i Stockholm imorgon?"

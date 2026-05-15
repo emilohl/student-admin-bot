@@ -124,3 +124,103 @@ entries:
     exclude_patterns: []
     type_hint: auto
     doc_title_override: ""
+
+  # ── Contact information (#60, #63) ─────────────────────────────────
+  # The bot defers to "the study counselor" but had no idea who that is
+  # or how to reach them. These seeds add: the KTH contact hub, each
+  # school's utbildningskansli / studievägledning, the per-school
+  # program-director pages (formats vary — some are intra.kth.se, see
+  # `intra.kth.se` in url_ingest.domains_ingest_allowlist), and the
+  # mapped-masters page. Citations link back to source_url so users
+  # always get a one-click route to the live page.
+
+  # KTH-wide contact hub. follow_links pulls the per-school sub-pages
+  # (studievagledning-1.83165 etc.) that the hub indexes.
+  - url: https://www.kth.se/student/kontakt/kontaktuppgifter
+    follow_links: true
+    max_depth: 1
+    include_patterns:
+      - "^/student/kontakt/kontaktuppgifter"
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
+    max_pages: 8
+
+  # SCI utbildningskansli / studievägledning. Direct seed because the
+  # hub may not link the deep-page slug with this `-1.xxxxxxx` suffix.
+  - url: https://www.kth.se/sci/kontakt/for-studenter/sci-utbildningskansli-studievagledning-1.1068499
+    follow_links: false
+    max_depth: 0
+    include_patterns: []
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
+
+  # ITM publishes its own school-contact section publicly; follow_links
+  # picks up itm-skolkansli, itm-skolledning, kontakta-itm-s-institutioner.
+  # ABE, CBH and EECS don't publish equivalent public pages — students
+  # there are routed through the central /student/kontakt/kontaktuppgifter
+  # hub above, which the studievagledning sub-page expands into 78 per-
+  # programme contact pages (each linked, so citations still reach them).
+  - url: https://www.kth.se/itm/kontakt
+    follow_links: true
+    max_depth: 1
+    include_patterns:
+      - "^/itm/kontakt"
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
+
+  # Program-director pages — formats are not harmonized across schools.
+  # ABE/CBH/EECS host theirs on intra.kth.se (publicly accessible, no
+  # login required, but the host must be in domains_ingest_allowlist).
+  - url: https://intra.kth.se/abe/kontakt/grundutbildning/programansvariga-grundutbildning-1.599200
+    follow_links: false
+    max_depth: 0
+    include_patterns: []
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
+
+  - url: https://intra.kth.se/cbh/skolans-organisation/programansvariga-1.808612
+    follow_links: false
+    max_depth: 0
+    include_patterns: []
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
+
+  - url: https://intra.kth.se/eecs/kontakt-grupper/utbildning/programansvariga-grundutbildning-1.785000
+    follow_links: false
+    max_depth: 0
+    include_patterns: []
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
+
+  - url: https://www.kth.se/itm/utbildning/grundutbildning/ansvariga-for-grundutbildningen-pa-itm-1.906654
+    follow_links: false
+    max_depth: 0
+    include_patterns: []
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
+
+  - url: https://www.kth.se/sci/utbildning/ansvariga-for-grundutbildningen-pa-sci-1.1095130
+    follow_links: false
+    max_depth: 0
+    include_patterns: []
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
+
+  # Mapped masters (which civilingenjör tracks map to which masters).
+  # Indexed for retrieval; citation links back to the live page so the
+  # user always gets the freshest version even if our snapshot drifts.
+  - url: https://www.kth.se/student/studier/val/masterprogram/mappade-masterprogram-1.1023039
+    follow_links: false
+    max_depth: 0
+    include_patterns: []
+    exclude_patterns: []
+    type_hint: auto
+    doc_title_override: ""
