@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from functools import lru_cache
 
@@ -36,6 +37,13 @@ class RetrievalResult:
     query: str
     candidates: list[RetrievedChunk] = field(default_factory=list)  # full top-N from Chroma
     reranked: list[RetrievedChunk] = field(default_factory=list)  # top-K after rerank
+    # Wall-clock breakdown of this retrieval, in milliseconds. `chroma_ms`
+    # covers the CPU side: query embedding plus the Chroma similarity
+    # lookup. `rerank_ms` covers the cross-encoder pass over top-N. Both
+    # are None when retrieval was skipped (e.g. a web-fetch-only turn that
+    # never touched Chroma).
+    chroma_ms: int | None = None
+    rerank_ms: int | None = None
 
 
 @lru_cache(maxsize=1)
@@ -60,12 +68,17 @@ def retrieve(
     query_language: str | None = None,
 ) -> RetrievalResult:
     coll = get_chroma_collection(cfg)
+    # Embedding runs on CPU (bge-m3) and is typically the slower half of
+    # the "dense retrieval" bucket — fold it into chroma_ms so the
+    # diagnostics panel reports one number for the CPU encode + lookup.
+    chroma_t0 = time.monotonic()
     qvec = encode_query(cfg, query).tolist()
     res = coll.query(
         query_embeddings=[qvec],
         n_results=cfg.reranker.candidates,
         include=["documents", "metadatas", "distances"],
     )
+    chroma_ms = int((time.monotonic() - chroma_t0) * 1000)
 
     ids = res["ids"][0] if res.get("ids") else []
     docs = res["documents"][0] if res.get("documents") else []
@@ -105,10 +118,12 @@ def retrieve(
             candidates = candidates[: cfg.reranker.candidates]
 
     if not candidates:
-        return RetrievalResult(query=query)
+        return RetrievalResult(query=query, chroma_ms=chroma_ms)
 
+    rerank_t0 = time.monotonic()
     pairs = [(query, c.text) for c in candidates]
     scores = get_reranker(cfg).predict(pairs).tolist()
+    rerank_ms = int((time.monotonic() - rerank_t0) * 1000)
     for c, s in zip(candidates, scores):
         c.rerank_score = float(s)
 
@@ -125,7 +140,13 @@ def retrieve(
     candidates.sort(key=lambda c: c.rerank_score, reverse=True)
     reranked = candidates[: cfg.reranker.keep]
 
-    return RetrievalResult(query=query, candidates=candidates, reranked=reranked)
+    return RetrievalResult(
+        query=query,
+        candidates=candidates,
+        reranked=reranked,
+        chroma_ms=chroma_ms,
+        rerank_ms=rerank_ms,
+    )
 
 
 __all__ = ["RetrievedChunk", "RetrievalResult", "retrieve", "get_reranker"]

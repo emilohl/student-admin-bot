@@ -18,8 +18,10 @@ from collections import deque
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from threading import Lock
+from typing import Any
 
 import click
+import psutil
 from rich.console import Console
 
 from student_bot.bot.citations import (
@@ -161,6 +163,20 @@ class AnswerResult:
     # fires once per pruned slot (TTL boundary crossed since last turn).
     history_truncated: bool = False
     session_expired: bool = False
+    # Per-stage wall-clock breakdown (#19 diagnostics). chroma_ms covers
+    # query embed + Chroma lookup (CPU); rerank_ms covers the cross-encoder
+    # pass (CPU); llm_ms covers prompt-submit → stream-end (GPU/cloud).
+    # Any of these may be None on short-circuit paths.
+    chroma_ms: int | None = None
+    rerank_ms: int | None = None
+    llm_ms: int | None = None
+    # Resident set size of the current process at end of turn, in MiB.
+    # The series across turns is the OOM-watch feed for #19.
+    rss_mb: int | None = None
+    # When the caller passed learn_more=True and this turn reached
+    # retrieval+gate+LLM, this holds the gzippable diagnostic payload to
+    # persist via LogDB.record_qa_debug. None on opt-out or short-circuit.
+    debug_payload: dict[str, Any] | None = None
 
 
 def _estimate_tokens(text: str) -> int:
@@ -174,6 +190,91 @@ def _estimate_context_tokens(messages: list[dict]) -> int:
         total += _estimate_tokens(m.get("content", ""))
         total += 3  # rough message framing overhead
     return total
+
+
+# Reuse one Process handle; psutil caches the proc lookup, but the explicit
+# module-level handle keeps the per-turn call to memory_info() cheap (~50 µs).
+_PROC = psutil.Process()
+
+
+def _rss_mb() -> int | None:
+    """Snapshot current-process RSS in mebibytes. None if psutil hiccups."""
+    try:
+        return int(_PROC.memory_info().rss / (1024 * 1024))
+    except Exception:
+        return None
+
+
+# How much of each retrieved chunk's body to keep in the debug payload.
+# 400 chars is enough to recognise the section without bloating the per-user
+# 1 MiB cap with full chunk texts; the chunk_id round-trips so the UI can
+# request the full text on demand if we ever wire that up.
+_DEBUG_SNIPPET_MAX = 400
+
+
+def _debug_chunk(c: RetrievedChunk, include_rerank: bool) -> dict[str, Any]:
+    snippet = (c.text or "").strip().replace("\n", " ")
+    if len(snippet) > _DEBUG_SNIPPET_MAX:
+        snippet = snippet[:_DEBUG_SNIPPET_MAX] + "…"
+    out: dict[str, Any] = {
+        "id": c.chunk_id,
+        "doc_title": c.doc_title,
+        "section_path": c.section_path,
+        "page": c.page_start,
+        "rel_source": c.rel_source,
+        "chroma_distance": round(c.chroma_distance, 4),
+        "snippet": snippet,
+    }
+    if include_rerank:
+        out["rerank_score"] = round(c.rerank_score, 4)
+    return out
+
+
+def _build_debug_payload(
+    *,
+    lang: str,
+    expanded_q: str,
+    jargon_hits: list[JargonEntry],
+    retrieval: RetrievalResult,
+    gate: GateDecision,
+    messages: list[dict],
+    model_identifier: str,
+    prompt_tokens_est: int,
+    chroma_ms: int | None,
+    rerank_ms: int | None,
+    llm_ms: int | None,
+    rss_mb: int | None,
+) -> dict[str, Any]:
+    """Assemble the JSON payload persisted to qa_debug for opt-in turns."""
+    return {
+        "routing": {
+            "lang": lang,
+            "jargon_hits": [{"key": j.key, "term": j.term} for j in jargon_hits],
+            "expanded_query": expanded_q,
+        },
+        "retrieval": {
+            "candidates": [_debug_chunk(c, include_rerank=False) for c in retrieval.candidates],
+            "reranked": [_debug_chunk(c, include_rerank=True) for c in retrieval.reranked],
+        },
+        "gate": {
+            "top1": round(gate.top1, 4),
+            "meanK": round(gate.meanK, 4),
+            "distinct_sources": gate.distinct_sources,
+            "pass": bool(gate.passed),
+            "reason": gate.reason,
+        },
+        "llm": {
+            "messages": messages,
+            "model": model_identifier,
+            "prompt_tokens_est": prompt_tokens_est,
+        },
+        "stages": {
+            "chroma_ms": chroma_ms,
+            "rerank_ms": rerank_ms,
+            "llm_ms": llm_ms,
+        },
+        "host": {"rss_mb": rss_mb},
+    }
 
 
 # How many corpus chunks to merge into the LLM context when a web fetch
@@ -394,6 +495,7 @@ def answer(
     admission_term_prior: str | None = None,
     admission_year_prefix_prior: str | None = None,
     channel: str = "mattermost",
+    learn_more: bool = False,
 ) -> AnswerResult:
     cfg = cfg or get_config()
     history = history or []
@@ -520,7 +622,9 @@ def answer(
         )
     if web_result and web_result.chunks:
         web_candidates = list(web_result.chunks)
+        web_rerank_t0 = time.monotonic()
         reranked_web = _rerank_web_chunks(cfg, expanded_q, lang, web_candidates)
+        web_rerank_ms = int((time.monotonic() - web_rerank_t0) * 1000)
         # Merge in the top corpus (Chroma) chunks instead of replacing them.
         # The FAQ.md and other hand-curated markdown chunks often answer the
         # very question that triggered the web fetch — silently dropping them
@@ -564,7 +668,18 @@ def answer(
                 added += 1
             if added:
                 log.info("dynamic-web: merged %d corpus chunks into web result", added)
-        retrieval = RetrievalResult(query=expanded_q, candidates=web_candidates, reranked=merged)
+        # Web-fetched candidates don't pass through Chroma; propagate the
+        # corpus-side chroma_ms (if a corpus merge ran) plus the combined
+        # rerank time (web + corpus rerank passes are both CPU cross-encoder).
+        web_corpus_chroma_ms = corpus_result.chroma_ms if corpus_result else None
+        web_corpus_rerank_ms = corpus_result.rerank_ms if corpus_result else None
+        retrieval = RetrievalResult(
+            query=expanded_q,
+            candidates=web_candidates,
+            reranked=merged,
+            chroma_ms=web_corpus_chroma_ms,
+            rerank_ms=web_rerank_ms + (web_corpus_rerank_ms or 0),
+        )
         # Preserve the synthetic web gate (web-fetched content always passes);
         # the 3.5/2.5 values feed the confidence badge and are intentionally
         # independent of the per-chunk rerank logits.
@@ -625,6 +740,7 @@ def answer(
         llm_error = False
         ttft_ms: int | None = None
         gen_tps: float | None = None
+        llm_ms: int | None = None
         gen_tokens_est = 0
         context_tokens_est = _estimate_context_tokens(meta_messages)
         try:
@@ -637,6 +753,7 @@ def answer(
                     first_tok_at = time.monotonic()
                 if on_token:
                     on_token(delta)
+            llm_ms = int((time.monotonic() - stream_t0) * 1000)
             body = "".join(parts).strip()
             meta_fallback = bool(body)
             gen_tokens_est = _estimate_tokens(body)
@@ -668,6 +785,23 @@ def answer(
             tail = rendered[len(already) :]
             if tail:
                 on_token(tail)
+        rss_mb = _rss_mb()
+        debug_payload = None
+        if learn_more:
+            debug_payload = _build_debug_payload(
+                lang=lang,
+                expanded_q=expanded_q,
+                jargon_hits=jargon_hits,
+                retrieval=retrieval,
+                gate=gate,
+                messages=meta_messages,
+                model_identifier=cfg.active_model().identifier,
+                prompt_tokens_est=context_tokens_est,
+                chroma_ms=retrieval.chroma_ms,
+                rerank_ms=retrieval.rerank_ms,
+                llm_ms=llm_ms,
+                rss_mb=rss_mb,
+            )
         return AnswerResult(
             question=question,
             lang=lang,
@@ -685,6 +819,11 @@ def answer(
             gen_tokens_est=gen_tokens_est or None,
             ttft_ms=ttft_ms,
             gen_tps=gen_tps,
+            chroma_ms=retrieval.chroma_ms,
+            rerank_ms=retrieval.rerank_ms,
+            llm_ms=llm_ms,
+            rss_mb=rss_mb,
+            debug_payload=debug_payload,
         )
 
     messages = compose_messages(
@@ -703,6 +842,7 @@ def answer(
     parts: list[str] = []
     ttft_ms: int | None = None
     gen_tps: float | None = None
+    llm_ms: int | None = None
     stream_t0 = time.monotonic()
     first_tok_at: float | None = None
     for delta in _stream_answer(cfg, messages, on_thinking=on_thinking):
@@ -711,6 +851,7 @@ def answer(
             first_tok_at = time.monotonic()
         if on_token:
             on_token(delta)
+    llm_ms = int((time.monotonic() - stream_t0) * 1000)
     body = "".join(parts).strip()
     gen_tokens_est = _estimate_tokens(body)
     if first_tok_at is not None:
@@ -781,6 +922,24 @@ def answer(
     )
     rendered = (jargon_prefix + numbered_body + tail).strip()
 
+    context_tokens_est = _estimate_context_tokens(messages)
+    rss_mb = _rss_mb()
+    debug_payload = None
+    if learn_more:
+        debug_payload = _build_debug_payload(
+            lang=lang,
+            expanded_q=expanded_q,
+            jargon_hits=jargon_hits,
+            retrieval=retrieval,
+            gate=gate,
+            messages=messages,
+            model_identifier=cfg.active_model().identifier,
+            prompt_tokens_est=context_tokens_est,
+            chroma_ms=retrieval.chroma_ms,
+            rerank_ms=retrieval.rerank_ms,
+            llm_ms=llm_ms,
+            rss_mb=rss_mb,
+        )
     return AnswerResult(
         question=question,
         lang=lang,
@@ -796,7 +955,7 @@ def answer(
         cited_chunks=list(sources_chunks),
         source_urls=source_urls,
         stale_cache_days=stale_cache_days,
-        context_tokens_est=_estimate_context_tokens(messages),
+        context_tokens_est=context_tokens_est,
         context_tokens_limit=cfg.active_model().num_ctx,
         gen_tokens_est=gen_tokens_est or None,
         ttft_ms=ttft_ms,
@@ -804,6 +963,11 @@ def answer(
         program_code=resolved_program_code,
         admission_term=applied_admission_term,
         admission_year_prefix=applied_admission_year_prefix,
+        chroma_ms=retrieval.chroma_ms,
+        rerank_ms=retrieval.rerank_ms,
+        llm_ms=llm_ms,
+        rss_mb=rss_mb,
+        debug_payload=debug_payload,
     )
 
 
