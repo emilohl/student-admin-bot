@@ -233,8 +233,14 @@ def create_app(cfg: Config | None = None) -> FastAPI:
 
     @app.get(_join_base(base_path, "/stats"), response_class=HTMLResponse)
     def stats(request: Request, ch: str = "all"):
-        require_access(request, cfg)
-        return _stats_page(cfg, db, base_path, channel=_normalize_channel(ch))
+        ctx = require_access(request, cfg)
+        return _stats_page(
+            cfg,
+            db,
+            base_path,
+            channel=_normalize_channel(ch),
+            is_admin=ctx.is_admin,
+        )
 
     @app.get(_join_base(base_path, "/stats/series"))
     def stats_series(request: Request, range: str = "72h", ch: str = "all"):
@@ -403,6 +409,25 @@ def create_app(cfg: Config | None = None) -> FastAPI:
             emoji=("+1" if payload.sentiment == "positive" else "-1"),
         )
         return {"ok": True}
+
+    @app.get(_join_base(base_path, "/api/admin/recent"))
+    def admin_recent(request: Request, user: str, limit: int = 20):
+        """Admin-only: list recent qa_log rows for a registered user.
+
+        `user` is a HTTP Basic username (matches `data/web_users`). We
+        derive its `user_id_hash` the same way the bot does at write time,
+        so only rows for that user surface here. Non-admin callers get
+        403; unknown user → empty list (not 404, so the inspector UI can
+        render "no activity yet" without special-casing).
+        """
+        ctx = require_access(request, cfg)
+        if not ctx.is_admin:
+            raise HTTPException(403, "admin only")
+        if not user or len(user) > 64:
+            raise HTTPException(400, "bad user")
+        user_hash = db.hash_user(f"basic:{user}")
+        rows = db.recent_turns_for_user(user_hash, limit=min(max(1, limit), 50))
+        return {"user": user, "rows": rows}
 
     @app.get(_join_base(base_path, "/api/debug/{qa_id}"))
     def debug_payload(
@@ -838,8 +863,8 @@ _HEADER_HTML = """\
 # Loaded into <head> on every server-rendered page, before notice.js, so
 # data-i18n attributes are translated before any other scripts run.
 _NOTICE_SCRIPT = (
-    '<script src="{static_prefix}/i18n.js?v=27"></script>'
-    '<script src="{static_prefix}/notice.js?v=27" defer></script>'
+    '<script src="{static_prefix}/i18n.js?v=33"></script>'
+    '<script src="{static_prefix}/notice.js?v=33" defer></script>'
 )
 
 
@@ -864,7 +889,7 @@ def _about_page(cfg: Config, base_path: str = "") -> HTMLResponse:
     )
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="{static_prefix}/style.css?v=27">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<link rel="stylesheet" href="{static_prefix}/style.css?v=33">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
 <body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix, home=home)}<main>{_NOTICE_HTML}<div class="card">
 <h2 data-i18n="about.h2.what"></h2>
 <p data-i18n="about.what.body"></p>
@@ -906,7 +931,7 @@ def _glossary_page(cfg: Config, base_path: str = "") -> HTMLResponse:
     )
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="{static_prefix}/style.css?v=27">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<link rel="stylesheet" href="{static_prefix}/style.css?v=33">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
 <body>{_HEADER_HTML.format(tagline_html='<p class="tagline" data-i18n="glossary.tagline"></p>', static_prefix=static_prefix, home=home)}
 <main>{_NOTICE_HTML}<div class="card">
 <table border="1" cellpadding="6" cellspacing="0" style="width:100%; border-collapse: collapse;">
@@ -1017,7 +1042,7 @@ def _md_doc_page(cfg: Config, docs_dir: Path, rel_source: str, base_path: str = 
 
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>{_h(doc.title)}</title>
-<link rel="stylesheet" href="{static_prefix}/style.css?v=27">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<link rel="stylesheet" href="{static_prefix}/style.css?v=33">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
 <body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix, home=home)}
 <main><div class="card md-doc">
 <nav class="md-nav">
@@ -1134,6 +1159,7 @@ def _stats_page(
     base_path: str = "",
     *,
     channel: str = "all",
+    is_admin: bool = False,
 ) -> HTMLResponse:
     overall = db.overall_counts(channel=channel)
     by_topic = db.stats_by_topic(channel=channel)
@@ -1159,15 +1185,32 @@ def _stats_page(
         for h, a in activity.items()
     ]
     user_rows_data.sort(key=lambda r: (-r["n_qa"], r["username"]))
+    # Admin-only inspector column: an "Inspect" button per user that fetches
+    # their recent turns via /api/admin/recent and lists qa_ids that deep-link
+    # into the chat page's debug panel.
+    inspect_th = '<th class="text" data-i18n="stats.users.th.inspect"></th>' if is_admin else ""
+    inspect_td = (
+        '<td class="text"><button type="button" class="stats-inspect-btn ghost" '
+        'data-user="{u}" data-i18n="stats.users.inspect"></button></td>'
+    )
+    inspect_colspan = 4 if is_admin else 3
     if user_rows_data:
         user_rows = "".join(
-            f'<tr><td class="text">{_h(r["username"])}</td>'
-            f'<td class="num">{r["n_qa"]}</td>'
-            f'<td class="num">{_format_relative_ts(now_ts, r["last_ts"])}</td></tr>'
+            "<tr>"
+            '<td class="text">{u}</td>'
+            '<td class="num">{n}</td>'
+            '<td class="num">{when}</td>{ins}</tr>'.format(
+                u=_h(r["username"]),
+                n=r["n_qa"],
+                when=_format_relative_ts(now_ts, r["last_ts"]),
+                ins=inspect_td.format(u=_h(r["username"])) if is_admin else "",
+            )
             for r in user_rows_data
         )
     else:
-        user_rows = '<tr><td colspan="3" class="text" data-i18n="stats.empty"></td></tr>'
+        user_rows = (
+            f'<tr><td colspan="{inspect_colspan}" class="text" data-i18n="stats.empty"></td></tr>'
+        )
     n_active = len(user_rows_data)
     n_total = len(registered)
 
@@ -1201,6 +1244,11 @@ def _stats_page(
         + "</div>"
     )
 
+    inspector_out = (
+        '<div id="stats-inspector-out" class="stats-inspector hidden" aria-live="polite"></div>'
+        if is_admin
+        else ""
+    )
     if show_users:
         users_section = f"""
 <section class="stats-users">
@@ -1212,18 +1260,77 @@ def _stats_page(
       <th class="text" data-i18n="stats.users.th.username"></th>
       <th class="num" data-i18n="stats.users.th.n"></th>
       <th class="num" data-i18n="stats.users.th.last"></th>
+      {inspect_th}
     </tr></thead>
     <tbody>{user_rows}</tbody>
   </table>
+  {inspector_out}
 </section>
 """
     else:
         users_section = ""
 
+    # Admin-only diagnostic block: per-stage histograms (chroma/rerank/llm)
+    # and an RSS-over-time trend. Mirrors the existing token/ttft/tps
+    # histogram pattern from stats.js so it slots in without a new render
+    # framework. The section is server-rendered as empty markup when the
+    # caller is not admin; stats.js never instantiates Chart objects for
+    # canvases that don't exist.
+    admin_charts_section = (
+        """
+<section class="stats-admin stats-charts">
+  <h2 data-i18n="stats.admin.title"></h2>
+  <p class="stats-admin-intro" data-i18n="stats.admin.intro"></p>
+  <div class="stats-chart-head">
+    <h3 data-i18n="stats.chart.chroma_hist"></h3>
+    <label class="stats-logx">
+      <input type="checkbox" data-logx-for="chroma_hist">
+      <span data-i18n="stats.chart.logx"></span>
+    </label>
+    <label class="stats-logy">
+      <input type="checkbox" data-logy-for="chroma_hist">
+      <span data-i18n="stats.chart.logy"></span>
+    </label>
+  </div>
+  <canvas id="chart-chroma-hist" height="200"></canvas>
+  <div class="stats-chart-head">
+    <h3 data-i18n="stats.chart.rerank_hist"></h3>
+    <label class="stats-logx">
+      <input type="checkbox" data-logx-for="rerank_hist">
+      <span data-i18n="stats.chart.logx"></span>
+    </label>
+    <label class="stats-logy">
+      <input type="checkbox" data-logy-for="rerank_hist">
+      <span data-i18n="stats.chart.logy"></span>
+    </label>
+  </div>
+  <canvas id="chart-rerank-hist" height="200"></canvas>
+  <div class="stats-chart-head">
+    <h3 data-i18n="stats.chart.llm_hist"></h3>
+    <label class="stats-logx">
+      <input type="checkbox" data-logx-for="llm_hist">
+      <span data-i18n="stats.chart.logx"></span>
+    </label>
+    <label class="stats-logy">
+      <input type="checkbox" data-logy-for="llm_hist">
+      <span data-i18n="stats.chart.logy"></span>
+    </label>
+  </div>
+  <canvas id="chart-llm-hist" height="200"></canvas>
+  <div class="stats-chart-head">
+    <h3 data-i18n="stats.chart.rss_trend"></h3>
+  </div>
+  <canvas id="chart-rss-trend" height="200"></canvas>
+</section>
+"""
+        if is_admin
+        else ""
+    )
+
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="{static_prefix}/style.css?v=27">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
-<body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix, home=home)}<main>{_NOTICE_HTML}<div class="card stats-card" data-channel="{channel}">
+<link rel="stylesheet" href="{static_prefix}/style.css?v=33">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix, home=home)}<main>{_NOTICE_HTML}<div class="card stats-card" data-channel="{channel}" data-is-admin="{1 if is_admin else 0}">
 <h1 data-i18n="stats.title"></h1>
 {channel_switch_html}
 <p class="stats-summary" data-i18n="stats.summary"
@@ -1314,6 +1421,7 @@ def _stats_page(
   </div>
   <canvas id="chart-feedback" height="160"></canvas>
 </section>
+{admin_charts_section}
 {users_section}
 <section class="stats-topics">
   <h2 data-i18n="stats.topics.title"></h2>
@@ -1333,7 +1441,7 @@ def _stats_page(
 <p><a href="{home}" data-i18n="stats.back"></a></p>
 </div></main>
 <script src="{static_prefix}/vendor/chart.umd.min.js?v=36"></script>
-<script src="{static_prefix}/stats.js?v=36" defer></script>
+<script src="{static_prefix}/stats.js?v=37" defer></script>
 </body></html>
 """
     return HTMLResponse(body)

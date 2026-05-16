@@ -636,17 +636,26 @@ class LogDB:
         prompt/gen token counts and no streaming metrics — including them
         would just inject a NULL/zero spike at the histogram's left edge.
         Caller (JS) bins these client-side over 50 fixed-width bins.
+
+        Includes the per-stage timings and process RSS added for #19; these
+        stay NULL on pre-migration rows and the front-end skips nulls when
+        binning, so older data degrades gracefully.
         """
         ch_sql, ch_params = self._channel_clause(channel)
         with self._lock, self._connect() as conn:
             rows = conn.execute(
                 f"""
                 SELECT
+                    q.ts,
                     q.prompt_tokens,
                     q.gen_tokens,
                     q.ttft_ms,
                     q.gen_tps,
-                    q.llm_model
+                    q.llm_model,
+                    q.chroma_ms,
+                    q.rerank_ms,
+                    q.llm_ms,
+                    q.rss_mb
                 FROM qa_log q
                 WHERE q.ts >= ? AND q.gate_pass = 1{ch_sql}
                 ORDER BY q.ts ASC
@@ -655,11 +664,51 @@ class LogDB:
             ).fetchall()
         return [
             {
-                "prompt_tokens": int(r[0]) if r[0] is not None else None,
-                "gen_tokens": int(r[1]) if r[1] is not None else None,
-                "ttft_ms": int(r[2]) if r[2] is not None else None,
-                "gen_tps": float(r[3]) if r[3] is not None else None,
-                "llm_model": r[4],
+                "ts": int(r[0]),
+                "prompt_tokens": int(r[1]) if r[1] is not None else None,
+                "gen_tokens": int(r[2]) if r[2] is not None else None,
+                "ttft_ms": int(r[3]) if r[3] is not None else None,
+                "gen_tps": float(r[4]) if r[4] is not None else None,
+                "llm_model": r[5],
+                "chroma_ms": int(r[6]) if r[6] is not None else None,
+                "rerank_ms": int(r[7]) if r[7] is not None else None,
+                "llm_ms": int(r[8]) if r[8] is not None else None,
+                "rss_mb": int(r[9]) if r[9] is not None else None,
+            }
+            for r in rows
+        ]
+
+    def recent_turns_for_user(
+        self,
+        user_id_hash: str,
+        limit: int = 20,
+    ) -> list[dict]:
+        """Most recent qa_log rows for one user_id_hash.
+
+        Powers the admin /stats inspector widget: pick a user → see their
+        last N turns → click one → open the debug panel for that qa_id.
+        Returns a thin row shape; the heavy debug payload is fetched
+        separately via /api/debug/{qa_id}.
+        """
+        with self._lock, self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, ts, question, lang, gate_pass, gate_reason
+                FROM qa_log
+                WHERE user_id_hash = ?
+                ORDER BY ts DESC, id DESC
+                LIMIT ?
+                """,
+                (user_id_hash, int(limit)),
+            ).fetchall()
+        return [
+            {
+                "qa_id": int(r[0]),
+                "ts": int(r[1]),
+                "question": r[2] or "",
+                "lang": r[3] or "",
+                "gate_pass": bool(r[4]),
+                "gate_reason": r[5] or "",
             }
             for r in rows
         ]

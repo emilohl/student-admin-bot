@@ -1531,3 +1531,19 @@ function fmtNum(v) {
 
 // Skip onboarding if name already set.
 if (state.name) { el("#start").click(); }
+
+// Admin deep-link from /stats: `#debug=<qa_id>` opens the panel for that
+// qa_id directly. The fetch path applies the same ownership / admin check
+// as a normal /api/debug/{qa_id} call, so non-admins clicking another
+// user's link cleanly fall through to a 403.
+function maybeOpenDebugFromHash() {
+  const m = (location.hash || "").match(/^#debug=(\d+)/);
+  if (!m) return;
+  const qaId = Number(m[1]);
+  if (!Number.isFinite(qaId)) return;
+  // Defer one tick so the chat section is visible (start-click above runs
+  // synchronously, but the css transition + i18n pass shouldn't fight us).
+  setTimeout(() => showDebugPanel(qaId), 0);
+}
+maybeOpenDebugFromHash();
+window.addEventListener("hashchange", maybeOpenDebugFromHash);
