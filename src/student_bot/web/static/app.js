@@ -5,10 +5,18 @@ const state = {
   sessionId: localStorage.getItem("session_id") || crypto.randomUUID(),
   name: localStorage.getItem("name") || "",
   optOut: localStorage.getItem("opt_out") === "1",
+  // Opt-in "Learn more about how this chatbot works" toggle. When on, the
+  // server assembles a per-turn diagnostic payload and the UI surfaces a
+  // 🔍 button on each bot bubble that opens #debug-panel.
+  learnMore: localStorage.getItem("learn_more") === "1",
   // In-memory conversation log, mirroring what's on screen. Captured client
   // side because that's where every conversation exists in full (the server
   // skips qa_log writes for opted-out users). Used by exportThreadMarkdown().
   thread: [],
+  // Cached debug payloads keyed by qa_id. Populated from the SSE meta event
+  // for fresh turns; older turns (within the session) are fetched on demand.
+  debugCache: new Map(),
+  isAdmin: false,
 };
 localStorage.setItem("session_id", state.sessionId);
 
@@ -32,12 +40,34 @@ function botDisplayName() {
 
 el("#name").value = state.name;
 el("#opt-out").checked = state.optOut;
+if (el("#learn-more")) el("#learn-more").checked = state.learnMore;
+if (el("#learn-more-chat")) el("#learn-more-chat").checked = state.learnMore;
+
+function syncLearnMore(next) {
+  state.learnMore = !!next;
+  localStorage.setItem("learn_more", state.learnMore ? "1" : "0");
+  if (el("#learn-more")) el("#learn-more").checked = state.learnMore;
+  if (el("#learn-more-chat")) el("#learn-more-chat").checked = state.learnMore;
+  // When the user flips the toggle off mid-session, hide the panel; don't
+  // erase the cache so flipping back on restores access to past turns.
+  if (!state.learnMore) hideDebugPanel();
+  // Existing bot bubbles get their 🔍 button shown/hidden in sync.
+  document.querySelectorAll(".msg.bot").forEach((wrap) => {
+    const btn = wrap.querySelector(".debug-btn");
+    if (btn) btn.classList.toggle("hidden", !state.learnMore);
+  });
+}
+
+if (el("#learn-more-chat")) {
+  el("#learn-more-chat").addEventListener("change", (e) => syncLearnMore(e.target.checked));
+}
 
 el("#start").addEventListener("click", () => {
   state.name = el("#name").value.trim() || "Anonym";
   state.optOut = el("#opt-out").checked;
   localStorage.setItem("name", state.name);
   localStorage.setItem("opt_out", state.optOut ? "1" : "0");
+  if (el("#learn-more")) syncLearnMore(el("#learn-more").checked);
   // Tell the server about the name + opt-out preference.
   fetch("api/session", {
     method: "POST",
@@ -174,6 +204,7 @@ composer.addEventListener("submit", async (e) => {
         name: state.name,
         session_id: state.sessionId,
         opt_out: state.optOut,
+        learn_more: state.learnMore,
       }),
     });
     if (!resp.ok || !resp.body) {
@@ -262,6 +293,14 @@ composer.addEventListener("submit", async (e) => {
     renderContextNotices(botMsg, finalMeta);
     if (stick) messages.scrollTop = messages.scrollHeight;
     if (perfEnabled) updatePerfPanel(finalMeta);
+    // Cache the inline debug payload (when learn_more was on and the
+    // server wrote qa_debug) so a click on this bubble's 🔍 button is
+    // instant — no /api/debug/{qa_id} round-trip — and auto-open the
+    // panel so the user sees the data they opted into.
+    if (finalMeta.qa_id && finalMeta.debug) {
+      state.debugCache.set(finalMeta.qa_id, finalMeta.debug);
+      if (state.learnMore) showDebugPanel(finalMeta.qa_id);
+    }
   }
 });
 
@@ -402,6 +441,16 @@ async function initPerf() {
     setPerfEnabled(!!data.performance_panel_enabled);
     cloudProviderName = data.cloud_provider_name || "";
     applyCloudProviderNotice(cloudProviderName);
+    state.isAdmin = !!data.is_admin;
+    document.body.classList.toggle("is-admin", state.isAdmin);
+    // Server-driven default for the learn-more toggle; only honored when
+    // the user hasn't already set a preference in localStorage.
+    if (
+      localStorage.getItem("learn_more") === null &&
+      data.learn_more_default
+    ) {
+      syncLearnMore(true);
+    }
   } catch (_) {
     setPerfEnabled(false);
   }
@@ -587,6 +636,7 @@ function decorateBot(botMsg, meta) {
 
   // Feedback buttons (only if we have a qa id).
   if (meta.qa_id) {
+    botMsg.wrap.dataset.qaId = String(meta.qa_id);
     const actions = document.createElement("div");
     actions.className = "actions";
     const up = document.createElement("button");
@@ -609,6 +659,21 @@ function decorateBot(botMsg, meta) {
     down.addEventListener("click", () => send("negative", down));
     actions.appendChild(up);
     actions.appendChild(down);
+    // 🔍 Details button: opens the debug panel for this turn. Hidden when
+    // the learn-more toggle is off so non-curious users don't see the
+    // pedagogical UI; toggled back on by syncLearnMore() if they flip it.
+    const tDetails = (window.t && window.t("debug.msg.details")) || "🔍 Details";
+    const tDetailsTitle =
+      (window.t && window.t("debug.msg.details.title")) || tDetails;
+    const dbg = document.createElement("button");
+    dbg.type = "button";
+    dbg.className = "debug-btn";
+    dbg.textContent = tDetails;
+    dbg.title = tDetailsTitle;
+    dbg.setAttribute("aria-label", tDetailsTitle);
+    if (!state.learnMore) dbg.classList.add("hidden");
+    dbg.addEventListener("click", () => showDebugPanel(meta.qa_id));
+    actions.appendChild(dbg);
     botMsg.wrap.appendChild(actions);
   }
 }
@@ -1225,6 +1290,243 @@ function exportThreadMarkdown() {
   a.remove();
   // Defer revoke so Safari has time to read the blob.
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// -----------------------------------------------------------------------------
+// Debug panel — "Learn more about how this chatbot works"
+//
+// Per-turn diagnostic surface that mirrors the JSON payload assembled by
+// pipeline._build_debug_payload. Opt-in: visible only when the user
+// checked "Show how the bot thinks" in onboarding (or flipped it on later
+// from the chat header row). For owned turns inline-cached from the meta
+// event, rendering is instant; older turns fall back to /api/debug/{qa_id}.
+
+const debugPanel = el("#debug-panel");
+const debugPanelBody = el("#debug-panel-body");
+const debugPanelEmpty = el("#debug-panel-empty");
+const debugCloseBtn = el("#debug-close");
+if (debugCloseBtn) debugCloseBtn.addEventListener("click", hideDebugPanel);
+
+function hideDebugPanel() {
+  if (debugPanel) debugPanel.classList.add("hidden");
+}
+
+async function showDebugPanel(qaId) {
+  if (!debugPanel || !debugPanelBody) return;
+  debugPanel.classList.remove("hidden");
+  if (debugPanelEmpty) debugPanelEmpty.classList.add("hidden");
+
+  let payload = state.debugCache.get(qaId);
+  if (!payload) {
+    debugPanelBody.innerHTML =
+      `<p class="debug-loading">${escapeHtml(
+        (window.t && window.t("debug.msg.details")) || "Loading…"
+      )}</p>`;
+    try {
+      const url = new URL("api/debug/" + encodeURIComponent(qaId), location.href);
+      url.searchParams.set("session_id", state.sessionId);
+      if (state.name) url.searchParams.set("name", state.name);
+      const resp = await fetch(url.toString(), { credentials: "include" });
+      if (!resp.ok) {
+        // 404 = no qa_debug row (toggle was off for this turn, opted out,
+        // or guardrail short-circuit). Show the dedicated empty message
+        // rather than the generic error so the reason is obvious.
+        if (resp.status === 404) {
+          debugPanelBody.innerHTML = "";
+          if (debugPanelEmpty) debugPanelEmpty.classList.remove("hidden");
+          return;
+        }
+        const tpl =
+          (window.t && window.t("debug.fetch_error")) ||
+          "Could not load details (error {status}).";
+        debugPanelBody.innerHTML =
+          `<p class="debug-error">${escapeHtml(
+            tpl.replace("{status}", String(resp.status))
+          )}</p>`;
+        return;
+      }
+      const data = await resp.json();
+      payload = data && data.payload;
+      if (payload) state.debugCache.set(qaId, payload);
+    } catch (e) {
+      const tpl =
+        (window.t && window.t("debug.fetch_error")) ||
+        "Could not load details (error {status}).";
+      debugPanelBody.innerHTML =
+        `<p class="debug-error">${escapeHtml(tpl.replace("{status}", e.message || "?"))}</p>`;
+      return;
+    }
+  }
+
+  if (!payload) {
+    debugPanelBody.innerHTML = "";
+    if (debugPanelEmpty) debugPanelEmpty.classList.remove("hidden");
+    return;
+  }
+  renderDebugPayload(payload, qaId);
+}
+
+function renderDebugPayload(payload, qaId) {
+  const t = window.t || ((k) => k);
+  const sections = [];
+
+  // --- Routing
+  const routing = payload.routing || {};
+  const routingRows = [
+    [t("debug.field.lang"), routing.lang || "–"],
+    [
+      t("debug.field.expanded_query"),
+      routing.expanded_query
+        ? escapeHtml(routing.expanded_query)
+        : "<em>(none)</em>",
+    ],
+    [
+      t("debug.field.jargon"),
+      (routing.jargon_hits || []).length
+        ? (routing.jargon_hits || [])
+            .map((j) => escapeHtml(j.term || j.key || ""))
+            .join(", ")
+        : "<em>(none)</em>",
+    ],
+  ];
+  sections.push(debugSection(t("debug.section.routing"), kvRows(routingRows)));
+
+  // --- Gate
+  const gate = payload.gate || {};
+  const gateRows = [
+    [t("debug.field.pass"), gate.pass ? "✓" : "✗"],
+    [t("debug.field.reason"), escapeHtml(gate.reason || "–")],
+    [t("debug.field.top1"), fmtNum(gate.top1)],
+    [t("debug.field.meanK"), fmtNum(gate.meanK)],
+    [t("debug.field.distinct"), gate.distinct_sources ?? "–"],
+  ];
+  sections.push(debugSection(t("debug.section.gate"), kvRows(gateRows)));
+
+  // --- Stages
+  const stages = payload.stages || {};
+  const host = payload.host || {};
+  const stageRows = [
+    [t("debug.field.chroma_ms"), stages.chroma_ms ?? "–"],
+    [t("debug.field.rerank_ms"), stages.rerank_ms ?? "–"],
+    [t("debug.field.llm_ms"), stages.llm_ms ?? "–"],
+    [t("debug.field.rss_mb"), host.rss_mb ?? "–"],
+  ];
+  sections.push(debugSection(t("debug.section.stages"), kvRows(stageRows)));
+
+  // --- Retrieval (two tables, candidates + reranked)
+  const retrieval = payload.retrieval || {};
+  const candidates = retrieval.candidates || [];
+  const reranked = retrieval.reranked || [];
+  const retrievalHtml =
+    `<details class="debug-collapse" open><summary>${escapeHtml(
+      t("debug.section.reranked")
+    )} (${reranked.length})</summary>${chunkTable(reranked, true)}</details>` +
+    `<details class="debug-collapse"><summary>${escapeHtml(
+      t("debug.section.candidates")
+    )} (${candidates.length})</summary>${chunkTable(candidates, false)}</details>`;
+  sections.push(debugSection(t("debug.section.retrieval"), retrievalHtml));
+
+  // --- LLM
+  const llm = payload.llm || {};
+  const llmRows = [
+    [t("debug.field.model"), escapeHtml(llm.model || "–")],
+    [t("debug.field.prompt_tokens"), llm.prompt_tokens_est ?? "–"],
+  ];
+  const llmMessagesHtml = renderLlmMessages(llm.messages || []);
+  sections.push(
+    debugSection(
+      t("debug.section.llm"),
+      kvRows(llmRows) + llmMessagesHtml
+    )
+  );
+
+  debugPanelBody.innerHTML =
+    `<div class="debug-meta"><span>qa_id: <code>${escapeHtml(
+      String(qaId)
+    )}</code></span></div>` + sections.join("");
+}
+
+function debugSection(title, innerHtml) {
+  return (
+    `<section class="debug-section">` +
+    `<h3>${escapeHtml(title)}</h3>` +
+    innerHtml +
+    `</section>`
+  );
+}
+
+function kvRows(rows) {
+  return (
+    `<dl class="debug-kv">` +
+    rows
+      .map(
+        ([k, v]) =>
+          `<dt>${escapeHtml(k)}</dt><dd>${v === null || v === undefined ? "–" : v}</dd>`
+      )
+      .join("") +
+    `</dl>`
+  );
+}
+
+function chunkTable(chunks, includeRerank) {
+  if (!chunks || !chunks.length) return `<p class="debug-empty-inline">–</p>`;
+  const t = window.t || ((k) => k);
+  const headers = [
+    t("debug.col.doc"),
+    t("debug.col.section"),
+    t("debug.col.distance"),
+    ...(includeRerank ? [t("debug.col.rerank")] : []),
+    t("debug.col.snippet"),
+  ];
+  const rows = chunks
+    .map((c) => {
+      const distance = fmtNum(c.chroma_distance);
+      const rerank = includeRerank ? `<td>${fmtNum(c.rerank_score)}</td>` : "";
+      const page = c.page ? `, p.${escapeHtml(String(c.page))}` : "";
+      const docCell =
+        `<div class="debug-doc-title">${escapeHtml(c.doc_title || c.id || "")}</div>` +
+        `<div class="debug-doc-src"><code>${escapeHtml(
+          (c.rel_source || c.id || "") + page
+        )}</code></div>`;
+      return (
+        `<tr>` +
+        `<td>${docCell}</td>` +
+        `<td>${escapeHtml(c.section_path || "")}</td>` +
+        `<td>${distance}</td>` +
+        rerank +
+        `<td class="debug-snippet">${escapeHtml(c.snippet || "")}</td>` +
+        `</tr>`
+      );
+    })
+    .join("");
+  return (
+    `<table class="debug-table">` +
+    `<thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>` +
+    `<tbody>${rows}</tbody></table>`
+  );
+}
+
+function renderLlmMessages(messages) {
+  if (!messages || !messages.length) return "";
+  const items = messages
+    .map((m) => {
+      const role = escapeHtml(m.role || "");
+      const content = escapeHtml(String(m.content || ""));
+      return (
+        `<details class="debug-msg"><summary>${role}` +
+        `<span class="debug-msg-len"> · ${content.length} ch</span></summary>` +
+        `<pre>${content}</pre></details>`
+      );
+    })
+    .join("");
+  return `<div class="debug-msgs">${items}</div>`;
+}
+
+function fmtNum(v) {
+  if (v === null || v === undefined || v === "") return "–";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "–";
+  return n.toFixed(Math.abs(n) >= 100 ? 1 : 3);
 }
 
 // Skip onboarding if name already set.

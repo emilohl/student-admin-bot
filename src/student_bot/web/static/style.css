@@ -422,3 +422,189 @@ html[lang="en"] .lang-sv { display: none; }
   background: var(--accent);
   color: var(--kth-white);
 }
+
+/* --- Learn-more debug panel (#45 / #19) --- */
+
+.learn-more-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+  color: var(--fg);
+  opacity: 0.8;
+}
+.learn-more-inline input { margin: 0; }
+.chat-status-top { margin-bottom: 2px; }
+
+#debug-panel {
+  margin-top: 12px;
+  padding: 16px 18px;
+  background: var(--kth-brokenwhite);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--kth-skyblue);
+}
+#debug-panel.hidden { display: none; }
+.debug-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.debug-panel-head h2 { margin: 0; font-size: 1.05rem; }
+.debug-panel-intro {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  color: var(--fg);
+  opacity: 0.75;
+}
+.debug-panel-empty {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+  color: var(--fg);
+  opacity: 0.7;
+}
+.debug-meta {
+  font-size: 0.8rem;
+  margin-bottom: 8px;
+  color: var(--fg);
+  opacity: 0.7;
+}
+.debug-meta code {
+  background: var(--kth-sand);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.debug-section {
+  margin: 12px 0;
+  padding: 10px 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.debug-section h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  color: var(--kth-navy);
+}
+.debug-kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 12px;
+  row-gap: 3px;
+  margin: 0;
+  font-size: 0.88rem;
+}
+.debug-kv dt {
+  font-weight: 600;
+  color: var(--fg);
+  opacity: 0.8;
+}
+.debug-kv dd { margin: 0; word-break: break-word; }
+.debug-collapse {
+  margin: 8px 0;
+  font-size: 0.85rem;
+}
+.debug-collapse > summary {
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+  color: var(--kth-navy);
+  padding: 4px 0;
+}
+.debug-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin-top: 6px;
+}
+.debug-table th,
+.debug-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.debug-table th {
+  background: var(--kth-sand);
+  font-weight: 600;
+}
+.debug-doc-title { font-weight: 600; }
+.debug-doc-src code {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  color: var(--fg);
+  opacity: 0.65;
+}
+.debug-snippet {
+  max-width: 360px;
+  color: var(--fg);
+  opacity: 0.85;
+  line-height: 1.35;
+}
+.debug-msgs {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.debug-msg > summary {
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: var(--kth-sand);
+  padding: 4px 8px;
+  border-radius: 3px;
+}
+.debug-msg > summary::marker { color: var(--kth-skyblue); }
+.debug-msg-len {
+  font-weight: 400;
+  opacity: 0.6;
+  font-size: 0.8rem;
+}
+.debug-msg pre {
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  background: var(--kth-brokenwhite);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow: auto;
+}
+.debug-empty-inline {
+  margin: 4px 0 0;
+  opacity: 0.6;
+  font-size: 0.85rem;
+}
+.debug-loading,
+.debug-error {
+  margin: 6px 0;
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+.debug-error { color: var(--kth-darkbrick); }
+
+/* Per-message 🔍 button sits alongside 👍/👎. Visibility flips with the
+   learn-more toggle (see syncLearnMore in app.js). */
+.msg.bot .actions .debug-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  color: var(--fg);
+  cursor: pointer;
+  margin-left: 6px;
+}
+.msg.bot .actions .debug-btn:hover {
+  background: var(--kth-lightblue);
+  border-color: var(--kth-skyblue);
+}
+.msg.bot .actions .debug-btn.hidden { display: none; }
