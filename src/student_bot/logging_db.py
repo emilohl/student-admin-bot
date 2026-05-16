@@ -335,12 +335,31 @@ class LogDB:
             conn.commit()
             return int(cur.lastrowid)
 
-    def update_topic(self, qa_id: int, topic: str, confidence: float) -> None:
+    def update_topic(
+        self,
+        qa_id: int,
+        topic: str,
+        confidence: float,
+        *,
+        classify_ms: int | None = None,
+    ) -> None:
+        """Backfill the topic classification (runs async after the answer).
+
+        `classify_ms` is the wall-clock cost of the classifier call; persisting
+        it alongside `topic` keeps the per-stage timing complete in qa_log.
+        """
         with self._lock, self._connect() as conn:
-            conn.execute(
-                "UPDATE qa_log SET topic = ?, topic_confidence = ? WHERE id = ?",
-                (topic, confidence, qa_id),
-            )
+            if classify_ms is None:
+                conn.execute(
+                    "UPDATE qa_log SET topic = ?, topic_confidence = ? WHERE id = ?",
+                    (topic, confidence, qa_id),
+                )
+            else:
+                conn.execute(
+                    "UPDATE qa_log SET topic = ?, topic_confidence = ?, "
+                    "classify_ms = ? WHERE id = ?",
+                    (topic, confidence, classify_ms, qa_id),
+                )
             conn.commit()
 
     def lookup_qa_by_bot_post(self, bot_post_id: str) -> int | None:

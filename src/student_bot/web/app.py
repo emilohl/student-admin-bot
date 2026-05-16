@@ -159,6 +159,11 @@ class ChatRequest(BaseModel):
     name: str = "Anonym"
     session_id: str = "default"
     opt_out: bool = False
+    # When true, the server assembles a diagnostic payload for this turn
+    # (retrieval candidates with snippets, gate detail, full LLM messages,
+    # per-stage timings) and persists it to qa_debug for /api/debug/{qa_id}
+    # to surface in the "Learn more" side panel.
+    learn_more: bool = False
 
 
 class FeedbackRequest(BaseModel):
@@ -280,10 +285,11 @@ def create_app(cfg: Config | None = None) -> FastAPI:
     # --- API ---
 
     @app.get(_join_base(base_path, "/api/health"))
-    def health():
+    def health(request: Request):
         # `cloud_provider_name` is empty for the default local Ollama path;
         # frontend uses it to show/hide the "don't share sensitive info"
         # notice during onboarding and as a persistent banner above chat.
+        ctx = require_access(request, cfg)
         try:
             resolved = cfg.active_model()
             cloud_name = (
@@ -300,6 +306,13 @@ def create_app(cfg: Config | None = None) -> FastAPI:
             "auth_enabled": cfg.web.auth_enabled,
             "performance_panel_enabled": _perf_panel_enabled(cfg),
             "cloud_provider_name": cloud_name,
+            # Drives the visibility of admin-only UI (per-stage histograms,
+            # the inspect-other-user widget on /stats).
+            "is_admin": ctx.is_admin,
+            # Per-user "Learn more about how this chatbot works" defaults to
+            # off; the frontend reads this so we can flip the default
+            # server-side without shipping a new build later.
+            "learn_more_default": False,
         }
 
     @app.get(_join_base(base_path, "/api/system-load"))
@@ -391,6 +404,49 @@ def create_app(cfg: Config | None = None) -> FastAPI:
         )
         return {"ok": True}
 
+    @app.get(_join_base(base_path, "/api/debug/{qa_id}"))
+    def debug_payload(
+        request: Request,
+        qa_id: int,
+        session_id: str = "default",
+        name: str = "",
+    ):
+        """Return the persisted diagnostic payload for a single turn.
+
+        A non-admin caller may only fetch their own turns: we re-derive the
+        requesting user's `user_id_hash` from session/auth context using the
+        same scheme record_qa_debug used at write time, and 403 on mismatch.
+        Admins (4th `:admin` field on their web_users line) may fetch any
+        qa_id whose row exists.
+
+        `session_id` and `name` query params let an anonymous frontend reuse
+        the same identifier it sent to /api/chat (where `payload.name`
+        composes web_user_id). For authenticated users they're ignored —
+        the HTTP Basic username is authoritative.
+        """
+        ctx = require_access(request, cfg)
+        if ctx.user and ctx.user != "anonymous":
+            requester_web_uid = f"basic:{ctx.user}"
+        else:
+            # Mirror _web_user_id: explicit query param wins, then session
+            # cookie, then the same "Anonym" default ChatRequest uses.
+            effective_name = (name or request.session.get("name") or "Anonym").strip()
+            requester_web_uid = f"web:{effective_name}:{session_id or 'default'}"
+        requester_hash = db.hash_user(requester_web_uid)
+
+        row = db.get_qa_debug(qa_id)
+        if row is None:
+            raise HTTPException(404, "no debug data for this qa_id")
+        if row["user_id_hash"] != requester_hash and not ctx.is_admin:
+            raise HTTPException(403, "not your data")
+        return JSONResponse(
+            {
+                "qa_id": qa_id,
+                "ts": row["ts"],
+                "payload": row["payload"],
+            }
+        )
+
     return app
 
 
@@ -449,6 +505,7 @@ def _stream_answer(
                 admission_term_prior=adm_term_prior,
                 admission_year_prefix_prior=adm_year_prior,
                 channel="web",
+                learn_more=bool(payload.learn_more),
             )
             result.session_expired = session_expired
         except Exception as e:
@@ -521,12 +578,33 @@ def _stream_answer(
             ttft_ms=result.ttft_ms,
             gen_tps=result.gen_tps,
             llm_model=cfg.active_model().identifier,
+            chroma_ms=result.chroma_ms,
+            rerank_ms=result.rerank_ms,
+            llm_ms=result.llm_ms,
+            rss_mb=result.rss_mb,
         )
+
+        # Persist the heavy diagnostic payload (assembled by the pipeline when
+        # learn_more=True). Per-user 1 MiB cap with oldest-first eviction is
+        # enforced inside record_qa_debug. Skipped for opted-out users
+        # (qa_id is None) since there's no qa_log row to attach to.
+        debug_written = False
+        if qa_id is not None and result.debug_payload is not None:
+            try:
+                debug_written = db.record_qa_debug(
+                    qa_id=qa_id,
+                    user_id=web_user_id,
+                    payload=result.debug_payload,
+                )
+            except Exception:
+                log.exception("record_qa_debug failed")
 
         if qa_id is not None and cfg.topics.enabled:
             try:
+                classify_t0 = time.monotonic()
                 topic, conf = classify(cfg, payload.question, result.lang)
-                db.update_topic(qa_id, topic, conf)
+                classify_ms = int((time.monotonic() - classify_t0) * 1000)
+                db.update_topic(qa_id, topic, conf, classify_ms=classify_ms)
             except Exception:
                 log.exception("topic classify failed")
 
@@ -610,6 +688,13 @@ def _stream_answer(
                     "host_system_load": _host_load_snapshot(cfg),
                 }
             )
+        # Inline the debug payload only when learn_more was on AND it was
+        # successfully persisted. The frontend uses the inline copy to
+        # render the panel for the just-answered turn without a follow-up
+        # /api/debug/{qa_id} round-trip. For older turns the panel falls
+        # back to that endpoint.
+        if debug_written and result.debug_payload is not None:
+            meta["debug"] = result.debug_payload
         yield _sse("meta", json.dumps(meta))
 
     return gen()
