@@ -22,6 +22,7 @@ import secrets
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import NamedTuple
 
 from fastapi import HTTPException, Request, status
 
@@ -82,9 +83,26 @@ def list_usernames(cfg: Config) -> list[str]:
     return sorted(load_users_file(users_path).keys())
 
 
-def load_users_file(path: Path) -> dict[str, str]:
-    """Parse '<user>:<password_record>' per line. Lines starting with # ignored."""
-    users: dict[str, str] = {}
+class UserRecord(NamedTuple):
+    """One parsed line of `data/web_users`.
+
+    `record` is always the 3-field scrypt blob `scheme:salt_b64:hash_b64`
+    (what `verify_password` expects). `is_admin` is True when the optional
+    4th field on the line equals `admin`.
+    """
+
+    record: str
+    is_admin: bool = False
+
+
+def load_users_file(path: Path) -> dict[str, UserRecord]:
+    """Parse '<user>:<password_record>[:admin]' per line.
+
+    Lines starting with # are ignored. Lines with fewer than 3 record
+    fields (after the username) are skipped silently so a malformed line
+    doesn't lock everyone out.
+    """
+    users: dict[str, UserRecord] = {}
     if not path.exists():
         return users
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -93,10 +111,16 @@ def load_users_file(path: Path) -> dict[str, str]:
             continue
         if ":" not in line:
             continue
-        username, _, record = line.partition(":")
-        if not username or not record:
+        username, _, rest = line.partition(":")
+        if not username or not rest:
             continue
-        users[username] = record
+        # rest = scheme:salt_b64:hash_b64[:admin]
+        parts = rest.split(":")
+        if len(parts) < 3:
+            continue
+        record = ":".join(parts[:3])
+        is_admin = len(parts) >= 4 and parts[3].strip().lower() == "admin"
+        users[username] = UserRecord(record=record, is_admin=is_admin)
     return users
 
 
@@ -109,6 +133,7 @@ class AuthContext:
     user: str | None  # HTTP Basic username, if authenticated
     granted: bool  # token-cookie granted
     name: str | None  # user-supplied display name
+    is_admin: bool = False  # set from the optional `:admin` 4th field
 
 
 def _expected_token() -> str | None:
@@ -143,10 +168,14 @@ def check_token_grant(request: Request, cfg: Config) -> bool:
     return False
 
 
-def basic_auth(request: Request, cfg: Config) -> str | None:
-    """Validates HTTP Basic credentials. Returns the username or None."""
+def basic_auth(request: Request, cfg: Config) -> tuple[str, bool] | None:
+    """Validates HTTP Basic credentials.
+
+    Returns (username, is_admin) on success, or None on missing/bad creds.
+    When `cfg.web.auth_enabled` is False, returns ("anonymous", False).
+    """
     if not cfg.web.auth_enabled:
-        return "anonymous"
+        return ("anonymous", False)
 
     auth = request.headers.get("Authorization", "")
     if not auth.lower().startswith("basic "):
@@ -161,34 +190,38 @@ def basic_auth(request: Request, cfg: Config) -> str | None:
 
     users_path = cfg.absolute(Path(cfg.web.users_file))
     users = load_users_file(users_path)
-    record = users.get(username)
-    if not record:
+    info = users.get(username)
+    if info is None:
         return None
-    return username if verify_password(password, record) else None
+    if not verify_password(password, info.record):
+        return None
+    return (username, info.is_admin)
 
 
 def require_access(request: Request, cfg: Config) -> AuthContext:
     """Enforce both gates. Raises HTTPException on failure."""
     if not cfg.web.auth_enabled:
-        return AuthContext(False, "anonymous", True, request.session.get("name"))
+        return AuthContext(False, "anonymous", True, request.session.get("name"), False)
 
     if not check_token_grant(request, cfg):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Missing or invalid access token. Use the link you were given.",
         )
-    user = basic_auth(request, cfg)
-    if not user:
+    auth_info = basic_auth(request, cfg)
+    if not auth_info:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
             headers={"WWW-Authenticate": 'Basic realm="student-bot"'},
         )
-    return AuthContext(True, user, True, request.session.get("name"))
+    user, is_admin = auth_info
+    return AuthContext(True, user, True, request.session.get("name"), is_admin)
 
 
 __all__ = [
     "AuthContext",
+    "UserRecord",
     "hash_password",
     "verify_password",
     "load_users_file",
