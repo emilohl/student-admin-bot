@@ -15,6 +15,7 @@ happened (without its content).
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 import sqlite3
@@ -22,6 +23,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 from threading import Lock
+from typing import Any
 
 from student_bot.config import Config
 
@@ -85,6 +87,21 @@ CREATE TABLE IF NOT EXISTS anon_counter (
     n INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (bucket_ts, lang, gate_pass)
 );
+
+-- Heavyweight per-turn diagnostic payload (retrieval candidates with
+-- snippets, gate detail, full LLM message list, per-stage timings).
+-- Written only when the user opted into the "Learn more about how this
+-- chatbot works" toggle. Capped per user_id_hash by oldest-first eviction
+-- on insert; see record_qa_debug.
+CREATE TABLE IF NOT EXISTS qa_debug (
+    qa_id INTEGER PRIMARY KEY,
+    user_id_hash TEXT NOT NULL,
+    ts INTEGER NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    payload BLOB NOT NULL,
+    FOREIGN KEY (qa_id) REFERENCES qa_log(id)
+);
+CREATE INDEX IF NOT EXISTS idx_qa_debug_user_ts ON qa_debug(user_id_hash, ts);
 """
 
 
@@ -109,6 +126,18 @@ MIGRATIONS: list[tuple[str, str]] = [
     # Ollama model that produced this answer. Stored as the configured model
     # tag so future histograms can split by model.
     ("qa_log.llm_model", "ALTER TABLE qa_log ADD COLUMN llm_model TEXT"),
+    # Per-stage wall-clock breakdown (issue #19). `chroma_ms` is the dense
+    # retrieval call; `rerank_ms` is the cross-encoder pass; `llm_ms` covers
+    # prompt submit to stream end; `classify_ms` is the post-stream async
+    # topic classifier. All nullable — old rows stay NULL, new rows fill
+    # in. Used by the admin /stats histograms.
+    ("qa_log.chroma_ms", "ALTER TABLE qa_log ADD COLUMN chroma_ms INTEGER"),
+    ("qa_log.rerank_ms", "ALTER TABLE qa_log ADD COLUMN rerank_ms INTEGER"),
+    ("qa_log.llm_ms", "ALTER TABLE qa_log ADD COLUMN llm_ms INTEGER"),
+    ("qa_log.classify_ms", "ALTER TABLE qa_log ADD COLUMN classify_ms INTEGER"),
+    # Per-request host RSS at end of turn, in mebibytes. Cheap psutil call;
+    # the time series across this column is the OOM-watch feed for #19.
+    ("qa_log.rss_mb", "ALTER TABLE qa_log ADD COLUMN rss_mb INTEGER"),
 ]
 
 
@@ -124,6 +153,7 @@ class LogDB:
         self.salt = (cfg.user_id_hash_salt or "").encode("utf-8")
         if not self.salt:
             self.salt = b"unsalted-cli-only"
+        self.debug_cap_bytes: int = int(cfg.web.debug_max_bytes_per_user)
         self._lock = Lock()
         with self._connect() as conn:
             conn.executescript(SCHEMA)
@@ -242,6 +272,11 @@ class LogDB:
         ttft_ms: int | None = None,
         gen_tps: float | None = None,
         llm_model: str | None = None,
+        chroma_ms: int | None = None,
+        rerank_ms: int | None = None,
+        llm_ms: int | None = None,
+        classify_ms: int | None = None,
+        rss_mb: int | None = None,
     ) -> int | None:
         """Record a Q&A row, or skip (returning None) when the user opted out.
 
@@ -262,8 +297,9 @@ class LogDB:
                     gate_pass, gate_reason, answer, latency_ms,
                     question_expanded, jargon_hits,
                     prompt_tokens, gen_tokens,
-                    ttft_ms, gen_tps, llm_model
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ttft_ms, gen_tps, llm_model,
+                    chroma_ms, rerank_ms, llm_ms, classify_ms, rss_mb
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     int(time.time()),
@@ -289,6 +325,11 @@ class LogDB:
                     ttft_ms,
                     gen_tps,
                     llm_model,
+                    chroma_ms,
+                    rerank_ms,
+                    llm_ms,
+                    classify_ms,
+                    rss_mb,
                 ),
             )
             conn.commit()
@@ -308,6 +349,77 @@ class LogDB:
                 "SELECT id FROM qa_log WHERE bot_post_id = ? LIMIT 1", (bot_post_id,)
             ).fetchone()
         return int(row[0]) if row else None
+
+    # --- qa_debug (heavy diagnostic payload, opt-in per turn) ---
+
+    def record_qa_debug(self, *, qa_id: int, user_id: str, payload: dict[str, Any]) -> bool:
+        """Persist a gzipped JSON debug payload for one turn.
+
+        Returns True if written, False if skipped (e.g., single payload
+        larger than the configured per-user cap). Eviction is oldest-first
+        within the same user_id_hash, performed inside the insert transaction
+        so the cap is never exceeded between concurrent writes for one user.
+
+        Caller is responsible for not invoking this for opted-out users
+        (record_qa would have returned None — no qa_id to attach to).
+        """
+        uid = self.hash_user(user_id)
+        blob = gzip.compress(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+        size = len(blob)
+        cap = self.debug_cap_bytes
+        # Single payload exceeds the entire cap — nothing we can do.
+        if size > cap:
+            return False
+        ts = int(time.time())
+        with self._lock, self._connect() as conn:
+            current = conn.execute(
+                "SELECT COALESCE(SUM(size_bytes), 0) FROM qa_debug WHERE user_id_hash = ?",
+                (uid,),
+            ).fetchone()[0]
+            # Evict oldest rows until the new row fits under the cap.
+            while current + size > cap:
+                row = conn.execute(
+                    """
+                    SELECT qa_id, size_bytes FROM qa_debug
+                    WHERE user_id_hash = ?
+                    ORDER BY ts ASC, qa_id ASC
+                    LIMIT 1
+                    """,
+                    (uid,),
+                ).fetchone()
+                if row is None:
+                    break  # defensive; loop condition guaranteed we'd not get here
+                conn.execute("DELETE FROM qa_debug WHERE qa_id = ?", (row[0],))
+                current -= int(row[1])
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO qa_debug(qa_id, user_id_hash, ts, size_bytes, payload)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (qa_id, uid, ts, size, blob),
+            )
+            conn.commit()
+        return True
+
+    def get_qa_debug(self, qa_id: int) -> dict[str, Any] | None:
+        """Return {"user_id_hash", "ts", "payload"} for a qa_id, or None.
+
+        The web layer checks ownership against the requesting user's hash
+        (or admin flag) before serving the payload.
+        """
+        with self._lock, self._connect() as conn:
+            row = conn.execute(
+                "SELECT user_id_hash, ts, payload FROM qa_debug WHERE qa_id = ?",
+                (qa_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            decoded = json.loads(gzip.decompress(row[2]).decode("utf-8"))
+        except (OSError, json.JSONDecodeError):
+            # Corrupt row — surface as missing rather than 500.
+            return None
+        return {"user_id_hash": row[0], "ts": int(row[1]), "payload": decoded}
 
     # --- feedback ---
 
