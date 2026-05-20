@@ -177,6 +177,30 @@
       "definition": "Tjänstgöring i Försvarsmakten — räknas som särskilt skäl för studieuppehåll.",
       "added_by": "admin",
       "added_ts": "2026-05-09"
+    },
+    "öppen ingång": {
+      "term": "Öppen ingång",
+      "expansion": "Civilingenjörsutbildning Öppen ingång (COPEN)",
+      "lang": "sv",
+      "definition": "Civilingenjörsprogram Öppen ingång, med programkod COPEN",
+      "added_by": "admin (accepted from student suggestion)",
+      "added_ts": "2026-05-20"
+    },
+    "syv": {
+      "term": "SYV",
+      "expansion": "studievägledare",
+      "lang": "sv",
+      "definition": "",
+      "added_by": "admin (accepted from student suggestion)",
+      "added_ts": "2026-05-20"
+    },
+    "lumpen": {
+      "term": "lumpen",
+      "expansion": "värnplikt",
+      "lang": "sv",
+      "definition": "Tjänstgöring i Försvarsmakten — räknas som särskilt skäl för studieuppehåll.",
+      "added_by": "admin (accepted from student suggestion)",
+      "added_ts": "2026-05-20"
     }
   }
 }
