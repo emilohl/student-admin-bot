@@ -15,6 +15,7 @@ happened (without its content).
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 import sqlite3
@@ -22,6 +23,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 from threading import Lock
+from typing import Any
 
 from student_bot.config import Config
 
@@ -85,6 +87,21 @@ CREATE TABLE IF NOT EXISTS anon_counter (
     n INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (bucket_ts, lang, gate_pass)
 );
+
+-- Heavyweight per-turn diagnostic payload (retrieval candidates with
+-- snippets, gate detail, full LLM message list, per-stage timings).
+-- Written only when the user opted into the "Learn more about how this
+-- chatbot works" toggle. Capped per user_id_hash by oldest-first eviction
+-- on insert; see record_qa_debug.
+CREATE TABLE IF NOT EXISTS qa_debug (
+    qa_id INTEGER PRIMARY KEY,
+    user_id_hash TEXT NOT NULL,
+    ts INTEGER NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    payload BLOB NOT NULL,
+    FOREIGN KEY (qa_id) REFERENCES qa_log(id)
+);
+CREATE INDEX IF NOT EXISTS idx_qa_debug_user_ts ON qa_debug(user_id_hash, ts);
 """
 
 
@@ -109,6 +126,18 @@ MIGRATIONS: list[tuple[str, str]] = [
     # Ollama model that produced this answer. Stored as the configured model
     # tag so future histograms can split by model.
     ("qa_log.llm_model", "ALTER TABLE qa_log ADD COLUMN llm_model TEXT"),
+    # Per-stage wall-clock breakdown (issue #19). `chroma_ms` is the dense
+    # retrieval call; `rerank_ms` is the cross-encoder pass; `llm_ms` covers
+    # prompt submit to stream end; `classify_ms` is the post-stream async
+    # topic classifier. All nullable — old rows stay NULL, new rows fill
+    # in. Used by the admin /stats histograms.
+    ("qa_log.chroma_ms", "ALTER TABLE qa_log ADD COLUMN chroma_ms INTEGER"),
+    ("qa_log.rerank_ms", "ALTER TABLE qa_log ADD COLUMN rerank_ms INTEGER"),
+    ("qa_log.llm_ms", "ALTER TABLE qa_log ADD COLUMN llm_ms INTEGER"),
+    ("qa_log.classify_ms", "ALTER TABLE qa_log ADD COLUMN classify_ms INTEGER"),
+    # Per-request host RSS at end of turn, in mebibytes. Cheap psutil call;
+    # the time series across this column is the OOM-watch feed for #19.
+    ("qa_log.rss_mb", "ALTER TABLE qa_log ADD COLUMN rss_mb INTEGER"),
 ]
 
 
@@ -124,6 +153,7 @@ class LogDB:
         self.salt = (cfg.user_id_hash_salt or "").encode("utf-8")
         if not self.salt:
             self.salt = b"unsalted-cli-only"
+        self.debug_cap_bytes: int = int(cfg.web.debug_max_bytes_per_user)
         self._lock = Lock()
         with self._connect() as conn:
             conn.executescript(SCHEMA)
@@ -242,6 +272,11 @@ class LogDB:
         ttft_ms: int | None = None,
         gen_tps: float | None = None,
         llm_model: str | None = None,
+        chroma_ms: int | None = None,
+        rerank_ms: int | None = None,
+        llm_ms: int | None = None,
+        classify_ms: int | None = None,
+        rss_mb: int | None = None,
     ) -> int | None:
         """Record a Q&A row, or skip (returning None) when the user opted out.
 
@@ -262,8 +297,9 @@ class LogDB:
                     gate_pass, gate_reason, answer, latency_ms,
                     question_expanded, jargon_hits,
                     prompt_tokens, gen_tokens,
-                    ttft_ms, gen_tps, llm_model
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ttft_ms, gen_tps, llm_model,
+                    chroma_ms, rerank_ms, llm_ms, classify_ms, rss_mb
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     int(time.time()),
@@ -289,17 +325,41 @@ class LogDB:
                     ttft_ms,
                     gen_tps,
                     llm_model,
+                    chroma_ms,
+                    rerank_ms,
+                    llm_ms,
+                    classify_ms,
+                    rss_mb,
                 ),
             )
             conn.commit()
             return int(cur.lastrowid)
 
-    def update_topic(self, qa_id: int, topic: str, confidence: float) -> None:
+    def update_topic(
+        self,
+        qa_id: int,
+        topic: str,
+        confidence: float,
+        *,
+        classify_ms: int | None = None,
+    ) -> None:
+        """Backfill the topic classification (runs async after the answer).
+
+        `classify_ms` is the wall-clock cost of the classifier call; persisting
+        it alongside `topic` keeps the per-stage timing complete in qa_log.
+        """
         with self._lock, self._connect() as conn:
-            conn.execute(
-                "UPDATE qa_log SET topic = ?, topic_confidence = ? WHERE id = ?",
-                (topic, confidence, qa_id),
-            )
+            if classify_ms is None:
+                conn.execute(
+                    "UPDATE qa_log SET topic = ?, topic_confidence = ? WHERE id = ?",
+                    (topic, confidence, qa_id),
+                )
+            else:
+                conn.execute(
+                    "UPDATE qa_log SET topic = ?, topic_confidence = ?, "
+                    "classify_ms = ? WHERE id = ?",
+                    (topic, confidence, classify_ms, qa_id),
+                )
             conn.commit()
 
     def lookup_qa_by_bot_post(self, bot_post_id: str) -> int | None:
@@ -308,6 +368,77 @@ class LogDB:
                 "SELECT id FROM qa_log WHERE bot_post_id = ? LIMIT 1", (bot_post_id,)
             ).fetchone()
         return int(row[0]) if row else None
+
+    # --- qa_debug (heavy diagnostic payload, opt-in per turn) ---
+
+    def record_qa_debug(self, *, qa_id: int, user_id: str, payload: dict[str, Any]) -> bool:
+        """Persist a gzipped JSON debug payload for one turn.
+
+        Returns True if written, False if skipped (e.g., single payload
+        larger than the configured per-user cap). Eviction is oldest-first
+        within the same user_id_hash, performed inside the insert transaction
+        so the cap is never exceeded between concurrent writes for one user.
+
+        Caller is responsible for not invoking this for opted-out users
+        (record_qa would have returned None — no qa_id to attach to).
+        """
+        uid = self.hash_user(user_id)
+        blob = gzip.compress(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+        size = len(blob)
+        cap = self.debug_cap_bytes
+        # Single payload exceeds the entire cap — nothing we can do.
+        if size > cap:
+            return False
+        ts = int(time.time())
+        with self._lock, self._connect() as conn:
+            current = conn.execute(
+                "SELECT COALESCE(SUM(size_bytes), 0) FROM qa_debug WHERE user_id_hash = ?",
+                (uid,),
+            ).fetchone()[0]
+            # Evict oldest rows until the new row fits under the cap.
+            while current + size > cap:
+                row = conn.execute(
+                    """
+                    SELECT qa_id, size_bytes FROM qa_debug
+                    WHERE user_id_hash = ?
+                    ORDER BY ts ASC, qa_id ASC
+                    LIMIT 1
+                    """,
+                    (uid,),
+                ).fetchone()
+                if row is None:
+                    break  # defensive; loop condition guaranteed we'd not get here
+                conn.execute("DELETE FROM qa_debug WHERE qa_id = ?", (row[0],))
+                current -= int(row[1])
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO qa_debug(qa_id, user_id_hash, ts, size_bytes, payload)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (qa_id, uid, ts, size, blob),
+            )
+            conn.commit()
+        return True
+
+    def get_qa_debug(self, qa_id: int) -> dict[str, Any] | None:
+        """Return {"user_id_hash", "ts", "payload"} for a qa_id, or None.
+
+        The web layer checks ownership against the requesting user's hash
+        (or admin flag) before serving the payload.
+        """
+        with self._lock, self._connect() as conn:
+            row = conn.execute(
+                "SELECT user_id_hash, ts, payload FROM qa_debug WHERE qa_id = ?",
+                (qa_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            decoded = json.loads(gzip.decompress(row[2]).decode("utf-8"))
+        except (OSError, json.JSONDecodeError):
+            # Corrupt row — surface as missing rather than 500.
+            return None
+        return {"user_id_hash": row[0], "ts": int(row[1]), "payload": decoded}
 
     # --- feedback ---
 
@@ -505,17 +636,26 @@ class LogDB:
         prompt/gen token counts and no streaming metrics — including them
         would just inject a NULL/zero spike at the histogram's left edge.
         Caller (JS) bins these client-side over 50 fixed-width bins.
+
+        Includes the per-stage timings and process RSS added for #19; these
+        stay NULL on pre-migration rows and the front-end skips nulls when
+        binning, so older data degrades gracefully.
         """
         ch_sql, ch_params = self._channel_clause(channel)
         with self._lock, self._connect() as conn:
             rows = conn.execute(
                 f"""
                 SELECT
+                    q.ts,
                     q.prompt_tokens,
                     q.gen_tokens,
                     q.ttft_ms,
                     q.gen_tps,
-                    q.llm_model
+                    q.llm_model,
+                    q.chroma_ms,
+                    q.rerank_ms,
+                    q.llm_ms,
+                    q.rss_mb
                 FROM qa_log q
                 WHERE q.ts >= ? AND q.gate_pass = 1{ch_sql}
                 ORDER BY q.ts ASC
@@ -524,11 +664,51 @@ class LogDB:
             ).fetchall()
         return [
             {
-                "prompt_tokens": int(r[0]) if r[0] is not None else None,
-                "gen_tokens": int(r[1]) if r[1] is not None else None,
-                "ttft_ms": int(r[2]) if r[2] is not None else None,
-                "gen_tps": float(r[3]) if r[3] is not None else None,
-                "llm_model": r[4],
+                "ts": int(r[0]),
+                "prompt_tokens": int(r[1]) if r[1] is not None else None,
+                "gen_tokens": int(r[2]) if r[2] is not None else None,
+                "ttft_ms": int(r[3]) if r[3] is not None else None,
+                "gen_tps": float(r[4]) if r[4] is not None else None,
+                "llm_model": r[5],
+                "chroma_ms": int(r[6]) if r[6] is not None else None,
+                "rerank_ms": int(r[7]) if r[7] is not None else None,
+                "llm_ms": int(r[8]) if r[8] is not None else None,
+                "rss_mb": int(r[9]) if r[9] is not None else None,
+            }
+            for r in rows
+        ]
+
+    def recent_turns_for_user(
+        self,
+        user_id_hash: str,
+        limit: int = 20,
+    ) -> list[dict]:
+        """Most recent qa_log rows for one user_id_hash.
+
+        Powers the admin /stats inspector widget: pick a user → see their
+        last N turns → click one → open the debug panel for that qa_id.
+        Returns a thin row shape; the heavy debug payload is fetched
+        separately via /api/debug/{qa_id}.
+        """
+        with self._lock, self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, ts, question, lang, gate_pass, gate_reason
+                FROM qa_log
+                WHERE user_id_hash = ?
+                ORDER BY ts DESC, id DESC
+                LIMIT ?
+                """,
+                (user_id_hash, int(limit)),
+            ).fetchall()
+        return [
+            {
+                "qa_id": int(r[0]),
+                "ts": int(r[1]),
+                "question": r[2] or "",
+                "lang": r[3] or "",
+                "gate_pass": bool(r[4]),
+                "gate_reason": r[5] or "",
             }
             for r in rows
         ]

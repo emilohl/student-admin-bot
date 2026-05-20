@@ -219,6 +219,12 @@ class WebConfig(BaseModel):
     users_file: str = "data/web_users"
     session_idle_minutes: int = 60
     performance_panel_enabled: bool = False
+    # When a user opts into the "Learn more about how this chatbot works"
+    # toggle, the pipeline writes a gzipped JSON payload (retrieval candidates,
+    # gate detail, full LLM messages, per-stage timings) to qa_debug per turn.
+    # Storage is capped per user_id_hash; oldest rows evict on insert.
+    # 1 MiB ~= 50–125 turns of debug data given typical payload size.
+    debug_max_bytes_per_user: int = 1_048_576
 
 
 class TopicsConfig(BaseModel):

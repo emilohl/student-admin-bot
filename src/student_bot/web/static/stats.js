@@ -40,10 +40,28 @@
   // Histogram keys map 1:1 to canvas ids `chart-<key>` (with underscores
   // turned into dashes for the DOM). Used by the export buttons and the
   // per-chart log-x checkboxes.
-  const HIST_KEYS = ["tokens_hist", "ttft_hist", "tps_hist"];
+  const HIST_KEYS = [
+    "tokens_hist",
+    "ttft_hist",
+    "tps_hist",
+    // Admin-only stage timings — chroma/rerank are CPU buckets, llm is the
+    // GPU/cloud bucket. Surface here lets an operator chase #19 regressions.
+    "chroma_hist",
+    "rerank_hist",
+    "llm_hist",
+  ];
   // Charts that expose a log-y toggle. Feedback is omitted on purpose —
   // it's a fraction in [0,1] so a log axis is meaningless there.
-  const LOGY_KEYS = ["requests", "tokens", "tokens_hist", "ttft_hist", "tps_hist"];
+  const LOGY_KEYS = [
+    "requests",
+    "tokens",
+    "tokens_hist",
+    "ttft_hist",
+    "tps_hist",
+    "chroma_hist",
+    "rerank_hist",
+    "llm_hist",
+  ];
 
   const CHART_COLORS = {
     total: "#004791",         // kth-blue
@@ -58,6 +76,10 @@
     ratio: "#000061",         // kth-navy
     ttft: "#004791",          // kth-blue
     tps: "#0D4A21",           // kth-darkgreen
+    chroma: "#6298D2",        // kth-skyblue — CPU dense retrieval
+    rerank: "#A65900",        // kth-darkyellow — CPU cross-encoder
+    llm: "#78001A",           // kth-darkbrick — GPU/cloud generation
+    rss: "#000061",           // kth-navy — process RSS trend
   };
 
   // Cycled when "split by model" is on — issue #58 caps at 5 models, so 5
@@ -273,6 +295,10 @@
     ttft_hist: null,
     tps_hist: null,
     feedback: null,
+    chroma_hist: null,
+    rerank_hist: null,
+    llm_hist: null,
+    rss_trend: null,
   };
   let lastData = null;
   let currentRange = activeRange();
@@ -619,6 +645,93 @@
     );
   }
 
+  function makeChromaHistData(rows, splitModel, logX) {
+    return makeMetricHistData(
+      rows,
+      splitModel,
+      logX,
+      (r) => r.chroma_ms,
+      T("stats.chart.chroma_hist"),
+      CHART_COLORS.chroma,
+    );
+  }
+
+  function makeRerankHistData(rows, splitModel, logX) {
+    return makeMetricHistData(
+      rows,
+      splitModel,
+      logX,
+      (r) => r.rerank_ms,
+      T("stats.chart.rerank_hist"),
+      CHART_COLORS.rerank,
+    );
+  }
+
+  function makeLlmHistData(rows, splitModel, logX) {
+    return makeMetricHistData(
+      rows,
+      splitModel,
+      logX,
+      (r) => r.llm_ms,
+      T("stats.chart.llm_hist"),
+      CHART_COLORS.llm,
+    );
+  }
+
+  // RSS trend: scatter of (ts, rss_mb) over the active range. Renders only
+  // rows where rss_mb is set (NULL on pre-migration data is skipped). One
+  // dataset, raw points — bucketing would smear the OOM-watch signal #19
+  // cares about (sudden jumps before a crash). Time axis is in seconds since
+  // epoch; chart.js handles it as a numeric category since the existing
+  // buckets pipeline didn't pull in a time adapter.
+  function makeRssTrendData(rows) {
+    const points = [];
+    for (const r of rows) {
+      if (!Number.isFinite(r.ts)) continue;
+      if (r.rss_mb === null || r.rss_mb === undefined) continue;
+      points.push({ x: r.ts * 1000, y: r.rss_mb });
+    }
+    return {
+      datasets: [
+        {
+          label: T("stats.chart.rss_trend"),
+          data: points,
+          borderColor: CHART_COLORS.rss,
+          backgroundColor: CHART_COLORS.rss,
+          showLine: true,
+          tension: 0.2,
+          pointRadius: 2,
+        },
+      ],
+    };
+  }
+
+  function rssTrendOpts() {
+    return {
+      animation: false,
+      responsive: true,
+      parsing: false,
+      scales: {
+        x: {
+          type: "linear",
+          ticks: {
+            callback: (v) => {
+              const d = new Date(v);
+              if (!Number.isFinite(d.getTime())) return "";
+              const mm = d.getMonth() + 1;
+              const dd = d.getDate();
+              const hh = String(d.getHours()).padStart(2, "0");
+              const mi = String(d.getMinutes()).padStart(2, "0");
+              return `${mm}/${dd} ${hh}:${mi}`;
+            },
+          },
+        },
+        y: { beginAtZero: false, title: { display: true, text: "MiB" } },
+      },
+      plugins: { legend: { display: false } },
+    };
+  }
+
   function makeFeedbackData(buckets) {
     const labels = buildLabels(buckets);
     // Three views of feedback per bucket:
@@ -672,6 +785,10 @@
       ttft_hist: null,
       tps_hist: null,
       feedback: null,
+      chroma_hist: null,
+      rerank_hist: null,
+      llm_hist: null,
+      rss_trend: null,
     };
   }
 
@@ -702,6 +819,34 @@
       options: histOpts(logYEnabled("tps_hist"), T("stats.chart.tps_hist.xlabel"), T("stats.unit.tps")),
     });
     if (fbEl)  charts.feedback = new Chart(fbEl,  { type: "line", data: makeFeedbackData(buckets), options: feedbackOpts(range, bucketSeconds) });
+
+    // Admin-only canvases. getElementById returns null for non-admin users
+    // (the server-rendered HTML omits the admin block), so we never new up
+    // a Chart on missing elements — no fix-ups required for the public view.
+    const chromaEl = document.getElementById("chart-chroma-hist");
+    const rerankEl = document.getElementById("chart-rerank-hist");
+    const llmHistEl = document.getElementById("chart-llm-hist");
+    const rssEl = document.getElementById("chart-rss-trend");
+    if (chromaEl) charts.chroma_hist = new Chart(chromaEl, {
+      type: "line",
+      data: makeChromaHistData(rows, splitModel, logXEnabled("chroma_hist")),
+      options: histOpts(logYEnabled("chroma_hist"), T("stats.unit.ms"), T("stats.chart.hist.ylabel")),
+    });
+    if (rerankEl) charts.rerank_hist = new Chart(rerankEl, {
+      type: "line",
+      data: makeRerankHistData(rows, splitModel, logXEnabled("rerank_hist")),
+      options: histOpts(logYEnabled("rerank_hist"), T("stats.unit.ms"), T("stats.chart.hist.ylabel")),
+    });
+    if (llmHistEl) charts.llm_hist = new Chart(llmHistEl, {
+      type: "line",
+      data: makeLlmHistData(rows, splitModel, logXEnabled("llm_hist")),
+      options: histOpts(logYEnabled("llm_hist"), T("stats.unit.ms"), T("stats.chart.hist.ylabel")),
+    });
+    if (rssEl) charts.rss_trend = new Chart(rssEl, {
+      type: "scatter",
+      data: makeRssTrendData(rows),
+      options: rssTrendOpts(),
+    });
   }
 
   async function fetchAndRender(range) {
@@ -826,12 +971,118 @@
     });
   }
 
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(
+      /[&<>"']/g,
+      (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]),
+    );
+  }
+
+  function formatInspectorTs(ts) {
+    if (!Number.isFinite(ts) || ts <= 0) return "–";
+    const d = new Date(ts * 1000);
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mi = String(d.getMinutes()).padStart(2, "0");
+    return `${d.getFullYear()}-${mm}-${dd} ${hh}:${mi}`;
+  }
+
+  function renderInspector(out, user, rows) {
+    const titleTpl = T("stats.inspector.title") || "Recent turns – {user}";
+    const title = titleTpl.replace("{user}", user);
+    if (!rows || !rows.length) {
+      const emptyTpl = T("stats.inspector.empty") || "No turns for {user}.";
+      out.innerHTML =
+        `<h3>${escapeHtml(title)}</h3>` +
+        `<p class="stats-inspector-empty">${escapeHtml(emptyTpl.replace("{user}", user))}</p>`;
+      out.classList.remove("hidden");
+      return;
+    }
+    // Each row links to the chat page's existing debug panel via #debug=<qa_id>.
+    // The home URL is `..` relative to /stats — same base_path the server
+    // uses when rendering the page (the brand-link href in the header).
+    const baseHome = (() => {
+      const a = document.querySelector(".brand-link[href]");
+      return a ? a.getAttribute("href") : "/";
+    })();
+    const items = rows
+      .map((r) => {
+        const refused = !r.gate_pass;
+        const reasonChip = refused
+          ? `<span class="stats-inspector-refused">${escapeHtml(
+              `${T("stats.inspector.refused")} · ${r.gate_reason || ""}`,
+            )}</span>`
+          : "";
+        const q = (r.question || "").replace(/\s+/g, " ").slice(0, 120);
+        const open = T("stats.inspector.open") || "Open in chat";
+        const href = `${baseHome}#debug=${encodeURIComponent(r.qa_id)}`;
+        return (
+          `<li class="stats-inspector-row${refused ? " refused" : ""}">` +
+          `<a class="stats-inspector-open" href="${escapeHtml(href)}" ` +
+          `target="_blank" rel="noopener" title="${escapeHtml(open)}">` +
+          `<span class="stats-inspector-ts">${formatInspectorTs(r.ts)}</span>` +
+          `<span class="stats-inspector-q">${escapeHtml(q)}</span>` +
+          reasonChip +
+          `<span class="stats-inspector-qa">#${r.qa_id}</span>` +
+          `</a></li>`
+        );
+      })
+      .join("");
+    out.innerHTML =
+      `<h3>${escapeHtml(title)}</h3><ul class="stats-inspector-list">${items}</ul>`;
+    out.classList.remove("hidden");
+  }
+
+  async function fetchAndShowInspector(user) {
+    const out = document.getElementById("stats-inspector-out");
+    if (!out) return;
+    out.innerHTML = "";
+    out.classList.remove("hidden");
+    try {
+      const base = location.pathname.replace(/\/stats\/?$/, "");
+      const url = `${base}/api/admin/recent?user=${encodeURIComponent(user)}&limit=20`;
+      const resp = await fetch(url, { credentials: "same-origin" });
+      if (!resp.ok) {
+        const tpl =
+          T("stats.inspector.fetch_error") ||
+          "Failed to load turns (error {status}).";
+        out.innerHTML =
+          `<p class="stats-inspector-error">${escapeHtml(
+            tpl.replace("{status}", String(resp.status)),
+          )}</p>`;
+        return;
+      }
+      const data = await resp.json();
+      renderInspector(out, user, data.rows || []);
+    } catch (e) {
+      const tpl =
+        T("stats.inspector.fetch_error") ||
+        "Failed to load turns (error {status}).";
+      out.innerHTML =
+        `<p class="stats-inspector-error">${escapeHtml(
+          tpl.replace("{status}", e.message || "?"),
+        )}</p>`;
+    }
+  }
+
+  function wireInspector() {
+    document.querySelectorAll(".stats-inspect-btn[data-user]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const user = btn.dataset.user;
+        if (!user) return;
+        fetchAndShowInspector(user);
+      });
+    });
+  }
+
   function init() {
     wireRangeButtons();
     wireLogyToggles();
     wireSplitModelToggle();
     wireLogxToggles();
     wireExportButtons();
+    wireInspector();
     fetchAndRender(currentRange);
     document.addEventListener("i18n:langchange", rerender);
   }

@@ -39,6 +39,10 @@ dependencies = [
     "uvicorn>=0.30",
     "itsdangerous>=2.2",
     "markdown-it-py>=3.0",
+
+    # Per-request memory snapshot (qa_log.rss_mb). Small, well-maintained;
+    # already a transitive dep of several other libs in this stack.
+    "psutil>=5.9",
 ]
 
 [project.optional-dependencies]
