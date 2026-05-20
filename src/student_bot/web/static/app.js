@@ -48,15 +48,43 @@ function syncLearnMore(next) {
   localStorage.setItem("learn_more", state.learnMore ? "1" : "0");
   if (el("#learn-more")) el("#learn-more").checked = state.learnMore;
   if (el("#learn-more-chat")) el("#learn-more-chat").checked = state.learnMore;
-  // When the user flips the toggle off mid-session, hide the panel; don't
-  // erase the cache so flipping back on restores access to past turns.
-  if (!state.learnMore) hideDebugPanel();
+  // When the user flips the toggle off mid-session, force the view back to
+  // chat (the tab bar disappears, so the debug tab would otherwise be
+  // unreachable). The debug cache is preserved so flipping back on keeps
+  // access to past turns.
+  if (!state.learnMore) setView("chat");
+  syncTabBarVisibility();
   // Existing bot bubbles get their 🔍 button shown/hidden in sync.
   document.querySelectorAll(".msg.bot").forEach((wrap) => {
     const btn = wrap.querySelector(".debug-btn");
     if (btn) btn.classList.toggle("hidden", !state.learnMore);
   });
 }
+
+// View tabs: only shown after onboarding AND when learn-more is on. The
+// active-tab CSS rule (.viewing-debug on <body>) hides the chat card and
+// reveals #debug-panel, plus widens `main` so the retrieval table has room.
+function setView(view) {
+  const isDebug = view === "debug";
+  document.body.classList.toggle("viewing-debug", isDebug);
+  document.querySelectorAll(".view-tab").forEach((btn) => {
+    const active = btn.dataset.view === view;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-selected", active ? "true" : "false");
+  });
+}
+
+function syncTabBarVisibility() {
+  const tabBar = el("#view-tabs");
+  if (!tabBar) return;
+  const pastOnboarding = !el("#chat").classList.contains("hidden");
+  const show = state.learnMore && pastOnboarding;
+  tabBar.classList.toggle("hidden", !show);
+}
+
+document.querySelectorAll(".view-tab").forEach((btn) => {
+  btn.addEventListener("click", () => setView(btn.dataset.view));
+});
 
 if (el("#learn-more-chat")) {
   el("#learn-more-chat").addEventListener("change", (e) => syncLearnMore(e.target.checked));
@@ -77,6 +105,7 @@ el("#start").addEventListener("click", () => {
   }).catch(() => {});
   onboarding.classList.add("hidden");
   chat.classList.remove("hidden");
+  syncTabBarVisibility();
   renderLoggingStatus();
   el("#question").focus();
   if (perfEnabled) refreshSystemLoad();
@@ -295,11 +324,12 @@ composer.addEventListener("submit", async (e) => {
     if (perfEnabled) updatePerfPanel(finalMeta);
     // Cache the inline debug payload (when learn_more was on and the
     // server wrote qa_debug) so a click on this bubble's 🔍 button is
-    // instant — no /api/debug/{qa_id} round-trip — and auto-open the
-    // panel so the user sees the data they opted into.
+    // instant — no /api/debug/{qa_id} round-trip. We deliberately don't
+    // auto-switch to the debug tab: that would hide the answer that just
+    // finished streaming. The tab bar itself + the per-bubble 🔍 button
+    // are the affordances for going to look at the data.
     if (finalMeta.qa_id && finalMeta.debug) {
       state.debugCache.set(finalMeta.qa_id, finalMeta.debug);
-      if (state.learnMore) showDebugPanel(finalMeta.qa_id);
     }
   }
 });
@@ -1304,16 +1334,10 @@ function exportThreadMarkdown() {
 const debugPanel = el("#debug-panel");
 const debugPanelBody = el("#debug-panel-body");
 const debugPanelEmpty = el("#debug-panel-empty");
-const debugCloseBtn = el("#debug-close");
-if (debugCloseBtn) debugCloseBtn.addEventListener("click", hideDebugPanel);
-
-function hideDebugPanel() {
-  if (debugPanel) debugPanel.classList.add("hidden");
-}
 
 async function showDebugPanel(qaId) {
   if (!debugPanel || !debugPanelBody) return;
-  debugPanel.classList.remove("hidden");
+  setView("debug");
   if (debugPanelEmpty) debugPanelEmpty.classList.add("hidden");
 
   let payload = state.debugCache.get(qaId);
@@ -1432,7 +1456,10 @@ function renderDebugPayload(payload, qaId) {
     [t("debug.field.model"), escapeHtml(llm.model || "–")],
     [t("debug.field.prompt_tokens"), llm.prompt_tokens_est ?? "–"],
   ];
-  const llmMessagesHtml = renderLlmMessages(llm.messages || []);
+  // Gate-failed turns take the meta_fallback path where the last user
+  // message is the bare question (no retrieved chunks injected). Pass
+  // gate.pass through so the role label reflects that.
+  const llmMessagesHtml = renderLlmMessages(llm.messages || [], !!gate.pass);
   sections.push(
     debugSection(
       t("debug.section.llm"),
@@ -1506,20 +1533,39 @@ function chunkTable(chunks, includeRerank) {
   );
 }
 
-function renderLlmMessages(messages) {
+function renderLlmMessages(messages, gatePassed) {
   if (!messages || !messages.length) return "";
   const items = messages
-    .map((m) => {
-      const role = escapeHtml(m.role || "");
+    .map((m, i) => {
+      const label = debugRoleLabel(m.role, i, messages.length, gatePassed);
       const content = escapeHtml(String(m.content || ""));
       return (
-        `<details class="debug-msg"><summary>${role}` +
+        `<details class="debug-msg"><summary>${escapeHtml(label)}` +
         `<span class="debug-msg-len"> · ${content.length} ch</span></summary>` +
         `<pre>${content}</pre></details>`
       );
     })
     .join("");
   return `<div class="debug-msgs">${items}</div>`;
+}
+
+// Map raw OpenAI/Ollama role names to descriptive labels for non-RAG-savvy
+// readers. The last user message is the "current turn" — composite of the
+// retrieved excerpts and the question on the main path, or just the bare
+// question on the gate-failed meta_fallback path. Anything before that is
+// history from ConversationMemory (bare Q&A pairs, no retrieval attached).
+function debugRoleLabel(role, index, total, gatePassed) {
+  const t = window.t || ((k) => k);
+  if (role === "system") return t("debug.role.system");
+  const isLast = index === total - 1;
+  if (role === "user" && isLast) {
+    return gatePassed
+      ? t("debug.role.current_user_rag")
+      : t("debug.role.current_user_bare");
+  }
+  if (role === "user") return t("debug.role.history_user");
+  if (role === "assistant") return t("debug.role.history_assistant");
+  return role;
 }
 
 function fmtNum(v) {
@@ -1541,6 +1587,9 @@ function maybeOpenDebugFromHash() {
   if (!m) return;
   const qaId = Number(m[1]);
   if (!Number.isFinite(qaId)) return;
+  // Admin deep-links may arrive with learn-more off; enable it so the tab
+  // bar appears and the user can switch back to chat.
+  if (!state.learnMore) syncLearnMore(true);
   // Defer one tick so the chat section is visible (start-click above runs
   // synchronously, but the css transition + i18n pass shouldn't fight us).
   setTimeout(() => showDebugPanel(qaId), 0);

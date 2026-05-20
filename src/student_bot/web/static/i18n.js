@@ -162,9 +162,11 @@
       "stats.inspector.refused": "spärrad",
       "stats.inspector.open": "Öppna i chatten",
 
+      "tabs.chat": "Chatt",
+      "tabs.debug": "Så här tänkte boten",
+
       "debug.title": "Så här tänkte boten",
       "debug.intro": "Här ser du vilka dokument retrieval hittade, vad spärren beslutade, samt vilken kontext som skickades till språkmodellen. Klicka på 🔍 vid ett svar för att se den turens detaljer.",
-      "debug.close": "Stäng",
       "debug.empty": "Ingen diagnostikdata sparades för denna tur (du var avloggad eller en kortslutning skedde tidigt).",
       "debug.section.routing": "Routing",
       "debug.section.gate": "Spärr (gate)",
@@ -198,6 +200,11 @@
       "debug.msg.details.title": "Visa hur boten kom fram till detta svar",
       "debug.msg.no_data": "Inga detaljer sparades för denna tur.",
       "debug.fetch_error": "Kunde inte hämta detaljer (fel {status}).",
+      "debug.role.system": "System (instruktioner till modellen)",
+      "debug.role.history_user": "Tidigare fråga (från användaren)",
+      "debug.role.history_assistant": "Tidigare svar (från boten)",
+      "debug.role.current_user_rag": "Aktuell fråga + utdrag från dokumenten",
+      "debug.role.current_user_bare": "Aktuell fråga",
     },
     en: {
       "brand.name": "Lux - adminbot",
@@ -353,9 +360,11 @@
       "stats.inspector.refused": "refused",
       "stats.inspector.open": "Open in chat",
 
+      "tabs.chat": "Chat",
+      "tabs.debug": "How the bot thought",
+
       "debug.title": "How the bot thought",
       "debug.intro": "Here you can see which documents retrieval found, what the gate decided, and the exact context that was sent to the language model. Click the 🔍 next to a reply to see that turn's details.",
-      "debug.close": "Close",
       "debug.empty": "No debug data was saved for this turn (you were opted out or a short-circuit happened early).",
       "debug.section.routing": "Routing",
       "debug.section.gate": "Gate",
@@ -389,6 +398,11 @@
       "debug.msg.details.title": "See how the bot arrived at this answer",
       "debug.msg.no_data": "No details were saved for this turn.",
       "debug.fetch_error": "Could not load details (error {status}).",
+      "debug.role.system": "System (instructions to the model)",
+      "debug.role.history_user": "Earlier question (from user)",
+      "debug.role.history_assistant": "Earlier reply (from bot)",
+      "debug.role.current_user_rag": "Current question + document excerpts",
+      "debug.role.current_user_bare": "Current question",
     },
   };
 

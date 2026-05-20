@@ -423,6 +423,52 @@ html[lang="en"] .lang-sv { display: none; }
   color: var(--kth-white);
 }
 
+/* --- View tabs (Chat / "How the bot thought") --- */
+
+/* Visible only when the learn-more toggle is on (see syncTabBarVisibility in
+   app.js). The active tab matches the .card below it via the KTH-blue
+   underline. `margin-bottom: -1px` lets the bottom edge of the active tab
+   overlap the row's border so it reads as continuous with the panel. */
+.view-tabs {
+  display: flex;
+  gap: 0;
+  margin: 0 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+.view-tab {
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+.view-tab:hover:not(.active) { color: var(--fg); }
+.view-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* body.viewing-debug swaps which card is visible. The debug panel was hidden
+   by default before the tab paradigm (via the `.hidden` class); now its base
+   state is also hidden and CSS reveals it when the tab is active. */
+#debug-panel { display: none; }
+body.viewing-debug #chat { display: none; }
+body.viewing-debug #debug-panel { display: block; }
+
+/* In debug view, widen `main` to give the retrieval table room. Caps at
+   1400px to keep line-lengths readable; floors at 1000px so the table's
+   five columns don't get squashed — viewports narrower than 1000px + the
+   64px main-padding get a horizontal page scrollbar by design. */
+body.viewing-debug main {
+  max-width: min(1400px, calc(100vw - 64px));
+  min-width: 1000px;
+}
+
 /* --- Learn-more debug panel (#45 / #19) --- */
 
 .learn-more-inline {
@@ -438,13 +484,11 @@ html[lang="en"] .lang-sv { display: none; }
 .chat-status-top { margin-bottom: 2px; }
 
 #debug-panel {
-  margin-top: 12px;
   padding: 16px 18px;
   background: var(--kth-brokenwhite);
   border: 1px solid var(--border);
   border-left: 4px solid var(--kth-skyblue);
 }
-#debug-panel.hidden { display: none; }
 .debug-panel-head {
   display: flex;
   align-items: center;

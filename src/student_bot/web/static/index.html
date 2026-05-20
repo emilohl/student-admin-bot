@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>student-bot</title>
-<link rel="stylesheet" href="static/style.css?v=33">
+<link rel="stylesheet" href="static/style.css?v=35">
 </head>
 <body>
 <header>
@@ -50,6 +50,13 @@
     <button id="start" data-i18n="onboarding.start"></button>
   </section>
 
+  <div id="view-tabs" class="view-tabs hidden" role="tablist">
+    <button type="button" class="view-tab active" role="tab" data-view="chat"
+            aria-selected="true" data-i18n="tabs.chat"></button>
+    <button type="button" class="view-tab" role="tab" data-view="debug"
+            aria-selected="false" data-i18n="tabs.debug"></button>
+  </div>
+
   <section id="chat" class="card hidden">
     <div id="cloud-notice-chat" class="cloud-notice cloud-notice-banner hidden" role="note"></div>
     <div class="chat-status-row chat-status-top">
@@ -94,11 +101,9 @@
     </form>
   </section>
 
-  <aside id="debug-panel" class="card hidden" aria-live="polite">
+  <aside id="debug-panel" class="card" aria-live="polite">
     <div class="debug-panel-head">
       <h2 data-i18n="debug.title"></h2>
-      <button type="button" id="debug-close" class="ghost"
-              data-i18n="debug.close" data-i18n-aria="debug.close"></button>
     </div>
     <p class="debug-panel-intro" data-i18n="debug.intro"></p>
     <div id="debug-panel-body"></div>
@@ -114,8 +119,8 @@
   <span id="conn"></span>
 </footer>
 
-<script src="static/i18n.js?v=33"></script>
+<script src="static/i18n.js?v=35"></script>
 <script src="static/notice.js?v=32" defer></script>
-<script src="static/app.js?v=33"></script>
+<script src="static/app.js?v=35"></script>
 </body>
 </html>
