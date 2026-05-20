@@ -42,6 +42,7 @@ el("#name").value = state.name;
 el("#opt-out").checked = state.optOut;
 if (el("#learn-more")) el("#learn-more").checked = state.learnMore;
 if (el("#learn-more-chat")) el("#learn-more-chat").checked = state.learnMore;
+if (el("#logging-checkbox")) el("#logging-checkbox").checked = !state.optOut;
 
 function syncLearnMore(next) {
   state.learnMore = !!next;
@@ -106,42 +107,17 @@ el("#start").addEventListener("click", () => {
   onboarding.classList.add("hidden");
   chat.classList.remove("hidden");
   syncTabBarVisibility();
-  renderLoggingStatus();
   el("#question").focus();
   if (perfEnabled) refreshSystemLoad();
 });
 
-// Logging toggle: lets a returning user change their opt-out preference any
-// time, not just at onboarding (#33). State is mirrored both in localStorage
-// and on the server (set_opt_out keyed by web_user_id).
-function renderLoggingStatus() {
-  const dot = el("#logging-dot");
-  const label = el("#logging-label");
-  const btn = el("#logging-toggle");
-  if (!dot || !label || !btn) return;
-  const t = window.t || ((k) => k);
-  if (state.optOut) {
-    dot.classList.add("off");
-    label.textContent = t("chat.logging.off");
-    label.title = t("chat.logging.off.tip");
-    btn.textContent = t("chat.logging.enable");
-    btn.title = t("chat.logging.enable.tip");
-    btn.setAttribute("aria-label", t("chat.logging.enable.tip"));
-  } else {
-    dot.classList.remove("off");
-    label.textContent = t("chat.logging.on");
-    label.title = t("chat.logging.on.tip");
-    btn.textContent = t("chat.logging.disable");
-    btn.title = t("chat.logging.disable.tip");
-    btn.setAttribute("aria-label", t("chat.logging.disable.tip"));
-  }
-}
-
-if (el("#logging-toggle")) {
-  el("#logging-toggle").addEventListener("click", () => {
-    state.optOut = !state.optOut;
+// Logging checkbox: positive polarity (ticked = logging enabled) so it
+// matches the adjacent learn-more checkbox. State is mirrored both in
+// localStorage and on the server (set_opt_out keyed by web_user_id).
+if (el("#logging-checkbox")) {
+  el("#logging-checkbox").addEventListener("change", (e) => {
+    state.optOut = !e.target.checked;
     localStorage.setItem("opt_out", state.optOut ? "1" : "0");
-    renderLoggingStatus();
     fetch("api/session", {
       method: "POST",
       credentials: "include",
@@ -156,8 +132,6 @@ if (el("#logging-toggle")) {
     statusEl.textContent = state.optOut ? t("chat.logging.toast.off") : t("chat.logging.toast.on");
   });
 }
-
-document.addEventListener("i18n:langchange", renderLoggingStatus);
 
 el("#reset").addEventListener("click", async () => {
   // Confirm before discarding a non-empty conversation. Skip the prompt
@@ -473,14 +447,6 @@ async function initPerf() {
     applyCloudProviderNotice(cloudProviderName);
     state.isAdmin = !!data.is_admin;
     document.body.classList.toggle("is-admin", state.isAdmin);
-    // Server-driven default for the learn-more toggle; only honored when
-    // the user hasn't already set a preference in localStorage.
-    if (
-      localStorage.getItem("learn_more") === null &&
-      data.learn_more_default
-    ) {
-      syncLearnMore(true);
-    }
   } catch (_) {
     setPerfEnabled(false);
   }

@@ -150,18 +150,30 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .perf-value .host { color: #78001A; }
 .status { color: var(--muted); flex: 1; font-size: 13px; }
 #chat { display: flex; flex-direction: column; gap: 16px; }
-/* Compact logging-state line, stacked directly under the composer's
-   submit/reset buttons via .composer-actions-col so it sits flush with the
-   buttons regardless of perf-panel height. Lets the user toggle opt-out
-   mid-session — fulfills the "encourage, but always allow opt-out" pedagogy
-   without nagging on every reply. The parenthetical explanation lives in
-   tooltips on the label and the toggle. */
-.chat-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
-.chat-status .logging-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--good); flex-shrink: 0; }
-.chat-status .logging-dot.off { background: var(--muted); }
-.chat-status .logging-label { cursor: help; }
-button.link { background: transparent; color: var(--accent); border: 0; padding: 0 2px; font-size: 12px; cursor: pointer; text-decoration: underline; }
-button.link:hover { color: var(--kth-skyblue); }
+/* Per-chat options (logging + learn-more) stacked under the composer's
+   submit/reset/export buttons. Both are checkboxes with positive polarity
+   — ticked = feature enabled — so they read consistently next to each
+   other. The parenthetical explanation lives in a title tooltip rather
+   than the visible label. */
+.chat-options {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.chat-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-weight: 400;
+  cursor: help;
+}
+.chat-option input { margin: 0; cursor: pointer; }
 #messages { display: flex; flex-direction: column; gap: 12px; max-height: 60dvh; overflow-y: auto; padding-right: 4px; }
 .msg { padding: 12px 14px; border-radius: 8px; max-width: 88%; }
 .msg.user { background: var(--user); align-self: flex-end; }
@@ -470,18 +482,6 @@ body.viewing-debug main {
 }
 
 /* --- Learn-more debug panel (#45 / #19) --- */
-
-.learn-more-inline {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 8px;
-  font-size: 0.88rem;
-  color: var(--fg);
-  opacity: 0.8;
-}
-.learn-more-inline input { margin: 0; }
-.chat-status-top { margin-bottom: 2px; }
 
 #debug-panel {
   padding: 16px 18px;
