@@ -216,6 +216,16 @@ def create_app(cfg: Config | None = None) -> FastAPI:
     app.mount(
         _join_base(base_path, "/static"), StaticFiles(directory=str(STATIC_DIR)), name="static"
     )
+    # The reveal.js "how the bot works" deck, deployed alongside the bot.
+    # Lives in `docs/slides/` (not under the corpus mount), linked from /about.
+    # `html=True` so `/slides/` serves `index.html`.
+    slides_dir = cfg.absolute(Path("docs/slides")).resolve()
+    if (slides_dir / "index.html").exists():
+        app.mount(
+            _join_base(base_path, "/slides"),
+            StaticFiles(directory=str(slides_dir), html=True),
+            name="slides",
+        )
 
     # --- pages ---
 
@@ -863,7 +873,7 @@ _HEADER_HTML = """\
 # Loaded into <head> on every server-rendered page, before notice.js, so
 # data-i18n attributes are translated before any other scripts run.
 _NOTICE_SCRIPT = (
-    '<script src="{static_prefix}/i18n.js?v=33"></script>'
+    '<script src="{static_prefix}/i18n.js?v=38"></script>'
     '<script src="{static_prefix}/notice.js?v=33" defer></script>'
 )
 
@@ -872,6 +882,7 @@ def _about_page(cfg: Config, base_path: str = "") -> HTMLResponse:
     link = cfg.fallback.counselor_link
     static_prefix = _join_base(base_path, "/static")
     home = _join_base(base_path, "/") or "/"
+    slides = _join_base(base_path, "/slides/")
     # Counselor link is config-driven, not language-bound, so we render it
     # server-side and append it after the translatable tip text.
     cl_html = f' (<a href="{link}">{link}</a>)' if link else ""
@@ -889,7 +900,7 @@ def _about_page(cfg: Config, base_path: str = "") -> HTMLResponse:
     )
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="{static_prefix}/style.css?v=33">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<link rel="stylesheet" href="{static_prefix}/style.css?v=38">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
 <body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix, home=home)}<main>{_NOTICE_HTML}<div class="card">
 <h2 data-i18n="about.h2.what"></h2>
 <p data-i18n="about.what.body"></p>
@@ -902,6 +913,8 @@ def _about_page(cfg: Config, base_path: str = "") -> HTMLResponse:
 <li data-i18n="about.tip4"></li>
 <li data-i18n="about.tip5"></li>
 </ol>
+<h2 data-i18n="about.h2.slides"></h2>
+<p><a href="{slides}" target="_blank" rel="noopener" data-i18n="about.slides.link"></a> <span class="version" data-i18n="about.slides.note"></span></p>
 <div class="github-link">
   <a href="https://github.com/cohm/student-admin-bot" target="_blank" rel="noopener">
     <svg class="github-mark" viewBox="0 0 16 16" aria-hidden="true">
@@ -931,7 +944,7 @@ def _glossary_page(cfg: Config, base_path: str = "") -> HTMLResponse:
     )
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="{static_prefix}/style.css?v=33">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<link rel="stylesheet" href="{static_prefix}/style.css?v=38">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
 <body>{_HEADER_HTML.format(tagline_html='<p class="tagline" data-i18n="glossary.tagline"></p>', static_prefix=static_prefix, home=home)}
 <main>{_NOTICE_HTML}<div class="card">
 <table border="1" cellpadding="6" cellspacing="0" style="width:100%; border-collapse: collapse;">
@@ -1042,7 +1055,7 @@ def _md_doc_page(cfg: Config, docs_dir: Path, rel_source: str, base_path: str = 
 
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>{_h(doc.title)}</title>
-<link rel="stylesheet" href="{static_prefix}/style.css?v=33">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<link rel="stylesheet" href="{static_prefix}/style.css?v=38">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
 <body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix, home=home)}
 <main><div class="card md-doc">
 <nav class="md-nav">
@@ -1329,7 +1342,7 @@ def _stats_page(
 
     body = f"""
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><title>student-bot</title>
-<link rel="stylesheet" href="{static_prefix}/style.css?v=33">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
+<link rel="stylesheet" href="{static_prefix}/style.css?v=38">{_NOTICE_SCRIPT.format(static_prefix=static_prefix)}</head>
 <body>{_HEADER_HTML.format(tagline_html="", static_prefix=static_prefix, home=home)}<main>{_NOTICE_HTML}<div class="card stats-card" data-channel="{channel}" data-is-admin="{1 if is_admin else 0}">
 <h1 data-i18n="stats.title"></h1>
 {channel_switch_html}

@@ -35,6 +35,10 @@ COPY config.yaml ./
 COPY topics.yaml ./
 COPY data/dictionary.json ./data/dictionary.json
 
+# The "how the bot works" reveal.js deck, served at /slides/ by the web UI.
+# `docs/` as a whole is a runtime corpus mount, but the deck ships in the image.
+COPY docs/slides ./docs/slides
+
 # Surface the git version into the runtime env so the About page can show a
 # commit hash / release tag even though `.git/` is not copied into the image.
 # Pass at build time, e.g.

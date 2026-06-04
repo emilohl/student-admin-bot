@@ -70,6 +70,9 @@
       "about.tip3": "<strong>Boten har gränser.</strong> Den känner bara till de indexerade dokumenten – inte ditt enskilda fall, inte aktuella personer eller datum utanför dokumenten. För personliga ärenden, kontakta studievägledaren.",
       "about.tip4": "<strong>Du blir loggad – men du kan stänga av det.</strong> Frågor och svar lagras anonymt (med saltad SHA-256 av ditt session-id) för att förbättra boten. Använd loggnings-reglaget ovanför chattfältet (eller bocka i <em>\"Logga inte mina frågor\"</em> i onboardingen). I Mattermost: <code>!logging off</code>.",
       "about.tip5": "<strong>Komplement, inte ersättare.</strong> Boten kan ge snabba svar på välkända frågor; viktiga beslut om dina studier ska du diskutera med en människa.",
+      "about.h2.slides": "Hur boten fungerar",
+      "about.slides.link": "Öppna presentationen →",
+      "about.slides.note": "(reveal.js, öppnas i ny flik)",
       "about.back": "← Tillbaka",
 
       "glossary.title": "Ordlista",
@@ -264,6 +267,9 @@
       "about.tip3": "<strong>The bot has limits.</strong> It only knows the indexed documents — not your individual case, not current people or dates outside the documents. For personal matters, contact the study counselor.",
       "about.tip4": "<strong>You're logged — but you can turn it off.</strong> Questions and answers are stored anonymously (with a salted SHA-256 of your session id) to help improve the bot. Use the logging toggle above the chat (or tick <em>\"Don't log my questions\"</em> at onboarding). In Mattermost: <code>!logging off</code>.",
       "about.tip5": "<strong>Complement, not replacement.</strong> The bot can answer well-known questions quickly; important decisions about your studies should be discussed with a human.",
+      "about.h2.slides": "How the bot works",
+      "about.slides.link": "Open the presentation →",
+      "about.slides.note": "(reveal.js, opens in a new tab)",
       "about.back": "← Back",
 
       "glossary.title": "Glossary",

@@ -91,6 +91,10 @@ footer { padding: 16px 32px; color: var(--muted); font-size: 13px; border-top: 1
 footer a { color: var(--muted); margin-right: 8px; }
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 16px; }
 .card h2 { margin-top: 0; }
+/* Content links in card pages (about, glossary) use KTH blue, not the browser
+   default link blue, so they match the github/version footer link. More
+   specific rules below (.github-link a, .version a) still override this. */
+.card a { color: var(--accent); }
 .caveat { background: #fff7e7; border-left: 3px solid var(--warn); padding: 8px 12px; border-radius: 4px; margin: 12px 0; }
 /* Cloud-provider notice (#20). Appears only when /api/health reports a
    non-local LLM is in use — onboarding shows a small inline paragraph; the
