@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pipeline routing widget</title>
+<style>
+  :root {
+    --kth-blue:       #004791;
+    --kth-skyblue:    #6298D2;
+    --kth-navy:       #000061;
+    --kth-lightblue:  #DEF0FF;
+    --kth-sand:       #EBE5E0;
+    --kth-yellow:     #FFBE00;
+    --kth-yellow-l:   #FFF0B0;
+    --kth-brick:      #E86A58;
+    --kth-brick-l:   #FFCCC4;
+    --kth-green:      #4DA060;
+    --kth-green-l:   #C7EBBA;
+    --kth-gray:       #A5A5A5;
+    --kth-gray-d:    #323232;
+    --kth-gray-l:    #E6E6E6;
+  }
+
+  html, body {
+    margin: 0; padding: 0;
+    background: white;
+    font-family: 'Figtree', system-ui, sans-serif;
+    color: var(--kth-gray-d);
+    overflow: hidden;
+    font-size: 22px;
+  }
+  .wrap {
+    width: 100vw;
+    box-sizing: border-box;
+    padding: 18px 28px;
+  }
+  .scenario-buttons {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .scenario-buttons button {
+    font-family: inherit;
+    font-size: 24px;
+    font-weight: 600;
+    background: var(--kth-lightblue);
+    color: var(--kth-navy);
+    border: 2px solid var(--kth-blue);
+    border-radius: 8px;
+    padding: 12px 22px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .scenario-buttons button:hover { background: var(--kth-skyblue); color: white; }
+  .scenario-buttons button.running { background: var(--kth-blue); color: white; }
+  .scenario-buttons button:disabled { opacity: 0.55; cursor: wait; }
+
+  .diagram-host {
+    background: var(--kth-sand);
+    border-radius: 10px;
+    padding: 14px 0 0;
+    margin-bottom: 16px;
+  }
+  svg.diagram {
+    width: 100%;
+    height: 460px;
+    display: block;
+  }
+
+  /* Stage styling — SVG <g class="stage"> with <rect> + <text>. */
+  .stage rect {
+    fill: white;
+    stroke: var(--kth-blue);
+    stroke-width: 4;
+    transition: fill 0.25s, stroke 0.25s;
+  }
+  .stage text {
+    fill: var(--kth-navy);
+    font-weight: 600;
+    text-anchor: middle;
+    font-size: 28px;
+    transition: fill 0.25s;
+  }
+  .stage text.sub {
+    font-weight: 400;
+    font-size: 20px;
+    fill: var(--kth-gray-d);
+  }
+  /* "skipped" — stage not visited this scenario; muted look. */
+  .stage.skipped rect { fill: var(--kth-gray-l); stroke: var(--kth-gray); }
+  .stage.skipped text { fill: var(--kth-gray); }
+  /* "active" — dot is currently here. */
+  .stage.active rect { fill: var(--kth-yellow); stroke: var(--kth-yellow); }
+  .stage.active text { fill: var(--kth-gray-d); }
+  /* "done" — dot passed through. */
+  .stage.done rect { fill: var(--kth-lightblue); stroke: var(--kth-blue); }
+  /* Refuse stage styled as warning when activated. */
+  .stage.refuse-active rect { fill: var(--kth-brick); stroke: var(--kth-brick); }
+  .stage.refuse-active text { fill: white; }
+
+  /* Connector lines (initially muted; turn KTH-blue when traversed). */
+  .wire { stroke: var(--kth-gray); stroke-width: 4; fill: none; transition: stroke 0.25s; }
+  .wire.lit { stroke: var(--kth-blue); }
+  .wire.refuse-lit { stroke: var(--kth-brick); }
+
+  /* The travelling message dot. */
+  .dot { fill: var(--kth-blue); }
+  .dot.refuse { fill: var(--kth-brick); }
+
+  /* Side-by-side info panels under the diagram. */
+  .panels {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 18px;
+    font-size: 20px;
+  }
+  .panel {
+    background: white;
+    border: 1px solid var(--kth-gray-l);
+    border-radius: 8px;
+    padding: 14px 18px;
+    min-height: 180px;
+  }
+  .panel h4 {
+    margin: 0 0 0.4em;
+    font-size: 18px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--kth-blue);
+  }
+  .panel .q {
+    color: var(--kth-navy);
+    font-weight: 500;
+    line-height: 1.35;
+  }
+  .panel .expansion {
+    background: var(--kth-yellow-l);
+    border-left: 4px solid var(--kth-yellow);
+    padding: 8px 12px;
+    margin-top: 8px;
+    font-size: 18px;
+    border-radius: 4px;
+  }
+  .panel .meta {
+    color: var(--kth-gray-d);
+    font-size: 16px;
+    margin-top: 8px;
+  }
+  .panel .meta code { background: var(--kth-gray-l); padding: 1px 6px; border-radius: 3px; }
+  .panel .verdict-pass   { color: var(--kth-green); font-weight: 700; }
+  .panel .verdict-refuse { color: var(--kth-brick); font-weight: 700; }
+  .panel .answer {
+    font-size: 18px;
+    line-height: 1.35;
+    color: var(--kth-gray-d);
+    margin-top: 6px;
+  }
+  .panel .answer.refuse { color: #8a2c1e; }
+  .panel .citations {
+    font-size: 16px;
+    color: var(--kth-navy);
+    margin-top: 6px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="scenario-buttons">
+    <button data-scenario="indomain">1 — In-domain question</button>
+    <button data-scenario="offtopic">2 — Off-topic (refused)</button>
+    <button data-scenario="jargon">3 — Jargon expanded</button>
+  </div>
+
+  <div class="diagram-host">
+    <!-- Diagram coordinate system: 1920 × 460. Stages are 200×128 rectangles
+         centred on the (cx,cy) listed in STAGE_CENTRES below. User and Log
+         are inset ~15 px from the viewBox edges so they don't sit flush
+         against the sand-shaded host's rounded corners. Log shares the
+         main-row y so the branching wires merge cleanly back into it.
+         Connector paths in <g id="wires"> match the route an SVG <circle>
+         moves along when a scenario runs. The whole viewBox scales to fit
+         the iframe width via preserveAspectRatio="xMidYMid meet". -->
+    <svg class="diagram" viewBox="0 0 1920 460" preserveAspectRatio="xMidYMid meet">
+
+      <!-- Wires: drawn first so stage rects sit on top. -->
+      <g id="wires">
+        <line class="wire" id="w-user-lang"     x1="215" y1="230" x2="240" y2="230"/>
+        <line class="wire" id="w-lang-jargon"   x1="440" y1="230" x2="480" y2="230"/>
+        <line class="wire" id="w-jargon-retr"   x1="680" y1="230" x2="720" y2="230"/>
+        <line class="wire" id="w-retr-rerank"   x1="920" y1="230" x2="960" y2="230"/>
+        <line class="wire" id="w-rerank-gate"   x1="1160" y1="230" x2="1200" y2="230"/>
+        <!-- Gate fans out: top branch to Generate, bottom branch to Refuse. -->
+        <path class="wire" id="w-gate-gen"    d="M 1400 230 L 1440 230 L 1440 80 L 1480 80"/>
+        <path class="wire" id="w-gate-refuse" d="M 1400 230 L 1440 230 L 1440 380 L 1480 380"/>
+        <!-- Both branches merge back into Log on the main row. -->
+        <path class="wire" id="w-gen-log"     d="M 1680 80 L 1740 80 L 1740 230 L 1785 230"/>
+        <path class="wire" id="w-refuse-log"  d="M 1680 380 L 1740 380 L 1740 230 L 1785 230"/>
+      </g>
+
+      <!-- Stages. The HTML drives state via the data-stage id. -->
+      <g class="stage" data-stage="user">
+        <rect x="15"   y="166" width="200" height="128" rx="10"/>
+        <text x="115"  y="222">User</text>
+        <text x="115"  y="254" class="sub">sv / en</text>
+      </g>
+      <g class="stage" data-stage="lang">
+        <rect x="240"  y="166" width="200" height="128" rx="10"/>
+        <text x="340"  y="222">Lang detect</text>
+        <text x="340"  y="254" class="sub">lingua</text>
+      </g>
+      <g class="stage" data-stage="jargon">
+        <rect x="480"  y="166" width="200" height="128" rx="10"/>
+        <text x="580"  y="222">Jargon expand</text>
+        <text x="580"  y="254" class="sub">dictionary.json</text>
+      </g>
+      <g class="stage" data-stage="retrieve">
+        <rect x="720"  y="166" width="200" height="128" rx="10"/>
+        <text x="820"  y="222">Retrieve</text>
+        <text x="820"  y="254" class="sub">Chroma · bge-m3</text>
+      </g>
+      <g class="stage" data-stage="rerank">
+        <rect x="960"  y="166" width="200" height="128" rx="10"/>
+        <text x="1060" y="222">Rerank</text>
+        <text x="1060" y="254" class="sub">cross-encoder</text>
+      </g>
+      <g class="stage" data-stage="gate">
+        <rect x="1200" y="166" width="200" height="128" rx="10"/>
+        <text x="1300" y="222">Gate</text>
+        <text x="1300" y="254" class="sub">top1 ≥ −0.5?</text>
+      </g>
+      <g class="stage" data-stage="generate">
+        <rect x="1480" y="16"  width="200" height="128" rx="10"/>
+        <text x="1580" y="72">Generate</text>
+        <text x="1580" y="104" class="sub">Ollama · Gemma</text>
+      </g>
+      <g class="stage" data-stage="refuse">
+        <rect x="1480" y="316" width="200" height="128" rx="10"/>
+        <text x="1580" y="372">Refuse</text>
+        <text x="1580" y="404" class="sub">→ counselor</text>
+      </g>
+      <g class="stage" data-stage="log">
+        <rect x="1785" y="166" width="120" height="128" rx="10"/>
+        <text x="1845" y="222">Log</text>
+        <text x="1845" y="254" class="sub">SQLite</text>
+      </g>
+
+      <!-- The travelling message dot — JS sets cx, cy and class.refuse. -->
+      <circle class="dot" id="msg-dot" r="0" cx="115" cy="230"/>
+    </svg>
+  </div>
+
+  <div class="panels">
+    <div class="panel">
+      <h4>Question</h4>
+      <div class="q" id="p-question">Pick a scenario above to see how it routes.</div>
+      <div class="expansion" id="p-expansion" style="display: none;"></div>
+      <div class="meta" id="p-meta"></div>
+    </div>
+    <div class="panel">
+      <h4 id="p-result-label">Result</h4>
+      <div id="p-verdict"></div>
+      <div class="answer" id="p-answer"></div>
+      <div class="citations" id="p-citations"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // -- Scenario definitions ---------------------------------------------- //
+  // Each scenario describes:
+  //   - the visible question (and optional expansion, for jargon)
+  //   - the ordered list of stage ids the message visits
+  //   - which wires light up along the way
+  //   - which stages should be styled "skipped" (greyed) for this scenario
+  //   - the verdict/answer/citations shown in the right-hand panel at the end
+  //   - real numbers from data/logs.sqlite for the meta line
+  // Hardcoding stage-centre coordinates here means there's only one source
+  // of truth for the geometry — the SVG <g class="stage"> rects up above.
+  const STAGE_CENTRES = {
+    user:     [115,  230],
+    lang:     [340,  230],
+    jargon:   [580,  230],
+    retrieve: [820,  230],
+    rerank:   [1060, 230],
+    gate:     [1300, 230],
+    generate: [1580, 80],
+    refuse:   [1580, 380],
+    log:      [1845, 230],
+  };
+
+  const SCENARIOS = {
+    indomain: {
+      question: "Vad gör en programansvarig?",
+      expansion: null,
+      stages: ["user", "lang", "retrieve", "rerank", "gate", "generate", "log"],
+      skipped: ["jargon", "refuse"],
+      wires:   ["w-user-lang", "w-lang-jargon", "w-jargon-retr",
+                "w-retr-rerank", "w-rerank-gate", "w-gate-gen", "w-gen-log"],
+      refuseWire: false,
+      meta: "lang = sv · jargon hits = (none) · rerank top1 = 8.91 · meanK = 8.37",
+      resultLabel: "Answer (pass)",
+      verdict: '<span class="verdict-pass">Gate: pass</span> · confidence: Hög',
+      answer: "Programansvarig har olika ansvarsområden beroende på nivå. Bland annat: att kursutbudet bidrar till examensmålen, att handledning och studiemiljö följs upp, samt att leda programrådet…",
+      citations: "Riktlinje om utbildningens organisation V 2023 0823 · Riktlinje om systematiskt kvalitetsarbete inom utbildning",
+    },
+    offtopic: {
+      question: "Vad gäller vid värnplikt?",
+      expansion: null,
+      stages: ["user", "lang", "retrieve", "rerank", "gate", "refuse", "log"],
+      skipped: ["jargon", "generate"],
+      wires:   ["w-user-lang", "w-lang-jargon", "w-jargon-retr",
+                "w-retr-rerank", "w-rerank-gate"],
+      refuseWire: true,
+      meta: "lang = sv · rerank top1 = −2.5 · meanK = −2.73 · gate reason: top1<-0.5",
+      resultLabel: "Refusal (gate)",
+      verdict: '<span class="verdict-refuse">Gate: refuse</span> · confidence: Avstå',
+      answer: "Kontexten innehåller ingen specifik information om hur värnplikt påverkar studierna vid KTH. Jag hänvisar dig till studievägledaren, som kan ge dig den korrekta informationen.",
+      answerRefuse: true,
+      citations: "",
+    },
+    jargon: {
+      question: "Vilka kurser kan jag välja mellan för KEX på teknisk fysik?",
+      expansion: 'Expanded for retrieval: "Vilka kurser kan jag välja mellan för <b>KEX (kandidatexamensarbete)</b> på teknisk fysik?"',
+      stages: ["user", "lang", "jargon", "retrieve", "rerank", "gate", "generate", "log"],
+      skipped: ["refuse"],
+      wires:   ["w-user-lang", "w-lang-jargon", "w-jargon-retr",
+                "w-retr-rerank", "w-rerank-gate", "w-gate-gen", "w-gen-log"],
+      refuseWire: false,
+      meta: "lang = sv · jargon hits = [kex] · rerank top1 = 4.7 · meanK = 1.2",
+      resultLabel: "Answer (pass, with expansion)",
+      verdict: '<span class="verdict-pass">Gate: pass</span> · jargon expansion shown to student',
+      answer: "<em>Tolkar “KEX” som “kandidatexamensarbete”.</em><br><br>Den bifogade kontexten listar inte de specifika kurser som kan väljas för KEX inom Teknisk fysik. Kontexten anger att utbildningsplanen för programmet listar kurserna…",
+      citations: "FAQ · Examensarbete · Riktlinje om examensarbetskurser",
+    },
+  };
+
+  // -- Animation engine -------------------------------------------------- //
+  // Drives the SVG dot from stage to stage, toggling .active / .done /
+  // .refuse-active classes as it visits each stage. The cadence is chosen
+  // so a full scenario takes ~7-9 seconds end to end — slow enough for the
+  // audience to follow each transition, fast enough to keep the talk moving.
+  const dot = document.getElementById("msg-dot");
+  const stageEls = {};
+  document.querySelectorAll("g.stage").forEach(g => {
+    stageEls[g.dataset.stage] = g;
+  });
+  const wireEls = {};
+  document.querySelectorAll("#wires .wire").forEach(el => {
+    wireEls[el.id] = el;
+  });
+
+  function resetAll() {
+    Object.values(stageEls).forEach(g => {
+      g.classList.remove("active", "done", "refuse-active", "skipped");
+    });
+    Object.values(wireEls).forEach(el => {
+      el.classList.remove("lit", "refuse-lit");
+    });
+    dot.setAttribute("r", "0");
+    dot.classList.remove("refuse");
+  }
+
+  function setMeta(scn) {
+    document.getElementById("p-question").textContent = scn.question;
+    const ex = document.getElementById("p-expansion");
+    if (scn.expansion) {
+      ex.style.display = "block";
+      ex.innerHTML = scn.expansion;
+    } else {
+      ex.style.display = "none";
+      ex.innerHTML = "";
+    }
+    document.getElementById("p-meta").textContent = scn.meta;
+    document.getElementById("p-result-label").textContent = scn.resultLabel || "Result";
+    // Clear result text until we get there.
+    document.getElementById("p-verdict").innerHTML = "";
+    document.getElementById("p-answer").innerHTML = "";
+    document.getElementById("p-answer").classList.toggle("refuse", !!scn.answerRefuse);
+    document.getElementById("p-citations").textContent = "";
+  }
+
+  function showResult(scn) {
+    document.getElementById("p-verdict").innerHTML = scn.verdict;
+    document.getElementById("p-answer").innerHTML = scn.answer;
+    document.getElementById("p-citations").textContent =
+      scn.citations ? "Sources: " + scn.citations : "";
+  }
+
+  // Move the dot from (x0,y0) to (x1,y1) over `duration` ms, then resolve.
+  function moveDot(x0, y0, x1, y1, duration) {
+    return new Promise((resolve) => {
+      const start = performance.now();
+      dot.setAttribute("r", "16");
+      function frame(now) {
+        const t = Math.min(1, (now - start) / duration);
+        // Cubic ease-in-out so motion accelerates and decelerates.
+        const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        dot.setAttribute("cx", x0 + (x1 - x0) * e);
+        dot.setAttribute("cy", y0 + (y1 - y0) * e);
+        if (t < 1) requestAnimationFrame(frame);
+        else resolve();
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  let running = false;
+
+  async function runScenario(name) {
+    if (running) return;
+    running = true;
+    document.querySelectorAll(".scenario-buttons button").forEach(b => {
+      b.disabled = true;
+      b.classList.toggle("running", b.dataset.scenario === name);
+    });
+
+    const scn = SCENARIOS[name];
+    resetAll();
+    setMeta(scn);
+
+    // Skipped stages get muted up front so the audience can see at a
+    // glance which path the scenario takes.
+    scn.skipped.forEach(s => stageEls[s].classList.add("skipped"));
+
+    if (scn.refuseWire) {
+      wireEls["w-gate-refuse"].classList.add("refuse-lit");
+      wireEls["w-refuse-log"].classList.add("refuse-lit");
+      dot.classList.add("refuse");
+    }
+
+    // First stage gets entered without moving the dot — fade it in at User.
+    let [px, py] = STAGE_CENTRES[scn.stages[0]];
+    dot.setAttribute("cx", px);
+    dot.setAttribute("cy", py);
+    stageEls[scn.stages[0]].classList.add("active");
+    await wait(550);
+    stageEls[scn.stages[0]].classList.remove("active");
+    stageEls[scn.stages[0]].classList.add("done");
+
+    // Then walk through the remaining stages in order.
+    for (let i = 1; i < scn.stages.length; i++) {
+      const stage = scn.stages[i];
+      const wire  = scn.wires[i - 1];
+      if (wire && wireEls[wire]) {
+        wireEls[wire].classList.add(scn.refuseWire && wire.includes("gate-refuse") ? "refuse-lit" : "lit");
+      }
+      const [nx, ny] = STAGE_CENTRES[stage];
+      await moveDot(px, py, nx, ny, 700);
+      px = nx; py = ny;
+      const cls = (stage === "refuse") ? "refuse-active" : "active";
+      stageEls[stage].classList.add(cls);
+      await wait(stage === "gate" ? 700 : 450);
+      stageEls[stage].classList.remove(cls);
+      stageEls[stage].classList.add("done");
+
+      // When the gate is reached, reveal the result panel a moment early —
+      // the audience can read it while the dot finishes its journey.
+      if (stage === "gate") {
+        showResult(scn);
+      }
+    }
+
+    document.querySelectorAll(".scenario-buttons button").forEach(b => {
+      b.disabled = false;
+      b.classList.remove("running");
+    });
+    running = false;
+  }
+
+  document.querySelectorAll(".scenario-buttons button").forEach(b => {
+    b.addEventListener("click", () => runScenario(b.dataset.scenario));
+  });
+</script>
+
+</body>
+</html>
