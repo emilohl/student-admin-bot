@@ -365,6 +365,37 @@
 
     <section>
       <p class="section-name">Part 2 · Pedagogy</p>
+      <h1>A debug view students can read</h1>
+      <p>A <em>"How the bot thought"</em> tab lets any student open the hood on their own question &mdash; the same retrieval, rerank, and gate internals an operator sees.</p>
+      <div class="cols-2" style="margin-top: 0.4em;">
+        <div>
+          <p>Tick <span class="kthhl">"Learn more"</span>, then click the <strong>🔍</strong> next to any answer:</p>
+          <ul>
+            <li class="fragment fade-in"><strong>Routing</strong> &mdash; detected language, jargon hits, the expanded query</li>
+            <li class="fragment fade-in"><strong>Gate</strong> &mdash; pass / refuse, top-1 and mean-top-K scores, and why</li>
+            <li class="fragment fade-in"><strong>Retrieval</strong> &mdash; top-N candidates and the reranked top-K, with snippets and scores</li>
+            <li class="fragment fade-in"><strong>LLM context</strong> &mdash; the exact system prompt and passages the model actually saw</li>
+          </ul>
+        </div>
+        <div class="fragment fade-in">
+          <div class="kthbox">
+            <strong>Why expose the internals?</strong>
+            <ul style="margin: 0.4em 0 0;">
+              <li>Turns <em>"trust me"</em> into <em>"check for yourself"</em></li>
+              <li>Makes the abstract pipeline a thing you can <em>read</em>, one turn at a time</li>
+              <li>Reinforces surfaces 1 &amp; 2: verify the source, fluency &ne; correctness</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="notebox fragment fade-in" style="margin-top: 0.6em;">
+        Diagnostics are saved per turn for opted-in users and shown only on demand &mdash;
+        zero added latency on the answer path. (Operators get a deeper inspector on <code>/stats</code>.)
+      </div>
+    </section>
+
+    <section>
+      <p class="section-name">Part 2 · Pedagogy</p>
       <h1>We chose to refuse too often</h1>
       <div class="cols-2">
         <div>
