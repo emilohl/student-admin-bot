@@ -1,7 +1,7 @@
 [project]
 name = "student-bot"
 version = "0.1.0"
-description = "RAG chatbot answering KTH CTFYS administrative questions over Mattermost."
+description = "RAG chatbot answering KTH student administrative questions over Mattermost."
 requires-python = ">=3.11,<3.13"
 dependencies = [
     "pydantic-settings>=2.5",
