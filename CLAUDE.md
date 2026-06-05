@@ -18,9 +18,10 @@ Entry-point names come from `pyproject.toml` `[project.scripts]`; the `student-b
 - `uv run student-bot-mkuser <name>` — create a web auth user (scrypt).
 - `uv run student-bot-jargon list|proposals|accept|reject|add|remove` — manage `dictionary.json`.
 - `uv run ruff check .` / `uv run ruff format .` — line-length 100, target py311.
+- `uv run pytest -q` — the unit suite under `tests/` (~100 tests). Fast (~3 s); does **not** call the LLM or need Chroma/Ollama.
 - Docker: `docker compose build` (Python 3.12, dependencies from `uv.lock` via `uv sync --frozen`); `docker compose run --rm beta-web python -m scripts.reindex`; `docker compose up -d beta-web bot`. Chroma **INTEGER/BLOB** metadata errors usually mean `./data/chroma` was built with another chromadb/Python — delete that directory on the host and reindex.
 
-There is **no test suite** (no `tests/`, no `test_*.py`); `pytest` is declared in `[dev]` but unused. The `eval/` harness is the de-facto regression check for the retrieval+gate stack — run it after any change to embeddings, reranker, gate logic, or the corpus.
+There **is** a pytest suite under `tests/` (`pytest` is in `[dev]`): url-ingest, dynamic-web allowlist, eligibility fallback, retrieval language bonus, log redaction, memory, and a lint check. It's unit-level (fixtures, no live models). **Separately**, the `eval/` harness (`eval/run_eval.py`) is the de-facto regression check for the retrieval+gate stack — recall@5 + gate accuracy, does not call the LLM — run it after any change to embeddings, reranker, gate logic, or the corpus.
 
 ## Architecture
 
@@ -55,6 +56,10 @@ The README's ASCII diagram and per-file role table are the fastest way in for co
 
 The bot deliberately teaches LLM literacy through five repeating surfaces: confidence badge, rotating literacy footer, refusal-with-reason, first-touch GDPR notice, and the Sources block. The README's "How the bot teaches LLM literacy" table lists the file each lives in. UI cleanups can accidentally remove on-purpose features — read that section first.
 
+## The presentation deck mirrors the product
+
+`docs/slides/index.html` is a self-contained reveal.js talk (+ `kth-reveal.{css,js}`, `KTH_logo_RGB_bla.svg`, `widgets/pipeline.html`) served at `/slides/` and linked from the About page. It ships in the Docker image via `COPY docs/slides`. **It hard-codes facts about the running system** — model names, gate thresholds, the system prompt text, corpus categories, recall/eval numbers, the literacy + debug surfaces, and the dynamic-web allowlist. When you change any of those, update the deck to match, or it will quietly drift out of sync. The deck is static assets only (no reindex, no eval impact); just bump nothing — it has no cache-buster.
+
 ## Where to start by task type
 
 | Task | Start at |
@@ -66,3 +71,4 @@ The bot deliberately teaches LLM literacy through five repeating surfaces: confi
 | Ingest behavior | `src/student_bot/ingest/{parse,chunk,embed}.py` → `scripts/reindex.py` |
 | Privacy / logging | `src/student_bot/logging_db.py` |
 | Web auth | `src/student_bot/web/auth.py`, `scripts/mkuser.py` |
+| Presentation / talk deck | `docs/slides/index.html` (+ `kth-reveal.*`, `widgets/`) — keep in sync with code |

@@ -1,9 +1,10 @@
 # student-bot
 
 A small RAG chatbot for answering student questions of administrative nature, to allow immediate answers 
-and offload study counselors. Designed and tested for the CTFYS/CTMAT programs at KTH (around 1300 students 
-enrolled), but only the knowledge-base input docs are specific to the university and/or program. Handles
-English and Swedish, including cross-language replies for where corpus docs only exist in one language. 
+and offload study counselors. It began as a way to relieve the study counselors for the CTFYS/CTMAT programs 
+at KTH (around 1300 students enrolled), but quickly proved able to serve a wider part of KTH — only the 
+knowledge-base input docs are specific to the university and/or program. Handles English and Swedish, 
+including cross-language replies for where corpus docs only exist in one language. 
 
 Answers questions in **Mattermost** and a **web UI**, and is built around the principle that students should
 *learn how to think about LLMs* while they use it. Rejects off-topic questions, does not send any student data
@@ -385,7 +386,7 @@ curl -X PUT \
   https://<mm-host>/api/v4/bots/<bot_user_id> \
   -d '{
     "display_name": "Lux Adminbot",
-    "description": "Automatisk assistent för administrativa frågor om CTFYS-programmet vid KTH. Svaren baseras på indexerade kursdokument — kontrollera alltid mot källorna och kontakta studievägledaren för personliga ärenden."
+    "description": "Automatisk assistent för administrativa frågor om studier vid KTH. Svaren baseras på indexerade kursdokument — kontrollera alltid mot källorna och kontakta studievägledaren för personliga ärenden."
   }'
 ```
 

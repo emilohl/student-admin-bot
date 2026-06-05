@@ -873,7 +873,7 @@ _HEADER_HTML = """\
 # Loaded into <head> on every server-rendered page, before notice.js, so
 # data-i18n attributes are translated before any other scripts run.
 _NOTICE_SCRIPT = (
-    '<script src="{static_prefix}/i18n.js?v=38"></script>'
+    '<script src="{static_prefix}/i18n.js?v=39"></script>'
     '<script src="{static_prefix}/notice.js?v=33" defer></script>'
 )
 

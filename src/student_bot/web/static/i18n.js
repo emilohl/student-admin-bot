@@ -17,7 +17,7 @@
       "notice.close.aria": "Stäng",
 
       "onboarding.title": "Hej!",
-      "onboarding.intro": "Den här boten svarar på administrativa frågor om civilingenjörsprogrammet i Teknisk fysik, baserat på KTH:s officiella regler och utbildningsplaner. Den använder en lokal språkmodell + retrieval – alla källor kan klickas på under varje svar.",
+      "onboarding.intro": "Den här boten svarar på administrativa frågor om studier vid KTH, baserat på KTH:s officiella regler och utbildningsplaner. Den använder en lokal språkmodell + retrieval – alla källor kan klickas på under varje svar.",
       "onboarding.caveat": "LLM:er kan ha fel även när de låter säkra. Klicka alltid på källorna och dubbelkolla viktiga detaljer.",
       "onboarding.name.label": "Ditt namn (visas inte för andra; används för loggar):",
       "onboarding.name.placeholder": "Anonym",
@@ -63,7 +63,7 @@
 
       "about.title": "Om boten",
       "about.h2.what": "Vad är det här?",
-      "about.what.body": "En lokal RAG-bot som svarar på administrativa frågor om CTFYS-programmet, grundad på de officiella dokumenten under <code>docs/corpus</code>.",
+      "about.what.body": "En lokal RAG-bot som svarar på administrativa frågor om studier vid KTH, grundad på de officiella dokumenten under <code>docs/corpus</code>. Boten började som ett sätt att avlasta studievägledarna för Teknisk fysik och Teknisk matematik (CTFYS/CTMAT), men täcker nu en bredare del av KTH.",
       "about.h2.tips": "Fem saker att tänka på när du använder boten",
       "about.tip1": "<strong>Verifiera källan.</strong> Klicka på källänkarna under varje svar och dubbelkolla mot dokumenten – boten kan ha fel även när den låter säker.",
       "about.tip2": "<strong>Flytande språk är inte korrekthet.</strong> Att en LLM låter övertygande betyder inte att den har rätt. Lita på källorna, inte på tonen. Konfidensbadgen vid varje svar visar hur säker retrieval-steget är.",
@@ -214,7 +214,7 @@
       "notice.close.aria": "Close",
 
       "onboarding.title": "Hi!",
-      "onboarding.intro": "This bot answers administrative questions about the Engineering Physics MSc program, grounded in KTH's official rules and curricula. It uses a local language model + retrieval — every source under each answer is clickable.",
+      "onboarding.intro": "This bot answers administrative questions about studying at KTH, grounded in KTH's official rules and curricula. It uses a local language model + retrieval — every source under each answer is clickable.",
       "onboarding.caveat": "LLMs can be wrong even when they sound confident. Always click the sources and double-check important details.",
       "onboarding.name.label": "Your name (not shown to others; used for logs):",
       "onboarding.name.placeholder": "Anonymous",
@@ -260,7 +260,7 @@
 
       "about.title": "About",
       "about.h2.what": "What is this?",
-      "about.what.body": "A local RAG bot that answers administrative questions about the CTFYS program, grounded in the official documents under <code>docs/corpus</code>.",
+      "about.what.body": "A local RAG bot that answers administrative questions about studying at KTH, grounded in the official documents under <code>docs/corpus</code>. It started as a way to relieve the study counselors for Engineering Physics and Engineering Mathematics (CTFYS/CTMAT), but now covers a wider part of KTH.",
       "about.h2.tips": "Five things to keep in mind when using the bot",
       "about.tip1": "<strong>Verify the source.</strong> Click the source links under each answer and double-check against the documents — the bot can be wrong even when it sounds confident.",
       "about.tip2": "<strong>Fluency is not correctness.</strong> An LLM sounding convincing doesn't mean it's right. Trust the sources, not the tone. The confidence badge on each reply shows how confident the retrieval step was.",
