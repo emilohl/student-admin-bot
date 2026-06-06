@@ -232,10 +232,13 @@ def format_sources_block(
     return "\n".join(lines)
 
 
-# Five rotating LLM-literacy reminders, one shown per answer. Sourced from
-# the README's "five concepts" list — keep these short so they don't bury
-# the answer. The privacy tip varies by channel: Mattermost users get the
-# slash command, web users get pointed at the in-chat toggle.
+# Rotating LLM-literacy reminders, one shown per answer. The first five are
+# sourced from the README's "five concepts" list — keep these short so they
+# don't bury the answer. The privacy tip varies by channel: Mattermost users
+# get the slash command, web users get pointed at the in-chat toggle. Two
+# extra tips (the "Show how the bot thinks" debug panel and the slide deck)
+# are web-only affordances, so they're appended to the pool only for the web
+# channel — see _literacy_footers.
 _PRIVACY_TIP_SV = {
     "mattermost": "_Tips: dina frågor loggas anonymt för att förbättra boten. Skicka `!logging off` om du vill stänga av loggning._",
     "web": "_Tips: dina frågor loggas anonymt för att förbättra boten. Klicka på loggnings-reglaget ovanför chattfältet om du vill stänga av loggning._",
@@ -252,20 +255,32 @@ def _literacy_footers(lang: str, channel: str) -> list[str]:
     if channel not in _PRIVACY_TIP_SV:
         channel = "mattermost"
     if lang == "en":
-        return [
+        footers = [
             "_Tip: click the sources and double-check against the documents — the bot can be wrong even when it sounds confident._",
             "_Tip: an LLM can sound convincing while being wrong. Trust the sources, not the tone._",
             "_Tip: the bot only knows the documents it was indexed on. For personal cases, contact the study counselor._",
             _PRIVACY_TIP_EN[channel],
             "_Tip: this bot complements but doesn't replace the study counselor — especially for decisions affecting your studies._",
         ]
-    return [
+        if channel == "web":
+            footers += [
+                '_Tip: turn on "Show how the bot thinks" to inspect how it reached an answer — the retrieval, the gate decision, and the exact context the model saw._',
+                "_Tip: there's a short slide deck on how this bot works and the thinking behind it — open it from the About page._",
+            ]
+        return footers
+    footers = [
         "_Tips: klicka på källorna och dubbelkolla svaren mot dokumenten – boten kan ha fel även när den låter säker._",
         "_Tips: en stor språkmodell (LLM) kan låta övertygande utan att ha rätt. Lita på källorna, inte på tonen._",
         "_Tips: boten känner bara till dokumenten den indexerats på. För personliga ärenden – kontakta studievägledaren._",
         _PRIVACY_TIP_SV[channel],
         "_Tips: boten är ett komplement, inte en ersättning för studievägledaren – särskilt vid beslut som påverkar dina studier._",
     ]
+    if channel == "web":
+        footers += [
+            '_Tips: slå på "Visa hur boten tänker" för att se hur den kom fram till ett svar – retrieval, spärrens beslut och den exakta kontexten språkmodellen fick._',
+            "_Tips: det finns en kort presentation om hur boten fungerar och tankarna bakom den – öppna den från Om boten-sidan._",
+        ]
+    return footers
 
 
 def literacy_footer(lang: str, *, seed: int | None = None, channel: str = "mattermost") -> str:
