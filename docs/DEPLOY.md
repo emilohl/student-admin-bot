@@ -121,6 +121,12 @@ Key points:
   `thinking_style: openai_reasoning_field` so the CoT is filtered out and only
   surfaced as a "thinking…" indicator.
 
+**Availability:** the committed default (`llm.active`) is `litellm/gemma4-31b`, so
+the gateway + Spark are now a **hard runtime dependency for all traffic** — if the
+Spark or the tailnet is down, the bot can't generate answers. The fast fallback is
+to switch back to the on-host model without a rebuild: set `LLM_ACTIVE=ollama/gemma-4-E4B-it-GGUF:UD-Q4_K_XL`
+in `.env` and `docker compose up -d` (or export it for a CLI run).
+
 Quick gateway checks (run from the host, with `LITELLM_API_KEY` exported):
 
 ```bash

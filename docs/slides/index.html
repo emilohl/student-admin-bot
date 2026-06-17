@@ -245,7 +245,7 @@
         <div>
           <p>The opportunity that wasn't there two years ago:</p>
           <ul>
-            <li><span class="kthhl">Gemma&nbsp;4 E4B</span> at Q4 &mdash; ~4.5 B effective parameters &mdash; runs on a Mac mini via Ollama/Metal</li>
+            <li><span class="kthhl">Gemma&nbsp;4 E4B</span> at Q4 &mdash; ~4.5 B effective parameters &mdash; runs on hardware as small as a Mac mini (Ollama/Metal)</li>
             <li><span class="kthhl">bge-m3</span> embeddings + a cross-encoder reranker, both on CPU</li>
             <li>Cross-lingual retrieval is real now: English question → Swedish policy → English answer with Swedish citations</li>
           </ul>
@@ -256,7 +256,7 @@
             <ul style="margin: 0.4em 0 0;">
               <li>One small machine (16 GB RAM)</li>
               <li>Zero cloud cost</li>
-              <li>No data leaves the host</li>
+              <li>No data leaves your own hardware</li>
             </ul>
           </div>
         </div>
@@ -301,21 +301,22 @@
              data-pattern="full" data-pattern-color="skyblue">
       <p class="eyebrow">Part 2 of 3</p>
       <h2>Design principles</h2>
-      <p class="lead">Local-first, transparent, and quietly didactic.</p>
+      <p class="lead">Self-hosted, transparent, and quietly didactic.</p>
     </section>
 
     <section>
       <p class="section-name">Part 2 · Philosophy</p>
-      <h1>Local-first, by design</h1>
+      <h1>Self-hosted, by design</h1>
       <div class="cols-2">
         <div>
-          <p>No student question, hash, or generated answer leaves the host machine.</p>
+          <p>No student question, hash, or generated answer leaves KTH-controlled infrastructure.</p>
           <ul>
-            <li class="fragment fade-in"><strong>Ollama</strong> on the host (Metal/GPU)</li>
+            <li class="fragment fade-in"><strong>LLM on a DGX&nbsp;Spark</strong> (local GPU box) via a LiteLLM gateway, over an encrypted Tailscale tailnet</li>
             <li class="fragment fade-in"><strong>Chroma</strong> vector store on local disk</li>
             <li class="fragment fade-in"><strong>SQLite</strong> log file, salted hashes only</li>
-            <li class="fragment fade-in"><strong>No API keys</strong> to any external service in the runtime path</li>
+            <li class="fragment fade-in"><strong>No third-party cloud</strong> &mdash; the only key in the runtime path is the tailnet-local gateway</li>
           </ul>
+          <p class="fragment fade-in" style="font-size: 0.8em; opacity: 0.85; margin-top: 0.6em;">The original default &mdash; Gemma&nbsp;4 E4B on a Mac mini (Ollama/Metal) &mdash; worked fine but took ~40&ndash;50&nbsp;s to first token. Moving the LLM to the Spark (a larger Gemma&nbsp;4 31B) buys speed while staying self-hosted.</p>
         </div>
         <div class="fragment fade-in">
           <div class="kthbox">
@@ -571,7 +572,7 @@
         <div class="box" data-id="chroma"
              style="left: 1200px; top: 160px;">Chroma<span class="sub">bge-m3 vectors</span></div>
         <div class="box" data-id="ollama"
-             style="left: 1200px; top: 360px;">Ollama<span class="sub">Gemma 4 E4B Q4</span></div>
+             style="left: 1200px; top: 360px;">LiteLLM<span class="sub">Gemma 4 31B · Spark</span></div>
       </div>
     </section>
 
@@ -595,7 +596,7 @@
         <div class="box" data-id="chroma"
              style="left: 1200px; top: 160px;">Chroma<span class="sub">bge-m3 vectors</span></div>
         <div class="box" data-id="ollama"
-             style="left: 1200px; top: 360px;">Ollama<span class="sub">Gemma 4 E4B Q4</span></div>
+             style="left: 1200px; top: 360px;">LiteLLM<span class="sub">Gemma 4 31B · Spark</span></div>
         <div class="box muted" data-id="topics"
              style="left: 800px; top: 460px;">topics.yaml<span class="sub">post-hoc taxonomy</span></div>
         <div class="box muted" data-id="log"
@@ -721,7 +722,7 @@
         <div>
           <h3 style="color: var(--kth-blue);">Models</h3>
           <ul>
-            <li><code>gemma-4-E4B-it-GGUF:Q4_K_XL</code> via Ollama (Metal)</li>
+            <li><code>gemma4-31b</code> via LiteLLM on a DGX&nbsp;Spark (tailnet) &mdash; was <code>gemma-4-E4B</code> on a Mac mini (Ollama/Metal)</li>
             <li><code>BAAI/bge-m3</code> embeddings (CPU)</li>
             <li><code>cross-encoder/mmarco-mMiniLMv2-L12-H384-v1</code> reranker (CPU)</li>
           </ul>
@@ -846,7 +847,7 @@
       <h1>What's deliberately <em>not</em> there</h1>
       <ul>
         <li class="fragment fade-in"><strong>No open web search.</strong> Optional dynamic fetch is hard-allowlisted to <code>kth.se/student/kurser/{kurs|program}/&lt;code&gt;</code> patterns &mdash; never arbitrary URLs.</li>
-        <li class="fragment fade-in"><strong>No agentic tools.</strong> No shell, no MCP, no API calls beyond Mattermost posting and Ollama chat. The boundary is the absence of tools.</li>
+        <li class="fragment fade-in"><strong>No agentic tools.</strong> No shell, no MCP, no API calls beyond Mattermost posting and the LiteLLM gateway (LLM chat) on the tailnet. The boundary is the absence of tools.</li>
         <li class="fragment fade-in"><strong>No multi-account isolation in the web UI.</strong> The auth gate is for trusted-colleague testing, not for production tenancy.</li>
         <li class="fragment fade-in"><strong>No real-time index updates.</strong> Reindex is a manual command after corpus edits.</li>
       </ul>

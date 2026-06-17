@@ -52,7 +52,7 @@ llm:
   # FIRST slash — Ollama tags use `:` and Berget/HF model IDs use additional
   # `/`, so first-slash splitting handles both. Switch models by changing
   # this one field, or override via `LLM_ACTIVE` in `.env`.
-  active: ollama/gemma-4-E4B-it-GGUF:UD-Q4_K_XL
+  active: litellm/gemma4-31b
 
   # Backends. Each entry declares how to reach a hosting service. Multiple
   # models can share one provider — Berget hosts dozens of models behind
@@ -149,6 +149,35 @@ llm:
     "litellm/qwen3.6-think":
       num_ctx: 40960
       temperature: 0.3
+      max_tokens: 2048
+      thinking: true
+      thinking_style: openai_reasoning_field
+    # Gemma 4 on the Spark via LiteLLM. The non-think aliases have no reasoning
+    # channel (thinking_style: none). The `-think` aliases stream chain-of-thought
+    # as `delta.reasoning_content` (verified — LiteLLM normalizes it the same way
+    # as Qwen, NOT as inline `<|channel>` blocks), so `openai_reasoning_field`
+    # filters it out correctly.
+    "litellm/gemma4-31b":
+      num_ctx: 65536
+      temperature: 0.2
+      max_tokens: 2048
+      thinking: false
+      thinking_style: none
+    "litellm/gemma4-31b-think":
+      num_ctx: 65536
+      temperature: 0.2
+      max_tokens: 2048
+      thinking: true
+      thinking_style: openai_reasoning_field
+    "litellm/gemma4-26b":
+      num_ctx: 65536
+      temperature: 0.2
+      max_tokens: 2048
+      thinking: false
+      thinking_style: none
+    "litellm/gemma4-26b-think":
+      num_ctx: 65536
+      temperature: 0.2
       max_tokens: 2048
       thinking: true
       thinking_style: openai_reasoning_field
