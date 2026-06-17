@@ -75,6 +75,24 @@ llm:
       display_name: OpenRouter
       api_key_env: OPENROUTER_API_KEY
       timeout_seconds: 120
+    # LiteLLM gateway on the tailnet (docker-services VM). The models behind
+    # it run LOCALLY on the Spark, so this is NOT third-party cloud — but the
+    # transport is OpenAI-compatible, so `provider_kind != ollama` and the
+    # "external cloud model" privacy notice currently fires anyway (see the
+    # `discloses_external` discussion / TODO). Use the 100.x IP rather than the
+    # MagicDNS name so resolution works from inside the Docker container on a
+    # native Linux host without pointing it at Tailscale's DNS (100.100.100.100).
+    # Plain http is fine: the tailnet encrypts in transit (WireGuard).
+    litellm:
+      kind: openai_compatible
+      base_url: http://100.75.42.33:4000/v1
+      display_name: LiteLLM (lokal Qwen via Spark)
+      api_key_env: LITELLM_API_KEY
+      timeout_seconds: 120
+      # Runs locally on the Spark over the tailnet — not a third-party cloud,
+      # so suppress the "external cloud model" privacy notice (treat like
+      # local Ollama). Remove this if you ever point `litellm` at cloud models.
+      discloses_external: false
 
   # Per-model knobs. Content (system prompt, citation rules, refusal text,
   # jargon expansion) stays shared across models in `prompts.py` so A/B
@@ -112,6 +130,28 @@ llm:
       max_tokens: 4096
       thinking: true
       thinking_style: gemma
+    # --- LiteLLM gateway models (local Qwen on the Spark) ---
+    # model_id (after the first slash) must match the alias registered in
+    # LiteLLM. `num_ctx` is informational here: it is NOT sent on the
+    # openai_compatible path (the real window is set in Ollama/LiteLLM on the
+    # Spark). qwen3.6 supports up to 256k; verify the configured value there.
+    "litellm/qwen3.6":
+      num_ctx: 40960
+      temperature: 0.3
+      max_tokens: 2048               # bilingual eligibility answers can run long; tune per UX
+      thinking: false
+      thinking_style: none           # alias has thinking OFF — no reasoning_content to filter
+    # Reasoning variant (LiteLLM alias qwen3.6-think, think:true). LiteLLM
+    # splits CoT into `reasoning_content` in the NON-streamed response, but
+    # whether it forwards it as `delta.reasoning_content` while STREAMING is
+    # UNVERIFIED. If it doesn't, CoT may leak into delta.content and show in
+    # the answer. Run the streaming curl test before relying on this entry.
+    "litellm/qwen3.6-think":
+      num_ctx: 40960
+      temperature: 0.3
+      max_tokens: 2048
+      thinking: true
+      thinking_style: openai_reasoning_field
 
 memory:
   # Raised from 4 to 8 (#47) — the 16384-token context budget has plenty of

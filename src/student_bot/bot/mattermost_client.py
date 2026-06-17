@@ -106,7 +106,7 @@ _CLOUD_NOTICE_EN = (
 def gdpr_notice_sv(cfg) -> str:
     base = GDPR_NOTICE_SV
     resolved = cfg.active_model()
-    if resolved.provider_kind != "ollama":
+    if resolved.discloses_external:
         provider = resolved.display_name or resolved.provider_key or "extern leverantör"
         base += _CLOUD_NOTICE_SV.format(provider=provider)
     return base
@@ -115,7 +115,7 @@ def gdpr_notice_sv(cfg) -> str:
 def gdpr_notice_en(cfg) -> str:
     base = GDPR_NOTICE_EN
     resolved = cfg.active_model()
-    if resolved.provider_kind != "ollama":
+    if resolved.discloses_external:
         provider = resolved.display_name or resolved.provider_key or "external provider"
         base += _CLOUD_NOTICE_EN.format(provider=provider)
     return base

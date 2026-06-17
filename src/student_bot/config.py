@@ -95,6 +95,13 @@ class ProviderConfig(BaseModel):
     # cold start with long contexts; SSE keeps the connection alive but the
     # initial connect / first-byte still uses this.
     timeout_seconds: float = 120.0
+    # Whether using this provider sends student data off-box to a third party
+    # — drives the "external cloud model, don't share sensitive info" notice.
+    # None = derive from kind (`ollama` is local → no notice; everything else
+    # → notice). Set explicitly to `false` for an OpenAI-compatible endpoint
+    # that actually runs LOCALLY (e.g. a LiteLLM gateway in front of an Ollama
+    # model on the tailnet), so it's treated like local inference.
+    discloses_external: bool | None = None
 
 
 class ModelConfig(BaseModel):
@@ -162,6 +169,9 @@ class ResolvedLLM:
     thinking: bool
     thinking_style: str
     api_key: SecretStr | None
+    # Resolved (never None here): True if this provider sends data to a third
+    # party. Gates the cloud privacy notice. See ProviderConfig.discloses_external.
+    discloses_external: bool
 
 
 class MemoryConfig(BaseModel):
@@ -379,6 +389,14 @@ class Config(BaseModel):
                 f"llm.active references unknown model {active!r}; known models: {known}"
             )
         api_key = self.llm_api_keys.get(provider_key)
+        # None = derive from kind: ollama is local, everything else is external
+        # by default. An explicit bool (e.g. a local LiteLLM gateway set to
+        # false) overrides that default.
+        discloses_external = (
+            provider.discloses_external
+            if provider.discloses_external is not None
+            else provider.kind != "ollama"
+        )
         return ResolvedLLM(
             identifier=active,
             provider_key=provider_key,
@@ -393,6 +411,7 @@ class Config(BaseModel):
             thinking=model.thinking,
             thinking_style=model.thinking_style,
             api_key=api_key,
+            discloses_external=discloses_external,
         )
 
 

@@ -310,7 +310,7 @@ def create_app(cfg: Config | None = None) -> FastAPI:
             resolved = cfg.active_model()
             cloud_name = (
                 resolved.display_name or resolved.provider_key
-                if resolved.provider_kind != "ollama"
+                if resolved.discloses_external
                 else ""
             )
         except RuntimeError:
