@@ -190,6 +190,10 @@ Docker Desktop runs Linux in a **VM**: total Docker RAM in Activity Monitor is o
 - The Dockerfile installs **`torch`** from **CPU-only** wheels for Linux (see **`pyproject.toml`** **`[tool.uv.sources]`** / PyTorch CPU index) so the image does not pull NVIDIA CUDA packages.
 - **`topics.yaml`** and **`data/dictionary.json`** are **`COPY`**’d into the image as a fallback for non-compose runs. Compose host-mounts **`config.yaml`**, **`./data`** (which contains the dictionary, proposals, logs, Chroma + index, and web users), and the corpus on top, so jargon proposals submitted via the running bot/web and the host’s **`student-bot-jargon`** CLI share the same files.
 
+### Public hosting (reverse proxy, TLS, Tailscale)
+
+The container binds **`127.0.0.1:8000`** only; a **reverse proxy (nginx)** terminates TLS and serves the public **`/betabot/`** URL. Host-level setup — the nginx config, why nginx must run **as root** to bind 443, the recurring **Tailscale ↔ port-443 clash** (and its one-line fix), the **LiteLLM gateway** provider, and a **new-host checklist** — lives in **[`docs/DEPLOY.md`](docs/DEPLOY.md)**.
+
 ---
 
 ## Design considerations & decisions
