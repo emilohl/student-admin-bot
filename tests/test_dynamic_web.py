@@ -200,7 +200,7 @@ def test_extract_targets_prefers_multiword_program_alias_over_single_subject(mon
         wr,
         "_get_program_aliases",
         lambda _cfg: {
-            "fysik": "FYSIK",
+            "masterprogram, fysik": "PHYSX",
             "civilingenjorsutbildning i teknisk fysik": "CTFYS",
         },
     )
@@ -209,7 +209,7 @@ def test_extract_targets_prefers_multiword_program_alias_over_single_subject(mon
     q = "Vad har masterprogrammet i teknisk fysik for programkod?"
     out = _extract_targets_with_cfg(q, cfg)
     assert "https://www.kth.se/student/kurser/program/CTFYS" in out
-    assert "https://www.kth.se/student/kurser/program/FYSIK" not in out
+    assert "https://www.kth.se/student/kurser/program/PHYSX" not in out
 
 
 def test_extract_targets_teknisk_matematik_drops_master_math_via_query_coverage(monkeypatch):
