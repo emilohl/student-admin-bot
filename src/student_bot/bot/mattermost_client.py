@@ -29,7 +29,7 @@ from mattermostdriver import Driver
 from rich.logging import RichHandler
 
 from student_bot.bot.memory import ConversationMemory
-from student_bot.bot.pipeline import answer
+from student_bot.bot.pipeline import answer, remember_turn
 from student_bot.config import Config, get_config
 from student_bot.logging_db import LogDB
 
@@ -395,12 +395,19 @@ class StudentBot:
         try:
             hist = self.memory.get(job.user_id, job.root_id)
             program_prior = self.memory.get_program_code(job.user_id, job.root_id)
+            adm_term_prior, adm_year_prior = self.memory.get_admission_hints(
+                job.user_id, job.root_id
+            )
+            pending_prior = self.memory.get_pending_question(job.user_id, job.root_id)
             result = answer(
                 job.question,
                 history=hist,
                 cfg=self.cfg,
                 rate_limit_key=job.user_id,
                 program_prior=program_prior,
+                admission_term_prior=adm_term_prior,
+                admission_year_prefix_prior=adm_year_prior,
+                pending_question_prior=pending_prior,
             )
             if self.cfg.mattermost.use_attachments:
                 from student_bot.bot.citations import format_for_mattermost
@@ -413,15 +420,7 @@ class StudentBot:
         finally:
             self._unreact(job.user_post_id, THINKING_EMOJI)
 
-        if (
-            result.answered
-            or result.meta_fallback
-            or result.gate.reason == "programme_clarification"
-        ):
-            self.memory.append(job.user_id, job.root_id, "user", job.question)
-            self.memory.append(job.user_id, job.root_id, "assistant", result.answer)
-        if result.program_code:
-            self.memory.set_program_code(job.user_id, job.root_id, result.program_code)
+        remember_turn(self.memory, job.user_id, job.root_id, job.question, result)
 
         chunk_ids = [c.chunk_id for c in result.retrieval.reranked]
         qa_id = self.db.record_qa(

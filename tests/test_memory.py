@@ -181,3 +181,57 @@ class TestSignalsCoexistWithExistingApi:
         mem.set_admission_hints("u", "default", exact_term="20242")
         assert mem.get_program_code("u", "default") == "CTMAT"
         assert mem.get_admission_hints("u", "default") == ("20242", None)
+
+
+# ---- clarification state: pending question and folded pairs -------------
+
+
+class TestPendingQuestion:
+    def test_none_on_empty_slot(self, mem):
+        assert mem.get_pending_question("u", "default") is None
+
+    def test_round_trips_and_none_clears(self, mem):
+        mem.set_pending_question("u", "default", "Vilka spärrkurser finns?")
+        assert mem.get_pending_question("u", "default") == "Vilka spärrkurser finns?"
+        mem.set_pending_question("u", "default", None)
+        assert mem.get_pending_question("u", "default") is None
+
+    def test_clearing_an_unknown_slot_does_not_create_one(self, mem):
+        mem.set_pending_question("u", "default", None)
+        assert ("u", "default") not in mem._store
+
+
+class TestReplaceLastPair:
+    def test_replaces_the_clarification_pair(self, mem):
+        mem.append("u", "default", "user", "Vilka spärrkurser finns?")
+        mem.append("u", "default", "assistant", "Vilken antagningsomgång?")
+        mem.replace_last_pair("u", "default", "Vilka spärrkurser finns?\n\nHT2022", "Svar")
+        assert mem.get("u", "default") == [
+            {"role": "user", "content": "Vilka spärrkurser finns?\n\nHT2022"},
+            {"role": "assistant", "content": "Svar"},
+        ]
+
+    def test_appends_on_an_empty_slot(self, mem):
+        mem.replace_last_pair("u", "default", "q", "a")
+        assert len(mem.get("u", "default")) == 2
+
+    def test_a_full_buffer_does_not_evict(self, mem):
+        for i in range(mem.max_turns):
+            mem.append("u", "default", "user", f"q{i}")
+            mem.append("u", "default", "assistant", f"a{i}")
+        mem.replace_last_pair("u", "default", "merged", "answer")
+        turns = mem.get("u", "default")
+        assert turns[0]["content"] == "q0"
+        assert turns[-2:] == [
+            {"role": "user", "content": "merged"},
+            {"role": "assistant", "content": "answer"},
+        ]
+        assert mem.history_truncated("u", "default") is False
+
+
+class TestAdmissionHintsReplace:
+    def test_replace_clears_the_field_passed_as_none(self, mem):
+        """A corrected year must not sit next to the old exact term, which would win."""
+        mem.set_admission_hints("u", "default", exact_term="20252")
+        mem.set_admission_hints("u", "default", year_prefix="2024", replace=True)
+        assert mem.get_admission_hints("u", "default") == (None, "2024")

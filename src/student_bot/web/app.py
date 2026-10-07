@@ -46,7 +46,7 @@ from student_bot.bot.citations import (
     format_source_display_label,
 )
 from student_bot.bot.memory import ConversationMemory
-from student_bot.bot.pipeline import answer
+from student_bot.bot.pipeline import answer, remember_turn
 from student_bot.bot.topics import classify
 from student_bot.config import Config, get_config
 from student_bot.jargon import Jargon, _nfc_lower, _read_json, _write_json
@@ -589,6 +589,7 @@ def _stream_answer(
     history = memory.get(web_user_id, "default")
     program_prior = memory.get_program_code(web_user_id, "default")
     adm_term_prior, adm_year_prior = memory.get_admission_hints(web_user_id, "default")
+    pending_prior = memory.get_pending_question(web_user_id, "default")
     session_expired = memory.take_expired_flag(web_user_id, "default")
 
     queue: asyncio.Queue = asyncio.Queue()
@@ -618,6 +619,7 @@ def _stream_answer(
                 admission_year_prefix_prior=adm_year_prior,
                 channel="web",
                 learn_more=bool(payload.learn_more),
+                pending_question_prior=pending_prior,
             )
             result.session_expired = session_expired
         except Exception as e:
@@ -645,26 +647,11 @@ def _stream_answer(
         if result is None:
             return
 
-        # Persist to memory and DB after the stream finishes.
-        if (
-            result.answered
-            or result.meta_fallback
-            or result.gate.reason == "programme_clarification"
-        ):
-            memory.append(web_user_id, "default", "user", payload.question)
-            memory.append(web_user_id, "default", "assistant", result.answer)
-        if result.program_code:
-            memory.set_program_code(web_user_id, "default", result.program_code)
-        if result.admission_term or result.admission_year_prefix:
-            memory.set_admission_hints(
-                web_user_id,
-                "default",
-                exact_term=result.admission_term,
-                year_prefix=result.admission_year_prefix,
-            )
-        # Sticky once the buffer evicts a turn — re-read after the append
-        # above so a turn that itself triggers eviction surfaces the signal.
-        history_truncated = memory.history_truncated(web_user_id, "default")
+        # Persist to memory and DB after the stream finishes. The truncated
+        # flag is sticky once the buffer evicts a turn and is read after the
+        # append, so a turn that itself triggers eviction surfaces the signal.
+        remember_turn(memory, web_user_id, "default", payload.question, result)
+        history_truncated = result.history_truncated
 
         chunk_ids = [c.chunk_id for c in result.retrieval.reranked]
         qa_id = db.record_qa(

@@ -158,6 +158,9 @@ class ProgrammeRootResolution:
     clarification_en: str = ""
     # KTH returns 200 + an empty-ish root when the programme code is not in their catalogue.
     missing_program_codes: tuple[str, ...] = ()
+    # The clarification asks again because the programme has no admission in
+    # the given year. Lets the pipeline keep that year out of memory.
+    admission_not_found: bool = False
 
 
 def _parse_programme_year_level(q: str) -> int | None:
@@ -427,6 +430,20 @@ def parse_program_admission_hints(q: str) -> AdmissionHints:
     return AdmissionHints()
 
 
+def reply_admission_hints(reply: str) -> AdmissionHints:
+    """The admission year a student's reply states. A bare year ("2022") counts
+    as one too: it is a valid answer to "vilken antagningsomgång?". The pipeline
+    hands this to the router as the admission year, so the newest reply wins over any
+    year earlier in the joined question, whatever form either is written in."""
+    hints = parse_program_admission_hints(reply)
+    if hints.exact_term or hints.year_prefix:
+        return hints
+    stripped = (reply or "").strip()
+    if re.fullmatch(r"20\d{2}", stripped):
+        return AdmissionHints(year_prefix=stripped)
+    return AdmissionHints()
+
+
 def is_programme_clarification_assistant_message(content: str) -> bool:
     """True if this assistant text is our bilingual admission-round clarification."""
     c = (content or "").lower()
@@ -452,9 +469,17 @@ def _is_clarification_followup_anchor(content: str) -> bool:
 
 
 def merge_programme_clarification_followup(
-    question: str, history: list[dict] | None, cfg: Config | None = None
+    question: str,
+    history: list[dict] | None,
+    cfg: Config | None = None,
+    pending_question: str | None = None,
 ) -> str:
-    """If the user is answering our admission-year or program-pick question, fuse with the prior user ask."""
+    """If the user is answering our admission-year or program-pick question, fuse with the prior user ask.
+
+    `pending_question` is the question the clarification asked about, saved in
+    conversation memory. When given, it is fused instead of the nearest earlier
+    user message, which after two clarifications in a row is the first reply
+    ("CTFYS"), not the question."""
     hist = history or []
     if len(hist) < 2:
         return question
@@ -469,9 +494,8 @@ def merge_programme_clarification_followup(
 
     qstrip = question.strip()
     if is_round:
-        hints = parse_program_admission_hints(question)
-        bare_year = bool(re.fullmatch(r"20\d{2}", qstrip))
-        if not (hints.exact_term or hints.year_prefix or bare_year):
+        hints = reply_admission_hints(question)
+        if not (hints.exact_term or hints.year_prefix):
             return question
     else:
         # Program pick: require either a 5-letter code or an explicit "I mean X"
@@ -496,11 +520,12 @@ def merge_programme_clarification_followup(
         if not (has_code or has_pick_anchor):
             return question
 
-    prev_user = ""
-    for entry in reversed(hist[:-1]):
-        if entry.get("role") == "user":
-            prev_user = (entry.get("content") or "").strip()
-            break
+    prev_user = (pending_question or "").strip()
+    if not prev_user:
+        for entry in reversed(hist[:-1]):
+            if entry.get("role") == "user":
+                prev_user = (entry.get("content") or "").strip()
+                break
     if not prev_user:
         return question
     merged = f"{prev_user}\n\n{qstrip}"
@@ -544,6 +569,9 @@ class WebFetchResult:
     # the same cohort's study plan.
     applied_admission_term: str | None = None
     applied_admission_year_prefix: str | None = None
+    # Set with `clarification` when it asks again because the programme has no
+    # admission in the given year (see `ProgrammeRootResolution.admission_not_found`).
+    admission_not_found: bool = False
 
 
 def _compiled_patterns(cfg: Config) -> list[re.Pattern[str]]:
@@ -2575,16 +2603,26 @@ def _select_programme_urls(
             clarification_sv=_clarify_program_terms_sv(program_code, terms),
             clarification_en=_clarify_program_terms_en(program_code, terms),
         )
+    else:
+        # A five-digit term the programme doesn't have (the one it has routed
+        # above). Asked about like a year with no admission, not as "several
+        # rounds match the year None".
+        cands = []
 
     if len(cands) == 1:
         return ProgrammeRootResolution(queue_urls=[f"{root}/{cands[0]}{year_suffix}"])
     if not cands:
+        if hints.year_prefix:
+            miss_sv = f"Din sökning matchade ingen period som börjar på {hints.year_prefix}."
+            miss_en = f"Nothing starting with programme period **{hints.year_prefix}** was found."
+        else:
+            miss_sv = f"Programmet har ingen period {hints.exact_term}."
+            miss_en = f"The programme has no period **{hints.exact_term}**."
         return ProgrammeRootResolution(
             queue_urls=[],
-            clarification_sv=_clarify_program_terms_sv(program_code, terms)
-            + f"\n_(Din sökning matchade ingen period som börjar på {hints.year_prefix}.)_",
-            clarification_en=_clarify_program_terms_en(program_code, terms)
-            + f"\n_(Nothing starting with programme period **{hints.year_prefix}** was found.)_",
+            clarification_sv=_clarify_program_terms_sv(program_code, terms) + f"\n_({miss_sv})_",
+            clarification_en=_clarify_program_terms_en(program_code, terms) + f"\n_({miss_en})_",
+            admission_not_found=True,
         )
 
     preview = ", ".join(cands[:12])
@@ -2791,7 +2829,11 @@ def maybe_fetch_dynamic_web(
     program_prior: str | None = None,
     admission_term_prior: str | None = None,
     admission_year_prefix_prior: str | None = None,
+    admission_hints_override: AdmissionHints | None = None,
 ) -> WebFetchResult | None:
+    """`admission_hints_override` is the admission year a student's reply to a
+    clarification states. It wins over any year in the (joined) question text,
+    which may still hold an earlier one."""
     if not cfg.dynamic_web.enabled:
         return None
 
@@ -2865,7 +2907,11 @@ def maybe_fetch_dynamic_web(
         return None
     log.info("dynamic-web: targets=%s", targets)
 
-    hints = parse_program_admission_hints(question)
+    override = admission_hints_override
+    if override and (override.exact_term or override.year_prefix):
+        hints = override
+    else:
+        hints = parse_program_admission_hints(question)
     # Fall back to a persisted admission hint when this turn doesn't carry
     # one. A user who clarified "HT2024" three turns ago shouldn't have to
     # repeat it on every follow-up. The prior is only used when this turn's
@@ -2906,6 +2952,7 @@ def maybe_fetch_dynamic_web(
             return WebFetchResult(
                 clarification=(res.clarification_sv, res.clarification_en),
                 resolved_program_code=_program_segment_code(root),
+                admission_not_found=res.admission_not_found,
             )
         for u in res.queue_urls:
             queue.extend(_programme_term_bundle_urls(u))

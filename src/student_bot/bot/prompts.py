@@ -372,9 +372,13 @@ def compose_meta_fallback_messages(
     question: str,
     *,
     offer_counselor: bool = True,
+    facts: str = "",
 ) -> list[dict]:
     """Messages for the gate-failed path: no retrieved context, just a
-    self-aware system prompt + history + the user's question."""
+    self-aware system prompt + history + the user's question.
+
+    facts: optional line of what the conversation has established (programme,
+    admission year), placed above the question. See `pipeline._conversation_facts`."""
     messages: list[dict] = [
         {
             "role": "system",
@@ -382,7 +386,8 @@ def compose_meta_fallback_messages(
         }
     ]
     messages.extend(history)
-    messages.append({"role": "user", "content": question})
+    content = f"{facts}\n\n---\n\n{question}" if facts else question
+    messages.append({"role": "user", "content": content})
     return messages
 
 
@@ -412,12 +417,15 @@ def compose_messages(
     chunks: list[RetrievedChunk],
     question: str,
     glossary_md: str = "",
+    facts: str = "",
 ) -> list[dict]:
     """Build the OpenAI/Ollama-style message list.
 
     history: prior turns as [{"role": "user"|"assistant", "content": "..."}, ...].
     glossary_md: optional pre-rendered "Ordlista / Glossary" block to inject
     above the retrieved context. See `Jargon.glossary_block`.
+    facts: optional line of what the conversation has established (programme,
+    admission year), placed first. See `pipeline._conversation_facts`.
     """
     messages: list[dict] = [{"role": "system", "content": system_prompt(cfg, lang)}]
     messages.extend(history)
@@ -425,6 +433,8 @@ def compose_messages(
     context = format_context(chunks)
     ctx_label = "Kontext" if lang == "sv" else "Context"
     parts: list[str] = []
+    if facts:
+        parts.append(facts)
     if glossary_md:
         parts.append(glossary_md)
         parts.append("")

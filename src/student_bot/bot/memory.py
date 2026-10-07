@@ -19,7 +19,7 @@ from __future__ import annotations
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from threading import Lock
+from threading import RLock
 
 from student_bot.config import Config
 
@@ -35,6 +35,10 @@ class _Slot:
     # cohort's study plan.
     admission_term: str | None = None  # five-digit KTH period, e.g. "20242"
     admission_year_prefix: str | None = None  # four-digit year, e.g. "2024"
+    # The question a clarification asked about, so the reply ("CTFYS") can be
+    # answered together with it. Lives one turn: callers set it after every
+    # turn, and None clears it.
+    pending_question: str | None = None
     # True once the ring buffer has dropped at least one user/assistant
     # pair to honour max_turns. Sticky for the life of the slot — once
     # context has been silently truncated, the user should keep seeing the
@@ -64,7 +68,8 @@ class ConversationMemory:
         self.ttl = cfg.memory.ttl_minutes * 60
         self._store: dict[tuple[str, str], _Slot] = {}
         self._tombstones: dict[tuple[str, str], _Tombstone] = {}
-        self._lock = Lock()
+        # Reentrant so `replace_last_pair` can pop and append under one hold.
+        self._lock = RLock()
 
     def _prune(self, now: float):
         stale = [k for k, slot in self._store.items() if now - slot.last_used > self.ttl]
@@ -109,6 +114,21 @@ class ConversationMemory:
                 slot.turns.popleft()
                 slot.truncated = True
             slot.last_used = now
+
+    def replace_last_pair(self, user_id: str, root_id: str, user: str, assistant: str) -> None:
+        """Replace the last user/assistant pair, e.g. a clarification the user
+        just answered, with the turn that folded it in. Each clarified
+        question then holds one pair instead of one per clarification, and
+        eviction is unaffected because the length does not change."""
+        now = time.time()
+        with self._lock:
+            self._prune(now)
+            slot = self._store.get((user_id, root_id))
+            if slot and len(slot.turns) >= 2 and slot.turns[-1]["role"] == "assistant":
+                slot.turns.pop()
+                slot.turns.pop()
+            self.append(user_id, root_id, "user", user)
+            self.append(user_id, root_id, "assistant", assistant)
 
     def clear(self, user_id: str, root_id: str) -> None:
         with self._lock:
@@ -155,11 +175,17 @@ class ConversationMemory:
         *,
         exact_term: str | None = None,
         year_prefix: str | None = None,
+        replace: bool = False,
     ) -> None:
         """Persist a resolved admission round. Either field may be None; a
         non-None value overwrites the prior, a None leaves the prior in
         place (we don't want to forget the term just because this turn
-        didn't restate it)."""
+        didn't restate it).
+
+        `replace=True` stores the pair as given, clearing a field passed as
+        None. For a pair that describes the whole admission year in effect, so a
+        corrected year ("HT2024") does not sit next to the old exact term
+        ("20252"), which would still win."""
         now = time.time()
         with self._lock:
             self._prune(now)
@@ -167,9 +193,9 @@ class ConversationMemory:
             if not slot:
                 slot = _Slot(last_used=now)
                 self._store[(user_id, root_id)] = slot
-            if exact_term is not None:
+            if replace or exact_term is not None:
                 slot.admission_term = exact_term
-            if year_prefix is not None:
+            if replace or year_prefix is not None:
                 slot.admission_year_prefix = year_prefix
             slot.last_used = now
 
@@ -189,6 +215,30 @@ class ConversationMemory:
         with self._lock:
             self._prune(now)
             return self._tombstones.pop((user_id, root_id), None) is not None
+
+    def get_pending_question(self, user_id: str, root_id: str) -> str | None:
+        now = time.time()
+        with self._lock:
+            self._prune(now)
+            slot = self._store.get((user_id, root_id))
+            if not slot:
+                return None
+            slot.last_used = now
+            return slot.pending_question
+
+    def set_pending_question(self, user_id: str, root_id: str, question: str | None) -> None:
+        """Remember the question a clarification asked about; None clears it."""
+        now = time.time()
+        with self._lock:
+            self._prune(now)
+            slot = self._store.get((user_id, root_id))
+            if not slot:
+                if question is None:
+                    return
+                slot = _Slot(last_used=now)
+                self._store[(user_id, root_id)] = slot
+            slot.pending_question = question
+            slot.last_used = now
 
 
 __all__ = ["ConversationMemory"]

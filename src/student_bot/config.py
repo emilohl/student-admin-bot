@@ -201,7 +201,7 @@ class ResolvedLLM:
 
 
 class MemoryConfig(BaseModel):
-    max_turns: int = 4
+    max_turns: int = 12
     ttl_minutes: int = 30
 
 

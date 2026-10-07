@@ -18,9 +18,11 @@ from student_bot.bot.web_retrieval import (
     _select_programme_urls,
     corpus_programme_substrings_for_query,
     history_without_programme_clarification_tail,
+    is_programme_clarification_assistant_message,
     merge_programme_clarification_followup,
     parse_program_admission_hints,
     program_study_intent_question,
+    reply_admission_hints,
 )
 from student_bot.bot.citations import build_doc_url
 from student_bot.config import get_config
@@ -99,6 +101,32 @@ def test_maybe_fetch_returns_missing_program_for_unknown_code(monkeypatch):
     r = wr.maybe_fetch_dynamic_web(cfg, "Finns det ett program som heter CFUSK?", "sv")
     assert r is not None and r.missing_kth_program
     assert "CFUSK" in (r.missing_kth_program[0] + r.missing_kth_program[1])
+
+
+@pytest.mark.parametrize(
+    "override,year",
+    [(None, "2019"), (AdmissionHints(), "2019"), (AdmissionHints(year_prefix="2022"), "2022")],
+)
+def test_maybe_fetch_takes_the_admission_override_over_the_text(monkeypatch, override, year):
+    """The pipeline passes the admission year of the student's latest reply. It must win
+    over an earlier year in the joined text. A missing admission year is passed on."""
+    cfg = get_config()
+    if not cfg.dynamic_web.enabled:
+        pytest.skip("dynamic web disabled")
+    monkeypatch.setattr(wr, "_get_program_aliases", lambda _cfg: {"ctfys": "CTFYS"})
+    seen: list[AdmissionHints] = []
+
+    def _root(_cfg, _url, hints, **_kw):
+        seen.append(hints)
+        return wr.ProgrammeRootResolution(
+            queue_urls=[], clarification_sv="?", clarification_en="?", admission_not_found=True
+        )
+
+    monkeypatch.setattr(wr, "_resolve_program_root_targets", _root)
+    q = "Vilka kurser är obligatoriska i årskurs 2 på CTFYS?\n\nHT2019"
+    r = wr.maybe_fetch_dynamic_web(cfg, q, "sv", admission_hints_override=override)
+    assert seen and seen[-1].year_prefix == year
+    assert r is not None and r.clarification and r.admission_not_found
 
 
 def test_extract_targets_uses_five_letter_program_codes(monkeypatch):
@@ -411,6 +439,70 @@ def test_merge_programme_followup_bare_year():
     ]
     merged = merge_programme_clarification_followup("2026", hist)
     assert "CDATE" in merged and "2026" in merged
+
+
+def test_merge_uses_the_pending_question_after_a_second_clarification():
+    """Programme pick, then admission year: the nearest user message is the
+    first reply ("CTFYS"), so without the saved question the ask is lost."""
+    hist = [
+        {"role": "user", "content": "Vilka spärrkurser finns i årskurs 2?"},
+        {"role": "assistant", "content": "Ditt program är inte entydigt. Vilket menar du?"},
+        {"role": "user", "content": "CTFYS"},
+        {"role": "assistant", "content": "vilken antagningsomgång som gäller för dig?"},
+    ]
+    pending = "Vilka spärrkurser finns i årskurs 2?\n\nCTFYS"
+    merged = merge_programme_clarification_followup("HT2022", hist, pending_question=pending)
+    assert merged == f"{pending}\n\nHT2022"
+
+
+def test_merge_ignores_the_pending_question_when_the_reply_is_not_an_answer():
+    hist = [
+        {"role": "user", "content": "Utbildningsplan för CDATE"},
+        {"role": "assistant", "content": "vilken antagningsomgång som gäller för dig?"},
+    ]
+    question = "Vad är CSN?"
+    merged = merge_programme_clarification_followup(
+        question, hist, pending_question="Utbildningsplan för CDATE"
+    )
+    assert merged == question
+
+
+def test_a_year_the_programme_has_no_admission_for_is_reported():
+    """The pipeline keeps such an admission year out of memory, so the router says so."""
+    terms = ["20242", "20232", "20222"]
+    missing = _select_programme_urls("CTFYS", terms, AdmissionHints(year_prefix="2030"))
+    found = _select_programme_urls("CTFYS", terms, AdmissionHints(year_prefix="2023"))
+    assert missing.clarification_sv and missing.admission_not_found
+    assert found.queue_urls and not found.admission_not_found
+
+
+@pytest.mark.parametrize("terms", [["20242", "20232", "20222"], ["20242"]])
+def test_a_five_digit_term_the_programme_does_not_have_is_reported(terms):
+    """Asked like a year with no admission. It used to say "several rounds match
+    the year None", or route a programme with one admission year to its only plan."""
+    r = _select_programme_urls("CTFYS", terms, AdmissionHints(exact_term="20192"))
+    assert not r.queue_urls and r.admission_not_found
+    assert "20192" in r.clarification_sv and "None" not in r.clarification_sv
+    # The standard admission year question, so the student's next reply is joined.
+    assert is_programme_clarification_assistant_message(r.clarification_sv)
+    assert is_programme_clarification_assistant_message(r.clarification_en)
+
+
+@pytest.mark.parametrize(
+    "reply,admission",
+    [
+        ("HT2022", (None, "2022")),
+        ("VT2022", (None, "2022")),
+        ("hösten 2022", (None, "2022")),
+        ("jag började 2022", (None, "2022")),
+        ("2022", (None, "2022")),
+        ("20222", ("20222", None)),
+        ("Vad är CSN?", (None, None)),
+    ],
+)
+def test_reply_admission_hints(reply, admission):
+    hints = reply_admission_hints(reply)
+    assert (hints.exact_term, hints.year_prefix) == admission
 
 
 def test_history_without_programme_clarification_tail():
