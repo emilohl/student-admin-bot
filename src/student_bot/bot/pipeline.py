@@ -378,9 +378,10 @@ class AnswerResult:
     program_code: str | None = None
     # Admission year that picked a programme's study plan this turn (the
     # router falls back to the persisted prior when the turn carries no hint).
-    # Callers persist the pair via `ConversationMemory.set_admission_hints(
-    # replace=True)` so a follow-up that doesn't restate the term still routes
-    # to the same cohort.
+    # It becomes the admission year the conversation is currently about, which
+    # need not be the student's own. Callers persist the pair via
+    # `ConversationMemory.set_admission_hints(replace=True)` so a follow-up that
+    # doesn't restate the term still routes to the same cohort.
     admission_term: str | None = None
     admission_year_prefix: str | None = None
     # UX-honesty signals plumbed up from `ConversationMemory`. The web UI
@@ -907,16 +908,18 @@ def answer(
         glossary_md = _glossary_with_codes(
             glossary_md, lang, _resolve_program_codes(cfg, resolved_program_code.upper(), lang)
         )
-    # Design decision: students ask about themselves. An admission year counts only when
-    # it picked a programme's study plan this turn, and then it is taken as the
-    # student's own and replaces the stored one (`remember_turn` stores it with
-    # `replace=True`). So "Jag började HT2023, vilka kurser har jag i årskurs
-    # 2?" moves the student to HT2023 — as does "vad gällde för de som började
-    # HT2023 på CTFYS?", the accepted cost, and a semester in a message the
-    # router sends to the stored programme's plan ("valfria kurser i årskurs 3
-    # VT2025?"). A course-only fetch reports the parsed hints too and does not
-    # count, and neither does a message that routes to no study plan: a bare
-    # "Förlåt, jag menar HT2024" changes nothing until the admission year is used for a
+    # Design decision: one admission year is in focus at a time, the one the
+    # conversation is currently about. It need not be the student's own: people
+    # ask about a friend's programme or older rules too. An admission year counts
+    # only when it picked a programme's study plan this turn, and then it
+    # replaces the stored one (`remember_turn` stores it with `replace=True`).
+    # So "Jag började HT2023, vilka kurser har jag i årskurs 2?" and "vad gällde
+    # för de som började HT2023 på CTFYS?" both move the conversation to HT2023.
+    # So does a semester in a message the router sends to the stored programme's
+    # plan ("valfria kurser i årskurs 3 VT2025?"), the accepted cost. A
+    # course-only fetch reports the parsed hints too and does not count, and
+    # neither does a message that routes to no study plan: a bare "Förlåt, jag
+    # menar HT2024" changes nothing until the admission year is used for a
     # programme again.
     routed_programme = bool(web_result and resolved_program_code)
     applied_admission_term = web_result.applied_admission_term if routed_programme else None

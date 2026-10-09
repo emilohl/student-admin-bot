@@ -50,7 +50,7 @@ Concrete components, file by file:
 | `src/student_bot/bot/prompts.py` | Bilingual system prompts with anti-injection clause and citation rules |
 | `src/student_bot/bot/citations.py` | Sources block + literacy footers + confidence badge |
 | `src/student_bot/bot/topics.py` | Zero-shot topic classifier (post-hoc, never on the user's path) |
-| `src/student_bot/bot/memory.py` | Per-thread short-term conversation buffer (4 turns × 30 min TTL) |
+| `src/student_bot/bot/memory.py` | Per-thread short-term conversation buffer (12 turns × 30 min TTL) |
 | `src/student_bot/bot/pipeline.py` | Full RAG flow + interactive CLI |
 | `src/student_bot/bot/mattermost_client.py` | Websocket bot with reconnect, threading, GDPR notice, `!privacy`, reactions |
 | `src/student_bot/logging_db.py` | SQLite schema: qa_log, feedback, disclosed, opt-out, anon counter |
@@ -205,7 +205,7 @@ The container binds **`127.0.0.1:8000`** only; a **reverse proxy** (Caddy on the
 
 - **LLM**: `gemma-4-E4B-it-GGUF:UD-Q4_K_XL` via Ollama on the host (Metal/GPU).
   Effective ≈ 4.5 B parameters, 128 K max context, multilingual (35+ first-class).
-  Configured at `num_ctx=16384` — plenty for system + 4 turns + top-5 chunks +
+  Configured at `num_ctx=16384` — plenty for system + 12 turns + top-5 chunks +
   question + reply (~6 K tokens used).
 - **Embeddings**: `BAAI/bge-m3` (~2.3 GB, CPU). Selected over the lighter
   `multilingual-e5-base` after eval: e5-base gave only 47 % recall@5 on

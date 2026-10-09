@@ -372,6 +372,25 @@ def test_parse_admission_hints_ht_year():
     assert h.year_prefix == "2026"
 
 
+@pytest.mark.parametrize(
+    "question,year",
+    [
+        ("Vilka kurser läser man i årskurs 2 på CTFYS, kull HT22?", "2022"),
+        ("utbildningsplan för CTFYS ht-22", "2022"),
+        ("Studieplan för CTFYS VT'23", "2023"),
+        ("Vilka kurser har CTFYS höstterminen 2022?", "2022"),
+        ("Which courses does CTFYS have in the spring semester 2023?", "2023"),
+        ("CTFYS courses for the autumn 2022 intake", "2022"),
+        # Two digits after a space are credits, not a year.
+        ("Kan jag läsa HT 15 hp och VT 15 hp?", None),
+        # "fall" is not a semester word: Swedish "i så fall".
+        ("Vad gäller i så fall 2026?", None),
+    ],
+)
+def test_parse_admission_hints_two_digit_and_semester_words(question, year):
+    assert parse_program_admission_hints(question).year_prefix == year
+
+
 def test_corpus_hints_only_when_program_intent():
     assert corpus_programme_substrings_for_query("HT2024 och DD1331") is None
     assert program_study_intent_question("course DD1331") is False
@@ -498,6 +517,44 @@ def test_a_five_digit_term_the_programme_does_not_have_is_reported(terms):
         ("2022", (None, "2022")),
         ("20222", ("20222", None)),
         ("Vad är CSN?", (None, None)),
+        # A reply that names one year and is not a question, however it is phrased.
+        ("år 2023 var det", (None, "2023")),
+        ("2023 tror jag", (None, "2023")),
+        ("2023.", (None, "2023")),
+        ("2023?", (None, "2023")),
+        ("i 2023", (None, "2023")),
+        ("2023, ja 2023", (None, "2023")),
+        ("Jag tror att jag kom in 2025", (None, "2025")),
+        ("Det borde ha varit 2025 tror jag", (None, "2025")),
+        ("Jag är inte helt säker men 2025", (None, "2025")),
+        ("Antogs 2025 tror jag", (None, "2025")),
+        # An explicit form counts despite a "?", also with a question after it.
+        ("HT2023?", (None, "2023")),
+        ("hösten 2023?", (None, "2023")),
+        ("HT2022, vilka kurser blir det då?", (None, "2022")),
+        ("Jag började HT2022, vilka kurser har jag i årskurs 2?", (None, "2022")),
+        # A question word with no "?" can open an answer.
+        ("När jag började var det HT2022", (None, "2022")),
+        ("Vad jag minns började jag 2022", (None, "2022")),
+        ("When I started it was 2022", (None, "2022")),
+        # HT/VT with two digits, and the semester words.
+        ("HT22", (None, "2022")),
+        ("ht-22", (None, "2022")),
+        ("VT'23", (None, "2023")),
+        ("höstterminen 2022", (None, "2022")),
+        ("vårterminen 2023", (None, "2023")),
+        ("autumn 2022", (None, "2022")),
+        ("spring semester 2023", (None, "2023")),
+        # A reply that starts with a question word (whatever form its year has),
+        # a bare year in a question, two different years, or two digits after a
+        # space: none.
+        ("Hur mycket CSN fick man år 2023?", (None, None)),
+        ("När är omtentan 2025?", (None, None)),
+        ("När är omtentan VT2026?", (None, None)),
+        ("Kan jag söka utbyte 2026?", (None, None)),
+        ("Vilka kurser gick man 2023", (None, None)),
+        ("2021 eller 2023", (None, None)),
+        ("ht 22", (None, None)),
     ],
 )
 def test_reply_admission_hints(reply, admission):

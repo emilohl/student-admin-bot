@@ -109,14 +109,23 @@ def test_a_clarified_question_holds_one_pair(cfg, router):
     assert memory.get_pending_question("u", "t") == f"{_QUESTION}\n\nCTFYS"
 
 
-def test_a_new_question_instead_of_a_reply_is_not_merged(cfg, router, no_corpus_hit):
+@pytest.mark.parametrize(
+    "new_question",
+    [
+        "Vad är CSN?",
+        "Hur mycket CSN fick man år 2023?",
+        "När är omtentan 2025?",
+        "När är omtentan VT2026?",
+    ],
+)
+def test_a_new_question_instead_of_a_reply_is_not_merged(cfg, router, no_corpus_hit, new_question):
     memory = ConversationMemory(cfg)
     router.replies = [_ROUND, None]  # the new question is answered, so it is stored
 
     _turn(cfg, memory, _QUESTION)
-    _turn(cfg, memory, "Vad är CSN?")
+    _turn(cfg, memory, new_question)
 
-    assert router.queries[-1] == "Vad är CSN?"
+    assert router.queries[-1] == new_question
     assert memory.get_pending_question("u", "t") is None
 
 
@@ -164,11 +173,12 @@ _ADMISSION_NOT_FOUND = WebFetchResult(
         ("hösten 2022", (None, "2022")),
         ("jag började 2022", (None, "2022")),
         ("2022", (None, "2022")),
+        ("år 2022 var det", (None, "2022")),
+        ("HT2022?", (None, "2022")),
+        ("HT2022, vilka kurser blir det då?", (None, "2022")),
+        ("ht22", (None, "2022")),
+        ("höstterminen 2022", (None, "2022")),
         ("20222", ("20222", None)),
-        (
-            "Vilka kurser är obligatoriska i årskurs 2 på CTFYS? Jag började hösten 2022.",
-            (None, "2022"),
-        ),
     ],
 )
 def test_a_year_with_no_plan_then_the_right_one_is_not_asked_again(cfg, router, retry, admission):
@@ -188,6 +198,24 @@ def test_a_year_with_no_plan_then_the_right_one_is_not_asked_again(cfg, router, 
     assert (override.exact_term, override.year_prefix) == admission
     assert "2019" not in router.queries[-1]
     assert "obligatoriska i årskurs 2" in router.queries[-1]
+
+
+def test_a_whole_question_after_a_clarification_is_routed_on_its_own(cfg, router):
+    """A question is never joined, even one that names its admission year. This
+    one carries the programme and the year itself, and the rejected year stays out."""
+    memory = ConversationMemory(cfg)
+    router.replies = [_ROUND, _ADMISSION_NOT_FOUND, _STOP]
+
+    _turn(cfg, memory, "Vilka kurser är obligatoriska i årskurs 2 på CTFYS?")
+    _turn(cfg, memory, "HT2019")
+    _turn(
+        cfg, memory, "Vilka kurser är obligatoriska i årskurs 2 på CTFYS? Jag började hösten 2022."
+    )
+
+    query = router.queries[-1]
+    assert query.count("Vilka kurser") == 1 and "hösten 2022" in query
+    assert "2019" not in query
+    assert router.kwargs[-1]["admission_hints_override"] is None
 
 
 def test_a_programme_pick_with_a_missing_year_keeps_the_pick(cfg, router):
@@ -275,8 +303,9 @@ def test_remember_turn_keeps_the_admission_year(cfg):
 
 # ---- which admission year is stored ------------------------------------
 #
-# Design decision: students ask about themselves, so an admission year that picked a
-# programme's study plan is the student's own and replaces the stored one. A
+# Design decision: one admission year is in focus at a time, the one the
+# conversation is currently about (not necessarily the student's own). An
+# admission year that picked a programme's study plan replaces the stored one. An
 # admission year in any other message changes nothing. See `routed_programme` in
 # `pipeline.answer`.
 

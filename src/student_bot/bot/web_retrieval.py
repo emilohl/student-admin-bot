@@ -376,7 +376,7 @@ def _question_is_year_independent(q: str) -> bool:
 
 
 def parse_program_admission_hints(q: str) -> AdmissionHints:
-    """Prefer explicit five-digit rounds, then HT/VT / Swedish season, then weak context."""
+    """Prefer explicit five-digit rounds, then HT/VT / season or semester, then weak context."""
     if not q:
         return AdmissionHints()
     u = q.upper()
@@ -391,10 +391,18 @@ def parse_program_admission_hints(q: str) -> AdmissionHints:
     m = re.search(r"\bVT[- ]?\s*(20\d{2})\b", u)
     if m:
         return AdmissionHints(year_prefix=m.group(1))
+    # Two digits only right after HT/VT ("HT22", "ht-22", "VT'23"). Not after a
+    # space: "HT 15 hp" is credits, not 2015.
+    m = re.search(r"\b[HV]T[-'’]?(\d{2})\b", u)
+    if m:
+        return AdmissionHints(year_prefix="20" + m.group(1))
 
+    # HT = hösttermin = autumn semester, VT = vårtermin = spring semester.
     for pat in (
         r"(?:HÖSTEN|HÖST|HOSTEN|HOST)\s+[-]?\s*(20\d{2})\b",
         r"(?:VÅREN|VÅR|VAREN|VAR)\s+[-]?\s*(20\d{2})\b",
+        r"\b(?:HÖSTTERMIN|HOSTTERMIN|VÅRTERMIN|VARTERMIN)(?:EN)?\s+[-]?\s*(20\d{2})\b",
+        r"\b(?:AUTUMN|SPRING)(?:\s+(?:SEMESTER|TERM))?(?:\s+OF)?\s+(20\d{2})\b",
     ):
         m = re.search(pat, q, re.I)
         if m:
@@ -430,17 +438,41 @@ def parse_program_admission_hints(q: str) -> AdmissionHints:
     return AdmissionHints()
 
 
+# First words of a question. A reply that starts with one and has a "?" asks
+# something new, whatever form its year has ("När är omtentan VT2026?").
+# Without a "?" it can still be an answer ("När jag började var det HT2022").
+# Verbs are left out on purpose: an answer often starts with one ("Antogs
+# 2025", "Började 2025"). So is "var", which means both "where" and "was".
+_QUESTION_WORDS = frozenset(
+    "vad vilka vilken vilket när hur varför vem vems vart "
+    "what which when how why who whom whose where".split()
+)
+
+
 def reply_admission_hints(reply: str) -> AdmissionHints:
-    """The admission year a student's reply states. A bare year ("2022") counts
-    as one too: it is a valid answer to "vilken antagningsomgång?". The pipeline
-    hands this to the router as the admission year, so the newest reply wins over any
-    year earlier in the joined question, whatever form either is written in."""
-    hints = parse_program_admission_hints(reply)
+    """The admission year a student's reply to a clarification states. Only
+    called right after one. A reply that starts with a question word and has a
+    "?" asks something new and gives none ("När är omtentan VT2026?").
+    Otherwise a year in a form the parser knows counts ("HT22", "hösten 2022",
+    "När jag började var det HT2022"), also when a question follows it
+    ("HT2022, vilka kurser blir det då?"). A bare year is a weaker signal. It
+    counts when it is the reply's only year and the reply neither starts with a
+    question word nor has a "?" ("år 2023 var det"), or stands alone ("2023?").
+    The pipeline hands this to the router as the admission year, so the newest
+    reply wins over any year earlier in the joined question, whatever form
+    either is written in."""
+    text = (reply or "").strip()
+    words = re.findall(r"\w+", text.lower())
+    starts_as_question = bool(words) and words[0] in _QUESTION_WORDS
+    if starts_as_question and "?" in text:
+        return AdmissionHints()
+    hints = parse_program_admission_hints(text)
     if hints.exact_term or hints.year_prefix:
         return hints
-    stripped = (reply or "").strip()
-    if re.fullmatch(r"20\d{2}", stripped):
-        return AdmissionHints(year_prefix=stripped)
+    years = set(re.findall(r"\b(20\d{2})\b", text))
+    bare_year_alone = re.fullmatch(r"20\d{2}\W*", text)
+    if len(years) == 1 and not starts_as_question and ("?" not in text or bare_year_alone):
+        return AdmissionHints(year_prefix=years.pop())
     return AdmissionHints()
 
 
