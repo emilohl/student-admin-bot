@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 
 from student_bot.bot.web_cache import CachedPage, WebCache
 from student_bot.bot.web_retrieval import (
+    latest_cohort,
     _compiled_patterns,
     _compressed_application_store,
     _decode_kth_state_blob,
@@ -177,12 +178,6 @@ def _warm_pages(
             if (old := cache.get(cache_key(url))) is not None:
                 data[url] = json.loads(old.content)
     return data, failed
-
-
-def latest_cohort(now: time.struct_time) -> int:
-    """The most recent autumn intake: from August this year's, before it last
-    year's. Until then the coming cohort has no students to ask about."""
-    return now.tm_year if now.tm_mon >= 8 else now.tm_year - 1
 
 
 def _warm(cfg: Config) -> WarmReport:

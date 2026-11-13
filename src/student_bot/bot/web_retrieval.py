@@ -164,6 +164,8 @@ class ProgrammeRootResolution:
     # The clarification asks again because the programme has no admission in
     # the given year. Lets the pipeline keep that year out of memory.
     admission_not_found: bool = False
+    # Term picked by `default_newest_term` rather than stated by the student.
+    defaulted_term: str | None = None
 
 
 def _parse_programme_year_level(q: str) -> int | None:
@@ -484,7 +486,13 @@ def is_programme_clarification_assistant_message(content: str) -> bool:
 def is_multi_program_clarification_assistant_message(content: str) -> bool:
     """True if this assistant text is our 'which program code do you mean?' list."""
     c = (content or "").lower()
-    return "ditt program är inte entydigt" in c or "your program reference is ambiguous" in c
+    return (
+        "ditt program är inte entydigt" in c
+        or "your program reference is ambiguous" in c
+        # pipeline._programme_ask: a course question with no programme known.
+        or "vilket program läser du" in c
+        or "which programme do you study" in c
+    )
 
 
 def _is_clarification_followup_anchor(content: str) -> bool:
@@ -596,6 +604,10 @@ class WebFetchResult:
     # Set with `clarification` when it asks again because the programme has no
     # admission in the given year (see `ProgrammeRootResolution.admission_not_found`).
     admission_not_found: bool = False
+    # Term the study plan was picked by when the student gave none, or a year
+    # with several (`dynamic_web.default_newest_term`). Kept apart from
+    # `applied_admission_term` so memory never holds a term nobody stated.
+    defaulted_admission_term: str | None = None
 
 
 def _compiled_patterns(cfg: Config) -> list[re.Pattern[str]]:
@@ -2591,14 +2603,33 @@ def _clarify_program_terms_en(program_code: str, terms: list[str]) -> str:
     )
 
 
+def latest_cohort(now: time.struct_time) -> int:
+    """The most recent autumn intake: from August this year's, before it last
+    year's. Until then the coming cohort has no students to ask about."""
+    return now.tm_year if now.tm_mon >= 8 else now.tm_year - 1
+
+
+def _newest_started(sorted_terms_desc: list[str]) -> str:
+    """The newest term whose cohort has started. KTH lists the next two
+    autumns' rounds ahead of time, so the plain newest would be a cohort with
+    no students yet. A programme with only future rounds gives its first."""
+    cap = f"{latest_cohort(time.localtime())}2"
+    return next((t for t in sorted_terms_desc if t <= cap), sorted_terms_desc[-1])
+
+
 def _select_programme_urls(
     program_code: str,
     sorted_terms_desc: list[str],
     hints: AdmissionHints,
     year_level: int | None = None,
     question: str | None = None,
+    *,
+    default_newest: bool = False,
 ) -> ProgrammeRootResolution:
-    """Pick concrete /program/<code>/<term> URLs or ask for clarification."""
+    """Pick concrete /program/<code>/<term> URLs or ask for clarification.
+
+    With `default_newest`, no admission round or a year matching several picks
+    the newest instead of asking, and reports it in `defaulted_term`."""
     root = _canonicalize(f"https://{_KTH_HOST}/student/kurser/program/{program_code}")
     terms = sorted_terms_desc
     year_suffix = f"/arskurs{year_level}" if year_level else ""
@@ -2615,13 +2646,18 @@ def _select_programme_urls(
     elif hints.exact_term is None:
         if len(terms) == 1:
             return ProgrammeRootResolution(queue_urls=[f"{root}/{terms[0]}{year_suffix}"])
+        newest = _newest_started(terms)
         if question and _question_is_year_independent(question):
             log.info(
                 "dynamic-web: %s year-independent question; using newest term %s without asking",
                 program_code,
-                terms[0],
+                newest,
             )
-            return ProgrammeRootResolution(queue_urls=[f"{root}/{terms[0]}{year_suffix}"])
+            return ProgrammeRootResolution(queue_urls=[f"{root}/{newest}{year_suffix}"])
+        if default_newest:
+            return ProgrammeRootResolution(
+                queue_urls=[f"{root}/{newest}{year_suffix}"], defaulted_term=newest
+            )
         return ProgrammeRootResolution(
             queue_urls=[],
             clarification_sv=_clarify_program_terms_sv(program_code, terms),
@@ -2645,6 +2681,11 @@ def _select_programme_urls(
             clarification_sv=_clarify_program_terms_sv(program_code, terms) + f"\n_({miss_sv})_",
             clarification_en=_clarify_program_terms_en(program_code, terms) + f"\n_({miss_en})_",
             admission_not_found=True,
+        )
+    if default_newest:
+        newest = _newest_started(cands)
+        return ProgrammeRootResolution(
+            queue_urls=[f"{root}/{newest}{year_suffix}"], defaulted_term=newest
         )
 
     preview = ", ".join(cands[:12])
@@ -2691,13 +2732,21 @@ def _resolve_program_root_targets(
         if re.fullmatch(r"[A-Z]{5}", mc):
             code = mc
 
-    resolved = _select_programme_urls(code, terms, hints, year_level=year_level, question=question)
+    resolved = _select_programme_urls(
+        code,
+        terms,
+        hints,
+        year_level=year_level,
+        question=question,
+        default_newest=cfg.dynamic_web.default_newest_term,
+    )
     log.info(
-        "dynamic-web: programme %s terms=%s hints=%s -> %s",
+        "dynamic-web: programme %s terms=%s hints=%s -> %s%s",
         code,
         terms,
         hints,
         resolved.queue_urls or "ASK",
+        " (defaulted)" if resolved.defaulted_term else "",
     )
     return resolved
 
@@ -2956,6 +3005,7 @@ def maybe_fetch_dynamic_web(
 
     queue: list[str] = list(course_urls)
     resolved_program_code: str | None = None
+    defaulted_admission_term: str | None = None
     for root in prog_roots:
         res = _resolve_program_root_targets(
             cfg, root, hints, year_level=year_level, question=question
@@ -2976,6 +3026,7 @@ def maybe_fetch_dynamic_web(
             queue.extend(_programme_term_bundle_urls(u))
         if resolved_program_code is None:
             resolved_program_code = _program_segment_code(root)
+            defaulted_admission_term = res.defaulted_term
 
     # Course-without-code path. Triggers when the question references a course
     # by name (no explicit code) and a program code is known — either
@@ -3175,4 +3226,5 @@ def maybe_fetch_dynamic_web(
         resolved_program_code=resolved_program_code,
         applied_admission_term=hints.exact_term,
         applied_admission_year_prefix=hints.year_prefix,
+        defaulted_admission_term=defaulted_admission_term,
     )

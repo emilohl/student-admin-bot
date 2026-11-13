@@ -209,6 +209,30 @@ button:disabled { opacity: 0.5; cursor: progress; }
   cursor: help;
 }
 .chat-option input { margin: 0; cursor: pointer; }
+/* Programme + admission-year picker above the textarea. Same muted 12px as
+   .chat-options; wraps onto two rows on a phone. */
+.picker-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.picker { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.picker-program { flex: 1 1 16rem; }
+.picker label { margin: 0; font-weight: 400; white-space: nowrap; }
+.picker select {
+  min-width: 0;
+  max-width: 100%;
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--fg);
+  font-size: 12px;
+}
+.picker-program select { flex: 1; }
 /* The one scrolling region. `max-height` is gone: the shell gives it exactly
    the space left over, so it can neither overflow the page nor leave the
    composer stranded below the fold. */

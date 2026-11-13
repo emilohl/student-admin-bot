@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>student-bot</title>
-<link rel="stylesheet" href="static/style.css?v=45">
+<link rel="stylesheet" href="static/style.css?v=46">
 <link rel="icon" href="static/favicon.svg?v=1" type="image/svg+xml">
 <link rel="icon" href="static/favicon-32.png?v=1" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="static/apple-touch-icon.png?v=1">
@@ -63,6 +63,22 @@
     <div id="cloud-notice-chat" class="cloud-notice cloud-notice-banner hidden" role="note"></div>
     <div id="messages" aria-live="polite"></div>
     <form id="composer">
+      <!-- Programme + admission year, sent with every question. Empty = the bot
+           uses what the question or the thread says, else the newest term. -->
+      <div class="picker-row">
+        <div class="picker picker-program">
+          <label for="pick-program" data-i18n="chat.pick.program"></label>
+          <select id="pick-program">
+            <option value="" data-i18n="chat.pick.program.none"></option>
+          </select>
+        </div>
+        <div class="picker">
+          <label for="pick-year" data-i18n="chat.pick.year"></label>
+          <select id="pick-year">
+            <option value="" data-i18n="chat.pick.year.none"></option>
+          </select>
+        </div>
+      </div>
       <textarea id="question" rows="3" data-i18n-placeholder="chat.placeholder" required></textarea>
       <div class="composer-row">
         <span id="status" class="status"></span>
@@ -128,8 +144,8 @@
   <span id="conn"></span>
 </footer>
 
-<script src="static/i18n.js?v=44"></script>
+<script src="static/i18n.js?v=45"></script>
 <script src="static/notice.js?v=32" defer></script>
-<script src="static/app.js?v=42"></script>
+<script src="static/app.js?v=45"></script>
 </body>
 </html>

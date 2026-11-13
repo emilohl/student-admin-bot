@@ -56,6 +56,12 @@ class WebCache:
             fetched_at=int(row["fetched_at"]),
         )
 
+    def contents_like(self, pattern: str) -> list[str]:
+        """`content` of every row whose url matches the SQL LIKE `pattern`."""
+        with self._connect() as conn:
+            rows = conn.execute("SELECT content FROM web_cache WHERE url LIKE ?", (pattern,))
+            return [r[0] for r in rows]
+
     def put(self, page: CachedPage) -> None:
         with self._connect() as conn:
             conn.execute(

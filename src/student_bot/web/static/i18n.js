@@ -46,6 +46,10 @@
       "chat.session_expired": "Föregående konversation har gått ut (timeout). Boten börjar från noll.",
       "chat.export": "Exportera",
       "chat.export.title": "Ladda ner konversationen som Markdown",
+      "chat.pick.program": "Program",
+      "chat.pick.program.none": "Inget program valt",
+      "chat.pick.year": "Antagningsår",
+      "chat.pick.year.none": "Senaste antagningsomgången",
       "export.user_default": "Användare",
       "export.sources_heading": "Källor",
       "perf.context": "Kontext",
@@ -281,6 +285,10 @@
       "chat.session_expired": "Your previous session expired (timeout). The bot is starting fresh.",
       "chat.export": "Export",
       "chat.export.title": "Download the conversation as Markdown",
+      "chat.pick.program": "Programme",
+      "chat.pick.program.none": "No programme selected",
+      "chat.pick.year": "Admission year",
+      "chat.pick.year.none": "Latest admission round",
       "export.user_default": "User",
       "export.sources_heading": "Sources",
       "perf.context": "Context",
@@ -541,6 +549,7 @@
 
   // Expose for runtime callers (status messages in app.js).
   window.t = t;
+  window.currentLang = currentLang;
   window.setLang = setLang;
   window.applyI18n = applyTranslations;
 

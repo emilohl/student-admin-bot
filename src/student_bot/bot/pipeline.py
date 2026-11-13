@@ -384,6 +384,10 @@ class AnswerResult:
     # doesn't restate the term still routes to the same cohort.
     admission_term: str | None = None
     admission_year_prefix: str | None = None
+    # Term the router picked because the student gave none (or a year with
+    # several); never persisted. The rendered answer names it, so a student
+    # admitted another year knows to say so.
+    defaulted_admission_term: str | None = None
     # UX-honesty signals plumbed up from `ConversationMemory`. The web UI
     # shows a small notice for each. `history_truncated` is sticky for the
     # session (ring-buffer evicted at least one turn); `session_expired`
@@ -776,6 +780,51 @@ def _render(
     return "".join(parts).strip()
 
 
+def _programme_ask(
+    cfg: Config, question: str, lang: str, channel: str, program_prior: str | None
+) -> str:
+    """The question names a course (by a name the cached study plans know)
+    without a code, no programme is known and the corpus had nothing: ask for
+    the programme, which is what resolves the course (`course_resolver`),
+    rather than answer that nothing was found. Returns "" otherwise."""
+    from student_bot.bot.course_resolver import (
+        question_has_course_intent,
+        question_has_explicit_course_code,
+        question_names_a_course,
+    )
+
+    if program_prior or not question_has_course_intent(question):
+        return ""
+    if question_has_explicit_course_code(question) or not question_names_a_course(cfg, question):
+        return ""
+    web = channel == "web"
+    if lang == "sv":
+        how = "Välj det ovanför frågan eller skriv" if web else "Skriv"
+        return f"Vilket program läser du? {how} programkoden, t.ex. CTFYS."
+    how = "Pick it above the question or write" if web else "Write"
+    return f"Which programme do you study? {how} the programme code, e.g. CTFYS."
+
+
+def _defaulted_term_note(lang: str, term: str | None, channel: str) -> str:
+    """Names the study plan a defaulted admission round picked, or "" without one.
+    Only the web UI has a year picker to point at."""
+    if not term:
+        return ""
+    web = channel == "web"
+    if lang == "sv":
+        fix = "välj det ovanför frågan" if web else "skriv det i frågan"
+        return (
+            f"\n\nSvaret utgår från utbildningsplanen för antagna {_term_label_sv(term)}. "
+            f"Antogs du ett annat år, {fix}."
+        )
+    season = "autumn" if term.endswith("2") else "spring"
+    fix = "pick it above the question" if web else "say so in your question"
+    return (
+        f"\n\nThis answer is based on the study plan for students admitted {season} {term[:4]}. "
+        f"If you were admitted another year, {fix}."
+    )
+
+
 def _emit_jargon_prefix(jargon_note: str, on_jargon_prefix, on_token) -> None:
     payload = jargon_note + "\n\n"
     if on_jargon_prefix:
@@ -912,6 +961,7 @@ def answer(
     applied_admission_year_prefix = (
         web_result.applied_admission_year_prefix if routed_programme else None
     )
+    defaulted_admission_term = web_result.defaulted_admission_term if routed_programme else None
     # Only what earlier turns established: the current message speaks for
     # itself, and a single-turn question gets the same prompt as before.
     facts = _conversation_facts(
@@ -1089,6 +1139,23 @@ def answer(
         gate = evaluate_gate(cfg, retrieval)
 
     if not gate.passed:
+        ask = _programme_ask(cfg, question, lang, channel, program_prior)
+        if ask:
+            if on_token:
+                on_token(ask)
+            return AnswerResult(
+                question=question,
+                lang=lang,
+                answered=False,
+                answer=ask,
+                rendered=ask,
+                gate=GateDecision(False, "programme_clarification", gate.top1, gate.meanK, 0),
+                retrieval=retrieval,
+                latency_ms=int((time.monotonic() - t0) * 1000),
+                expanded_question=expanded_q,
+                jargon_hits=jargon_hits,
+                merged_question=merged_question,
+            )
         # Run a single LLM call with a self-aware system prompt and no
         # retrieved context, so the bot can either reflect on its scope
         # (when the user asks about it) or politely decline (when the
@@ -1274,9 +1341,9 @@ def answer(
         sources_chunks = cited
 
     # Build everything that comes after the body: confidence badge,
-    # sources block, literacy tip. Same content for the streaming tail
-    # and for the final rendered string consumed by non-streaming
-    # channels (Mattermost, CLI --no-stream).
+    # sources block, defaulted-term note, literacy tip. Same content for
+    # the streaming tail and for the final rendered string consumed by
+    # non-streaming channels (Mattermost, CLI --no-stream).
     tail_parts: list[str] = []
     if cfg.guardrails.show_confidence_badge:
         label = "Tillförlitlighet" if lang == "sv" else "Confidence"
@@ -1284,6 +1351,7 @@ def answer(
     sources_md = format_sources_block(cfg, sources_chunks, lang)
     if sources_md:
         tail_parts.append(sources_md)
+    tail_parts.append(_defaulted_term_note(lang, defaulted_admission_term, channel))
     tail_parts.append("\n\n" + literacy_footer(lang, channel=channel))
     tail = "".join(tail_parts)
 
@@ -1340,6 +1408,7 @@ def answer(
         program_code=resolved_program_code,
         admission_term=applied_admission_term,
         admission_year_prefix=applied_admission_year_prefix,
+        defaulted_admission_term=defaulted_admission_term,
         merged_question=merged_question,
         chroma_ms=retrieval.chroma_ms,
         rerank_ms=retrieval.rerank_ms,
