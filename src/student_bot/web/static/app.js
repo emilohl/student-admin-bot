@@ -2,6 +2,9 @@
 // links in the answer body; supports 👍/👎 feedback per message.
 
 const state = {
+  pendingQuestion: "", // what the bot's last clarification asked about
+  pendingKind: "",     // "programme" | "year": the picker that answers it
+  pickProgram: localStorage.getItem("pick_program") || "", // sent before api/programs has loaded
   sessionId: localStorage.getItem("session_id") || crypto.randomUUID(),
   name: localStorage.getItem("name") || "",
   optOut: localStorage.getItem("opt_out") === "1",
@@ -25,6 +28,11 @@ const state = {
   // answer. Without this, #92's session list silently showed nothing.
   foreignTurn: null,
   isAdmin: false,
+  // Programme + admission-year picker, sent as program_code / admission_year.
+  // "" = not chosen. Restored from localStorage only once the matching option
+  // exists, so what is sent is always what the select shows.
+  pickProgram: "",
+  pickYear: "",
 };
 localStorage.setItem("session_id", state.sessionId);
 
@@ -40,6 +48,8 @@ const perfServerEl = el("#perf-server");
 const perfModelEl = el("#perf-model");
 const perfPanelEl = el("#perf-panel");
 const perfToggleEl = el("#perf-toggle");
+const pickProgramEl = el("#pick-program");
+const pickYearEl = el("#pick-year");
 let perfEnabled = false;   // deployment allows it AND the reader wants it
 let perfAvailable = false; // deployment allows it
 
@@ -123,6 +133,7 @@ el("#start").addEventListener("click", () => {
   syncTabBarVisibility();
   el("#question").focus();
   if (perfEnabled) refreshSystemLoad();
+  loadPrograms();
 });
 
 // Logging checkbox: positive polarity (ticked = logging enabled) so it
@@ -147,6 +158,91 @@ if (el("#logging-checkbox")) {
   });
 }
 
+// Programme + admission-year picker above the question. Years are this one and
+// the seven before it; programmes come from api/programs once the chat is
+// shown, and a failed fetch leaves just the empty option. "Börja om" leaves the
+// picker alone.
+let programs = [];
+
+// A stored value with no option (an aged-out year, an unknown code) would
+// leave the select blank, so it falls back to the empty option.
+function restorePick(select, key) {
+  select.value = localStorage.getItem(key) || "";
+  if (select.selectedIndex < 0) select.value = "";
+  return select.value;
+}
+
+// The server fills a missing name with the code.
+function programLabel(p) {
+  const name = window.currentLang?.() === "en" ? p.name_en : p.name_sv;
+  return name && name !== p.code ? `${p.code} – ${name}` : p.code;
+}
+
+async function loadPrograms() {
+  try {
+    const resp = await fetch("api/programs", { credentials: "include" });
+    if (!resp.ok) throw new Error(resp.status);
+    const list = await resp.json();
+    for (const p of list) pickProgramEl.add(new Option(programLabel(p), p.code));
+    programs = list;
+    state.pickProgram = restorePick(pickProgramEl, "pick_program");
+  } catch (_) {
+    // No list: the stored choice still shows and is still sent.
+    if (state.pickProgram) {
+      pickProgramEl.add(new Option(state.pickProgram, state.pickProgram));
+      pickProgramEl.value = state.pickProgram;
+    }
+  }
+}
+
+// The answer settled on a programme or year written in the question: show
+// it, so the pickers never contradict what the bot is answering about. Only
+// codes in the list can be shown; the server treats a picker that agrees
+// with memory as no change, so this never re-applies anything.
+function syncPickers(meta) {
+  if (meta.program_code && meta.program_code !== state.pickProgram
+      && [...pickProgramEl.options].some((o) => o.value === meta.program_code)) {
+    pickProgramEl.value = state.pickProgram = meta.program_code;
+    localStorage.setItem("pick_program", state.pickProgram);
+  }
+  if (meta.admission_year && meta.admission_year !== state.pickYear
+      && [...pickYearEl.options].some((o) => o.value === meta.admission_year)) {
+    pickYearEl.value = state.pickYear = meta.admission_year;
+    localStorage.setItem("pick_year", state.pickYear);
+  }
+}
+
+const thisYear = new Date().getFullYear();
+for (let y = thisYear; y >= thisYear - 7; y--) {
+  pickYearEl.add(new Option(String(y), String(y)));
+}
+state.pickYear = restorePick(pickYearEl, "pick_year");
+
+pickProgramEl.addEventListener("change", () => {
+  state.pickProgram = pickProgramEl.value;
+  localStorage.setItem("pick_program", state.pickProgram);
+  if (state.pickProgram) resendPending("programme");
+});
+pickYearEl.addEventListener("change", () => {
+  state.pickYear = pickYearEl.value;
+  localStorage.setItem("pick_year", state.pickYear);
+  if (state.pickYear) resendPending("year");
+});
+
+// The bot's last message asked for the programme or admission year and the
+// student answered with that picker: ask the waiting question again, now with
+// the picked value in memory, instead of making them type it.
+function resendPending(kind) {
+  const q = state.pendingQuestion;
+  if (!q || state.pendingKind !== kind || el("#send").disabled) return;
+  state.pendingQuestion = "";
+  sendQuestion(q);
+}
+// The option labels carry the programme name, so they follow the language.
+document.addEventListener("i18n:langchange", () => {
+  programs.forEach((p, i) => { pickProgramEl.options[i + 1].textContent = programLabel(p); });
+});
+
 el("#reset").addEventListener("click", async () => {
   // Confirm before discarding a non-empty conversation. Skip the prompt
   // when the thread is already empty (no work to lose).
@@ -163,6 +259,7 @@ el("#reset").addEventListener("click", async () => {
   }).catch(() => { });
   messages.innerHTML = "";
   state.thread = [];
+  state.pendingQuestion = "";
   // The debug list mirrors the transcript, so clearing one clears the other —
   // otherwise "Börja om" leaves the previous conversation's turns listed.
   state.turns = [];
@@ -189,11 +286,19 @@ el("#question").addEventListener("keydown", (e) => {
   composer.requestSubmit();
 });
 
-composer.addEventListener("submit", async (e) => {
+composer.addEventListener("submit", (e) => {
   e.preventDefault();
   const q = el("#question").value.trim();
   if (!q) return;
   el("#question").value = "";
+  sendQuestion(q);
+});
+
+// One turn: show the question, stream the answer, decorate it.
+async function sendQuestion(q) {
+  // What a clarification is about: the question that started it, not the
+  // typed reply ("CTFYS") or the merged text the server keeps.
+  const asked = state.pendingQuestion || q;
   el("#send").disabled = true;
   appendUser(q);
   state.thread.push({ role: "user", ts: Date.now(), text: q });
@@ -234,6 +339,8 @@ composer.addEventListener("submit", async (e) => {
         session_id: state.sessionId,
         opt_out: state.optOut,
         learn_more: state.learnMore,
+        program_code: state.pickProgram || null,
+        admission_year: state.pickYear || null,
       }),
     });
     if (!resp.ok || !resp.body) {
@@ -307,6 +414,9 @@ composer.addEventListener("submit", async (e) => {
   }
 
   if (finalMeta) {
+    state.pendingQuestion = finalMeta.pending_question ? asked : "";
+    state.pendingKind = finalMeta.pending_kind || "";
+    syncPickers(finalMeta);
     if (Object.prototype.hasOwnProperty.call(finalMeta, "performance_panel_enabled")) {
       setPerfAvailable(!!finalMeta.performance_panel_enabled);
     }
@@ -332,7 +442,7 @@ composer.addEventListener("submit", async (e) => {
       state.debugCache.set(finalMeta.qa_id, finalMeta.debug);
     }
   }
-});
+}
 
 // Append UX-honesty notices to a bot bubble when the server reports that
 // the LLM context has been truncated or the session was just resurrected
@@ -694,6 +804,8 @@ function decorateBot(botMsg, meta) {
     // authoritative server-provided references.
     html += renderSources(serverSources, meta.lang || "sv");
   }
+  // The newest-term line is in the streamed tail, which this rebuild drops.
+  if (meta.defaulted_term_note) html += `<p>${escapeHtml(meta.defaulted_term_note)}</p>`;
   if (tip) html += renderTip(tip);
   // Cancel any pending live re-render and target the live element so the
   // jargon prefix (.msg-prefix) stays in place. Falls back to replacing
@@ -715,6 +827,7 @@ function decorateBot(botMsg, meta) {
   if (botMsg.entry) {
     botMsg.entry.raw = raw;
     botMsg.entry.body = body;
+    botMsg.entry.note = meta.defaulted_term_note || "";
     // entry.jargon was populated incrementally during streaming with the
     // RAW markdown; keep that form so the conversation export's
     // `> _Tolkar..._` blockquote still renders as italic. Falls back to
@@ -1369,6 +1482,10 @@ function exportThreadMarkdown() {
     }
     if (entry.body) {
       lines.push(entry.body);
+      lines.push("");
+    }
+    if (entry.note) {
+      lines.push(`_${entry.note}_`);
       lines.push("");
     }
     if (entry.reaction === "positive") { lines.push("👍"); lines.push(""); }

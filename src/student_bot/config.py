@@ -372,6 +372,9 @@ class DynamicWebConfig(BaseModel):
     # `matematik` from trivially rescuing extinct masters; lets unique
     # discriminators like `fusionsenergi` still rescue TFEPM.
     discriminator_rare_token_max_aliases: int = 3
+    # A programme question with no admission round, or a year matching several
+    # rounds, uses the newest round instead of asking. Off restores the question.
+    default_newest_term: bool = True
 
 
 class StudyPlanCacheConfig(BaseModel):

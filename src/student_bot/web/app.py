@@ -14,6 +14,7 @@ When auth is enabled, two factors are required:
 from __future__ import annotations
 
 import asyncio
+import functools
 import html
 import json
 import logging
@@ -36,7 +37,7 @@ from fastapi.responses import (
     StreamingResponse,
 )
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from rich.logging import RichHandler
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -46,7 +47,11 @@ from student_bot.bot.citations import (
     format_source_display_label,
 )
 from student_bot.bot.memory import ConversationMemory
-from student_bot.bot.pipeline import answer, remember_turn, turn_priors
+from student_bot.bot.pipeline import _defaulted_term_note, answer, remember_turn, turn_priors
+from student_bot.bot.web_retrieval import (
+    is_multi_program_clarification_assistant_message,
+    is_programme_clarification_assistant_message,
+)
 from student_bot.bot.topics import classify
 from student_bot.config import Config, get_config
 from student_bot.jargon import Jargon, _nfc_lower, _read_json, _write_json
@@ -218,6 +223,10 @@ class ChatRequest(BaseModel):
     # per-stage timings) and persists it to qa_debug for /api/debug/{qa_id}
     # to surface in the "Learn more" side panel.
     learn_more: bool = False
+    # The programme / admission-year picker above the question. A changed
+    # value replaces what memory holds, as if the student had written it.
+    program_code: str | None = Field(default=None, pattern=r"^[A-Z]{5}$")
+    admission_year: str | None = Field(default=None, pattern=r"^[0-9]{4}$")
 
 
 class FeedbackRequest(BaseModel):
@@ -407,6 +416,14 @@ def create_app(cfg: Config | None = None) -> FastAPI:
             "server_load": _server_load_snapshot(),
         }
 
+    @app.get(_join_base(base_path, "/api/programs"))
+    def programs(request: Request):
+        require_access(request, cfg)
+        return _programs(
+            cfg.absolute(Path(cfg.dynamic_web.program_aliases_file)),
+            frozenset(cfg.study_plan_cache.programmes),
+        )
+
     @app.post(_join_base(base_path, "/api/session"))
     def session_set(request: Request, payload: SessionRequest):
         require_access(request, cfg)
@@ -581,11 +598,62 @@ def _web_user_id_from_request(request: Request, session_id: str) -> str:
     return f"web:{name}:{session_id or 'default'}"
 
 
+def _pending_kind(result) -> str:
+    """The picker that answers a clarification: "programme" or "year", else ""."""
+    if result.gate.reason != "programme_clarification":
+        return ""
+    if is_multi_program_clarification_assistant_message(result.answer):
+        return "programme"
+    if is_programme_clarification_assistant_message(result.answer):
+        return "year"
+    return ""
+
+
+def _programs(path: Path, codes: frozenset[str]) -> list[dict[str, str]]:
+    """The programme picker's options: the codes in `codes` (for now KTH's
+    current civilingenjör programmes, `study_plan_cache.programmes`) named
+    from the alias cache. Empty when the cache is missing."""
+    try:
+        programs = _parse_programs(path, path.stat().st_mtime_ns)
+    except (OSError, ValueError):
+        return []
+    return [p for p in programs if p["code"] in codes]
+
+
+@functools.lru_cache(maxsize=4)
+def _parse_programs(path: Path, mtime_ns: int) -> list[dict[str, str]]:
+    """One entry per programme code in the alias cache, sorted by code. Keyed
+    on mtime so a refreshed cache is re-read.
+
+    `_get_program_aliases` writes the English catalogue first and the Swedish
+    one second, so a code's first title is English and its last Swedish. A
+    title two codes share is kept under one of them only, so a code left with
+    a single title, in either language, uses it for both; one with none falls
+    back to the code."""
+    aliases = json.loads(path.read_text(encoding="utf-8")).get("aliases", {})
+    titles: dict[str, list[str]] = {}
+    for alias, code in aliases.items():
+        names = titles.setdefault(code, [])
+        if alias != code.lower():
+            names.append(alias.capitalize())
+    return [
+        {
+            "code": code,
+            "name_sv": names[-1] if names else code,
+            "name_en": names[0] if names else code,
+        }
+        for code, names in sorted(titles.items())
+    ]
+
+
 def _stream_answer(
     cfg: Config, db: LogDB, memory: ConversationMemory, payload: ChatRequest, web_user_id: str
 ):
     """Generator producing SSE blocks. Streams answer tokens and a final
     `meta` event with confidence, qa_id, and gate info."""
+    # A picker change goes into memory; fetch_dynamic_web still lets a hint
+    # in the question text win, and remember_turn keeps that one.
+    memory.apply_picker(web_user_id, "default", payload.program_code, payload.admission_year)
     priors = turn_priors(memory, web_user_id, "default")
     session_expired = memory.take_expired_flag(web_user_id, "default")
 
@@ -761,6 +829,23 @@ def _stream_answer(
             "sources": sources,
             "source_candidates": source_candidates,
             "stale_cache_days": result.stale_cache_days,
+            # The newest-term line sits in the streamed tail, which the client
+            # drops when it rebuilds the answer from numbered_body.
+            "defaulted_term_note": _defaulted_term_note(
+                result.lang, result.defaulted_admission_term, "web"
+            ).strip(),
+            # The question a clarification is waiting on (what remember_turn
+            # stores), so a picker change can send it again.
+            "pending_question": (
+                (result.merged_question or payload.question)
+                if result.gate.reason == "programme_clarification"
+                else ""
+            ),
+            # Which picker answers it: "programme", "year" or "" (typed only).
+            "pending_kind": _pending_kind(result),
+            # What this turn settled on, so the pickers can follow the text.
+            "program_code": result.program_code or "",
+            "admission_year": (result.admission_term or result.admission_year_prefix or "")[:4],
             "performance_panel_enabled": _perf_panel_enabled(cfg),
             # UX-honesty signals for the client: notify the user when the
             # LLM no longer sees the start of the conversation (ring-buffer

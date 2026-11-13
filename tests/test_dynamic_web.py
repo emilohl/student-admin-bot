@@ -404,7 +404,7 @@ def test_select_programme_urls_single_term_without_hints():
 
 
 def test_select_programme_urls_clarifies_when_ambiguous_without_hints():
-    r = _select_programme_urls("CTFYS", ["20252", "20242"], AdmissionHints())
+    r = _select_programme_urls("CTFYS", ["20252", "20242"], AdmissionHints(), default_newest=False)
     assert r.queue_urls == []
     assert "2024" in r.clarification_sv and "2025" in r.clarification_sv
     assert "2024" in r.clarification_en and "2025" in r.clarification_en

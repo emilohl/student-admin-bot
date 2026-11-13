@@ -345,6 +345,8 @@ dynamic_web:
   program_aliases_file: data/program_aliases.json
   program_aliases_ttl_hours: 48
   program_aliases: {}
+  # No admission round given, or a year with both HT and VT: use the newest round, don't ask.
+  default_newest_term: true
 
 # Course lists and kursplan eligibility (Särskild behörighet) per programme and
 # cohort, cached in dynamic_web.cache_db by the weekly scrape — see

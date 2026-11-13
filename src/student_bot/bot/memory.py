@@ -39,6 +39,9 @@ class _Slot:
     # answered together with it. Lives one turn: callers set it after every
     # turn, and None clears it.
     pending_question: str | None = None
+    # The web picker's (programme, admission year) as of the last turn; see
+    # `apply_picker`.
+    picker: tuple[str | None, str | None] = (None, None)
     # True once the ring buffer has dropped at least one user/assistant
     # pair to honour max_turns. Sticky for the life of the slot — once
     # context has been silently truncated, the user should keep seeing the
@@ -197,6 +200,39 @@ class ConversationMemory:
                 slot.admission_term = exact_term
             if replace or year_prefix is not None:
                 slot.admission_year_prefix = year_prefix
+            slot.last_used = now
+
+    def apply_picker(
+        self, user_id: str, root_id: str, program_code: str | None, admission_year: str | None
+    ) -> None:
+        """Write the web picker's programme / admission year over the thread's
+        when either differs from the last turn's and from what the thread
+        holds. A change then counts as the student stating it (an emptied
+        year: the newest round), and what they state later in a question
+        sticks. The picker following the text (the client syncs it from the
+        answer) is therefore not a change."""
+        now = time.time()
+        with self._lock:
+            self._prune(now)
+            slot = self._store.get((user_id, root_id))
+            last = slot.picker if slot else (None, None)
+            if (program_code, admission_year) == last:
+                return
+            if not slot:
+                slot = self._store[(user_id, root_id)] = _Slot(last_used=now)
+            if program_code != last[0] and program_code != slot.program_code:
+                slot.program_code = program_code
+                # A five-digit term belongs with the programme it was given
+                # for; the year carries over.
+                if slot.admission_term:
+                    slot.admission_year_prefix = (
+                        slot.admission_year_prefix or slot.admission_term[:4]
+                    )
+                    slot.admission_term = None
+            held_year = slot.admission_year_prefix or (slot.admission_term or "")[:4] or None
+            if admission_year != last[1] and admission_year != held_year:
+                slot.admission_term, slot.admission_year_prefix = None, admission_year
+            slot.picker = (program_code, admission_year)
             slot.last_used = now
 
     def history_truncated(self, user_id: str, root_id: str) -> bool:
